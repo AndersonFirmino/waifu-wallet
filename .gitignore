@@ -5,6 +5,7 @@ frontend/.vite/
 
 # Backend
 backend/.venv/
+backend/.venv2/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/*.db
