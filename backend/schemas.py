@@ -142,6 +142,7 @@ class GachaBannerCreate(BaseModel):
     end_date: str
     priority: int
     pulls: int = 0
+    image_url: str | None = None
 
 
 class GachaBannerOut(GachaBannerCreate):

@@ -17,12 +17,12 @@ import {
 } from 'recharts'
 import StatCard from '../components/ui/StatCard'
 import Card from '../components/ui/Card'
-import ProgressBar from '../components/ui/ProgressBar'
+import TimelineRoadmap, { type TimelineEvent } from '../components/TimelineRoadmap'
 import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { formatMonth } from '../utils/date'
-import { type MonthlyData, type CategoryData, type SalaryPlan } from '../types'
+import { type MonthlyData, type CategoryData, type SalaryPlan, type GachaBanner } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeSummary, decodeTransactionList, decodeNoteList, decodeSalaryPlanList } from '../lib/decode'
+import { decodeSummary, decodeTransactionList, decodeNoteList, decodeSalaryPlanList, decodeGachaBannerList } from '../lib/decode'
 
 const MONTH_LABELS: readonly string[] = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -115,60 +115,6 @@ function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
   }
 }
 
-function computePaydayProgress(plan: SalaryPlan, today: Date): { value: number; max: number; lastPayday: Date; nextPayday: Date } {
-  const todayDay = today.getDate()
-  const todayMonth = today.getMonth()
-  const todayYear = today.getFullYear()
-
-  const splitActive = isSplitActiveForDate(plan, today)
-
-  if (splitActive) {
-    const firstDay = plan.split_first_day
-    const secondDay = plan.split_second_day
-
-    let lastPayday: Date
-    let nextPayday: Date
-
-    if (todayDay < firstDay) {
-      lastPayday = new Date(todayYear, todayMonth - 1, secondDay)
-      nextPayday = new Date(todayYear, todayMonth, firstDay)
-    } else if (todayDay < secondDay) {
-      lastPayday = new Date(todayYear, todayMonth, firstDay)
-      nextPayday = new Date(todayYear, todayMonth, secondDay)
-    } else {
-      lastPayday = new Date(todayYear, todayMonth, secondDay)
-      nextPayday = new Date(todayYear, todayMonth + 1, firstDay)
-    }
-
-    const msPerDay = 1000 * 60 * 60 * 24
-    const todayMs = new Date(todayYear, todayMonth, todayDay).getTime()
-    const max = Math.round((nextPayday.getTime() - lastPayday.getTime()) / msPerDay)
-    const value = Math.round((todayMs - lastPayday.getTime()) / msPerDay)
-
-    return { value, max, lastPayday, nextPayday }
-  }
-
-  // Non-split
-  const payday = plan.split_first_day
-  let lastPayday: Date
-  let nextPayday: Date
-
-  if (todayDay < payday) {
-    lastPayday = new Date(todayYear, todayMonth - 1, payday)
-    nextPayday = new Date(todayYear, todayMonth, payday)
-  } else {
-    lastPayday = new Date(todayYear, todayMonth, payday)
-    nextPayday = new Date(todayYear, todayMonth + 1, payday)
-  }
-
-  const msPerDay = 1000 * 60 * 60 * 24
-  const todayMs = new Date(todayYear, todayMonth, todayDay).getTime()
-  const max = Math.round((nextPayday.getTime() - lastPayday.getTime()) / msPerDay)
-  const value = Math.round((todayMs - lastPayday.getTime()) / msPerDay)
-
-  return { value, max, lastPayday, nextPayday }
-}
-
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
 interface BarPayloadItem {
@@ -229,6 +175,80 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
   )
 }
 
+// ─── Timeline builder ─────────────────────────────────────────────────────────
+
+function buildTimelineEvents(
+  activePlan: SalaryPlan | null,
+  gachaBanners: GachaBanner[] | null,
+): TimelineEvent[] {
+  const now = new Date()
+  const threeMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
+  const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+  const collected: TimelineEvent[] = [{ date: now, label: 'Hoje', type: 'today' }]
+
+  if (activePlan) {
+    const salaryEvents: TimelineEvent[] = []
+
+    for (let offset = 0; offset <= 3; offset++) {
+      const ref = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+      const checkYear = ref.getFullYear()
+      const checkMonth = ref.getMonth()
+      const checkDate = new Date(checkYear, checkMonth, 1)
+      const splitActive = isSplitActiveForDate(activePlan, checkDate)
+
+      if (splitActive) {
+        const firstDay = activePlan.split_first_day
+        const secondDay = activePlan.split_second_day
+        const firstAmount = Math.round(activePlan.current_salary * (activePlan.split_first_pct / 100) * 100) / 100
+        const secondAmount = Math.round(activePlan.current_salary * (activePlan.split_second_pct / 100) * 100) / 100
+        const d1 = new Date(checkYear, checkMonth, firstDay)
+        const d2 = new Date(checkYear, checkMonth, secondDay)
+
+        if (d1.getTime() > todayMs && d1 <= threeMonthsLater) {
+          salaryEvents.push({ date: d1, label: 'Salário', sublabel: formatCurrency(firstAmount), type: 'salary' })
+        }
+        if (d2.getTime() > todayMs && d2 <= threeMonthsLater) {
+          salaryEvents.push({ date: d2, label: 'Salário', sublabel: formatCurrency(secondAmount), type: 'salary' })
+        }
+      } else {
+        const payday = activePlan.split_first_day
+        const d = new Date(checkYear, checkMonth, payday)
+        if (d.getTime() > todayMs && d <= threeMonthsLater) {
+          salaryEvents.push({ date: d, label: 'Salário', sublabel: formatCurrency(activePlan.current_salary), type: 'salary' })
+        }
+      }
+    }
+
+    const seen = new Set<number>()
+    for (const ev of salaryEvents) {
+      const key = ev.date.getTime()
+      if (!seen.has(key)) {
+        seen.add(key)
+        collected.push(ev)
+      }
+    }
+  }
+
+  if (gachaBanners) {
+    for (const banner of gachaBanners) {
+      const startDate = new Date(banner.start_date + 'T00:00:00')
+      if (startDate <= threeMonthsLater) {
+        const truncatedLabel = banner.banner.length > 20 ? banner.banner.slice(0, 18) + '\u2026' : banner.banner
+        collected.push({
+          date: startDate,
+          label: truncatedLabel,
+          sublabel: formatCurrency(banner.cost),
+          type: 'gacha',
+          imageUrl: banner.image_url ?? undefined,
+        })
+      }
+    }
+  }
+
+  return [...collected].sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -242,6 +262,7 @@ export default function Dashboard() {
   const { data: allTransactions } = useFetch('/transactions/', decodeTransactionList)
   const { data: allNotes } = useFetch('/notes/', decodeNoteList)
   const { data: salaryPlans } = useFetch('/salary-plans/', decodeSalaryPlanList)
+  const { data: gachaBanners } = useFetch('/gacha/banners/', decodeGachaBannerList)
 
   const income = summary?.monthly_finances.income ?? 0
   const expenses = summary?.monthly_finances.expenses ?? 0
@@ -250,9 +271,6 @@ export default function Dashboard() {
   const activePlan = salaryPlans?.find((p) => p.active) ?? null
 
   const nextPayday: NextPayday | null = activePlan ? computeNextPayday(activePlan, today) : null
-  const paydayProgress = activePlan ? computePaydayProgress(activePlan, today) : null
-
-  const todayDay = today.getDate()
 
   const recentTransactions = (transactions ?? []).slice(0, 5)
   const recentNotes = [...(allNotes ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 3)
@@ -291,6 +309,8 @@ export default function Dashboard() {
         color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] ?? '#64748b',
       }))
   }, [transactions])
+
+  const timelineEvents: TimelineEvent[] = buildTimelineEvents(activePlan, gachaBanners)
 
   const prevMonth = () => {
     if (month === 0) {
@@ -388,39 +408,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Payday Bar */}
-      <Card className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span>🗓️</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Progresso do Mês
-            </span>
-          </div>
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            {paydayProgress
-              ? `Dia ${String(todayDay)} — próximo salário em ${String(paydayProgress.nextPayday.getDate())}/${String(paydayProgress.nextPayday.getMonth() + 1).padStart(2, '0')}`
-              : `Dia ${String(todayDay)}`}
-          </span>
-        </div>
-        <ProgressBar
-          value={paydayProgress ? paydayProgress.value : todayDay}
-          max={paydayProgress ? paydayProgress.max : new Date(year, month + 1, 0).getDate()}
-          color="blue"
-          height={10}
-          showPercent
-        />
-        <div className="flex justify-between mt-2">
-          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {paydayProgress
-              ? `${String(Math.round((paydayProgress.value / paydayProgress.max) * 100))}% do período passou`
-              : `${String(Math.round((todayDay / new Date(year, month + 1, 0).getDate()) * 100))}% do mês passou`}
-          </span>
-          <span className="text-xs font-medium" style={{ color: 'var(--color-blue)' }}>
-            {nextPayday ? `Próximo: ${nextPayday.label} (${String(nextPayday.daysUntil)} dias)` : ''}
-          </span>
-        </div>
-      </Card>
+      {/* Timeline Roadmap */}
+      <TimelineRoadmap events={timelineEvents} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-2 gap-6 mb-6">

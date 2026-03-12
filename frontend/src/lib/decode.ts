@@ -242,10 +242,15 @@ export function decodeGachaBanner(raw: unknown): GachaBanner {
     end_date: str(raw.end_date, 'end_date'),
     priority: asGachaPriority(raw.priority),
     pulls: num(raw.pulls, 'pulls'),
+    image_url: nullableStr(raw.image_url, 'image_url'),
   }
 }
 
 export function decodeBannerList(raw: unknown): GachaBanner[] {
+  return arr(raw, 'banners').map(decodeGachaBanner)
+}
+
+export function decodeGachaBannerList(raw: unknown): GachaBanner[] {
   return arr(raw, 'banners').map(decodeGachaBanner)
 }
 

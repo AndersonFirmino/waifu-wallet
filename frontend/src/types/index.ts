@@ -200,6 +200,7 @@ export interface GachaBanner {
   end_date: string
   priority: GachaPriority
   pulls: number
+  image_url: string | null
 }
 
 // ─── Salary Plan ──────────────────────────────────────────────────────────────
