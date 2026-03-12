@@ -28,6 +28,7 @@ const NAV: NavGroup[] = [
     group: 'Financeiro',
     items: [
       { path: '/salary', icon: '💼', label: 'Plano Salarial' },
+      { path: '/savings', icon: '🐷', label: 'Cofrinhos' },
       { path: '/fixed-expenses', icon: '📋', label: 'Gastos Fixos' },
       { path: '/debts', icon: '🔴', label: 'Dívidas' },
       { path: '/credit-cards', icon: '🃏', label: 'Cartões' },

@@ -151,6 +151,26 @@ class PullsUpdate(BaseModel):
     pulls: int
 
 
+# ─── Savings Account ──────────────────────────────────────────────────────────
+
+class SavingsAccountCreate(BaseModel):
+    name: str
+    bank: str
+    balance: float
+    goal: float
+    emoji: str
+    active: bool
+
+
+class SavingsAccountOut(SavingsAccountCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
+class BalanceUpdate(BaseModel):
+    balance: float
+
+
 # ─── Salary Plan ──────────────────────────────────────────────────────────────
 
 class SalaryPlanCreate(BaseModel):
@@ -242,6 +262,11 @@ class AlertOut(BaseModel):
     message: str
 
 
+class SavingsSummaryOut(BaseModel):
+    total_savings: float
+    accounts: list[SavingsAccountOut]
+
+
 class SummaryOut(BaseModel):
     queried_at: str
     current_month: str
@@ -250,4 +275,5 @@ class SummaryOut(BaseModel):
     cards: list[CardOverviewOut]
     fixed_costs: FixedCostsOverviewOut
     gacha: GachaOverviewOut
+    savings: SavingsSummaryOut
     alerts: list[AlertOut]

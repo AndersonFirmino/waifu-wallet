@@ -7,13 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import CreditCard, Debt, FixedExpense, GachaBanner, Loan, Transaction
+from models import CreditCard, Debt, FixedExpense, GachaBanner, Loan, SavingsAccount, Transaction
 from schemas import (
     AlertOut,
     CardOverviewOut,
     FixedCostsOverviewOut,
     GachaOverviewOut,
     MonthlyFinancesOut,
+    SavingsAccountOut,
+    SavingsSummaryOut,
     SummaryOut,
     WealthSummaryOut,
 )
@@ -61,6 +63,10 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
     confirmed = sum(e.amount for e in fixed if e.confidence >= 90)
     estimated = sum(e.estimate for e in fixed)
 
+    # ── Savings ───────────────────────────────────────────────────────────────
+    savings_accounts = list(db.scalars(select(SavingsAccount).where(SavingsAccount.active.is_(True))).all())
+    savings_out = [SavingsAccountOut.model_validate(a) for a in savings_accounts]
+
     # ── Gacha ─────────────────────────────────────────────────────────────────
     banners = list(db.scalars(select(GachaBanner)).all())
     active = [b for b in banners if b.end_date >= today.isoformat()]
@@ -98,5 +104,9 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
         cards=card_overviews,
         fixed_costs=FixedCostsOverviewOut(confirmed_total=confirmed, estimated_total=estimated),
         gacha=GachaOverviewOut(active_banners=len(active), total_cost=sum(b.cost for b in active), next_due_date=next_due),
+        savings=SavingsSummaryOut(
+            total_savings=sum(a.balance for a in savings_accounts),
+            accounts=savings_out,
+        ),
         alerts=alerts,
     )

@@ -124,6 +124,18 @@ class GachaBanner(Base):
     pulls: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class SavingsAccount(Base):
+    __tablename__ = "savings_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200))
+    bank: Mapped[str] = mapped_column(String(200))
+    balance: Mapped[float] = mapped_column(Float)
+    goal: Mapped[float] = mapped_column(Float)
+    emoji: Mapped[str] = mapped_column(String(10), default="🐷")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class SalaryPlan(Base):
     __tablename__ = "salary_plans"
 
