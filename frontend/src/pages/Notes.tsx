@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { formatMonth } from '../utils/date'
@@ -178,12 +180,9 @@ export default function Notes() {
                         {day}/{noteMonth}/{noteYear}
                       </div>
                     </div>
-                    <p
-                      className="text-sm leading-relaxed"
-                      style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}
-                    >
-                      {note.content}
-                    </p>
+                    <div className="text-sm leading-relaxed prose-notes" style={{ color: 'var(--color-text)' }}>
+                      <Markdown remarkPlugins={[remarkGfm]}>{note.content}</Markdown>
+                    </div>
                   </div>
                   <button
                     onClick={() => {
