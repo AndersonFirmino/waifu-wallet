@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   BarChart,
   Bar,
@@ -22,24 +22,14 @@ import { type MonthlyData, type CategoryData } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeSummary, decodeTransactionList } from '../lib/decode'
 
-// ─── Static chart data (no aggregate endpoint) ────────────────────────────────
-
-const ALL_MONTHLY: MonthlyData[] = [
-  { month: 'Out', income: 6800, expenses: 4200 },
-  { month: 'Nov', income: 7200, expenses: 4600 },
-  { month: 'Dez', income: 9500, expenses: 7100 },
-  { month: 'Jan', income: 7500, expenses: 4300 },
-  { month: 'Fev', income: 7500, expenses: 3900 },
-  { month: 'Mar', income: 7500, expenses: 3658 },
+const MONTH_LABELS: readonly string[] = [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
 ]
 
-const CATEGORIES: CategoryData[] = [
-  { name: 'Moradia', value: 1820, color: '#3b82f6' },
-  { name: 'Alimentação', value: 650, color: '#10b981' },
-  { name: 'Transporte', value: 180, color: '#f59e0b' },
-  { name: 'Lazer', value: 320, color: '#8b5cf6' },
-  { name: 'Saúde', value: 280, color: '#f97316' },
-  { name: 'Contas', value: 408, color: '#64748b' },
+const CATEGORY_COLORS: readonly string[] = [
+  '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
+  '#f97316', '#64748b', '#ec4899', '#14b8a6',
 ]
 
 const PAYDAY_DAY = 5
@@ -86,8 +76,7 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
   if (!active || !payload?.length) return null
   const item = payload[0]
   if (!item) return null
-  const catEntry = CATEGORIES.find((c) => c.name === item.name)
-  const color = catEntry?.color ?? 'var(--color-text)'
+  const color = typeof item.color === 'string' ? item.color : 'var(--color-text)'
   return (
     <div
       style={{
@@ -115,6 +104,7 @@ export default function Dashboard() {
   const { data: summary } = useFetch('/summary/', decodeSummary)
   const txUrl = `/transactions/?month=${String(month + 1)}&year=${String(year)}`
   const { data: transactions } = useFetch(txUrl, decodeTransactionList)
+  const { data: allTransactions } = useFetch('/transactions/', decodeTransactionList)
 
   const income = summary?.monthly_finances.income ?? 0
   const expenses = summary?.monthly_finances.expenses ?? 0
@@ -126,6 +116,41 @@ export default function Dashboard() {
   const paydayPct = Math.round((todayDay / daysInMonth) * 100)
 
   const recentTransactions = (transactions ?? []).slice(0, 5)
+
+  const monthlyData: MonthlyData[] = useMemo(() => {
+    if (!allTransactions) return []
+    const result: MonthlyData[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(year, month - i, 1)
+      const m = d.getMonth()
+      const y = d.getFullYear()
+      const prefix = `${String(y).padStart(4, '0')}-${String(m + 1).padStart(2, '0')}`
+      const monthTxs = allTransactions.filter((tx) => tx.date.startsWith(prefix))
+      result.push({
+        month: MONTH_LABELS[m] ?? '',
+        income: monthTxs.filter((tx) => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0),
+        expenses: monthTxs.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0),
+      })
+    }
+    return result
+  }, [allTransactions, month, year])
+
+  const categories: CategoryData[] = useMemo(() => {
+    if (!transactions) return []
+    const map = new Map<string, number>()
+    for (const tx of transactions) {
+      if (tx.type === 'expense') {
+        map.set(tx.category, (map.get(tx.category) ?? 0) + tx.amount)
+      }
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], i) => ({
+        name,
+        value,
+        color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] ?? '#64748b',
+      }))
+  }, [transactions])
 
   const prevMonth = () => {
     if (month === 0) {
@@ -256,7 +281,7 @@ export default function Dashboard() {
             Receitas vs Despesas — 6 meses
           </h3>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={ALL_MONTHLY} barCategoryGap="30%">
+            <BarChart data={monthlyData} barCategoryGap="30%">
               <defs>
                 <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.95} />
@@ -297,7 +322,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="55%" height={200}>
               <PieChart>
                 <Pie
-                  data={CATEGORIES}
+                  data={categories}
                   cx="50%"
                   cy="50%"
                   innerRadius={55}
@@ -306,7 +331,7 @@ export default function Dashboard() {
                   dataKey="value"
                   strokeWidth={0}
                 >
-                  {CATEGORIES.map((entry) => (
+                  {categories.map((entry) => (
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
@@ -314,7 +339,7 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div style={{ flex: 1 }}>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <div key={cat.name} className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />

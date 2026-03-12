@@ -16,7 +16,7 @@ import Badge from '../components/ui/Badge'
 import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { type ForecastPoint, type ForecastPeriod } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeForecastList } from '../lib/decode'
+import { decodeForecastList, decodeSummary, decodeDebtList, decodeLoanList } from '../lib/decode'
 
 interface ForecastPeriodConfig {
   label: string
@@ -38,13 +38,6 @@ interface ConsiderationItem {
   impact: string
 }
 
-const CONSIDERATIONS: ConsiderationItem[] = [
-  { description: 'Salário mensal (fixo)', amount: 6500, type: 'income', impact: 'Alto' },
-  { description: 'Freelances estimados', amount: 500, type: 'income', impact: 'Médio' },
-  { description: 'Gastos fixos mensais', amount: -2344, type: 'expense', impact: 'Alto' },
-  { description: 'Variáveis estimadas', amount: -1200, type: 'expense', impact: 'Médio' },
-  { description: 'Parcelas de dívidas', amount: -1150, type: 'expense', impact: 'Alto' },
-]
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
@@ -78,7 +71,44 @@ export default function Forecast() {
   const [period, setPeriod] = useState<ForecastPeriod>('6m')
 
   const { data: forecastData } = useFetch(`/forecast/?period=${period}`, decodeForecastList)
+  const { data: summary } = useFetch('/summary/', decodeSummary)
+  const { data: debts } = useFetch('/debts', decodeDebtList)
+  const { data: loans } = useFetch('/loans', decodeLoanList)
   const data: ForecastPoint[] = forecastData ?? []
+
+  const monthlyLoanPayments = (loans ?? []).reduce((sum, l) => sum + l.installment, 0)
+  const monthlyDebtPayments = (debts ?? []).reduce((sum, d) => {
+    const [paidStr, totalStr] = d.installments.split('/')
+    const left = Number(totalStr) - Number(paidStr)
+    return sum + (left > 0 ? d.remaining / left : 0)
+  }, 0)
+  const totalInstallments = monthlyDebtPayments + monthlyLoanPayments
+
+  const confirmedFixed = summary?.fixed_costs.confirmed_total ?? 0
+  const variableEstimate = (summary?.fixed_costs.estimated_total ?? 0) - confirmedFixed
+  const monthlyIncome = summary?.monthly_finances.income ?? 0
+
+  const considerations: ConsiderationItem[] = []
+  if (monthlyIncome > 0) {
+    considerations.push({ description: 'Receita mensal', amount: monthlyIncome, type: 'income', impact: 'Alto' })
+  }
+  if (confirmedFixed > 0) {
+    considerations.push({ description: 'Gastos fixos confirmados', amount: -confirmedFixed, type: 'expense', impact: 'Alto' })
+  }
+  if (variableEstimate > 0) {
+    considerations.push({ description: 'Variáveis estimadas', amount: -variableEstimate, type: 'expense', impact: 'Médio' })
+  }
+  if (totalInstallments > 0) {
+    considerations.push({ description: 'Parcelas (dívidas + empréstimos)', amount: -totalInstallments, type: 'expense', impact: 'Alto' })
+  }
+
+  const riskCategories = [
+    { label: 'Parcelas', monthly: totalInstallments },
+    { label: 'Gastos Fixos', monthly: confirmedFixed },
+    { label: 'Variáveis', monthly: variableEstimate },
+  ]
+  const sortedRisks = [...riskCategories].sort((a, b) => b.monthly - a.monthly)
+  const topRisk = sortedRisks[0] ?? { label: '\u2014', monthly: 0 }
 
   const periodConfig = PERIODS[period]
   const lastPoint = data[data.length - 1]
@@ -131,8 +161,8 @@ export default function Forecast() {
         <StatCard
           icon="📊"
           label="Maior Risco"
-          value="Dívidas"
-          sub={`${formatCurrency(1150)}/mês em parcelas`}
+          value={topRisk.monthly > 0 ? topRisk.label : '\u2014'}
+          sub={topRisk.monthly > 0 ? `${formatCurrency(topRisk.monthly)}/mês` : 'Sem dados'}
           color="orange"
         />
       </div>
@@ -217,7 +247,7 @@ export default function Forecast() {
             Fatores Considerados
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {CONSIDERATIONS.map((c, i) => (
+            {considerations.map((c, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
