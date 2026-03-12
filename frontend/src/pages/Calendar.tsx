@@ -37,6 +37,8 @@ const EVENT_LABELS: Record<CalendarEventType, string> = {
   parcela: 'Parcela',
 }
 
+const LEGEND_TYPES: CalendarEventType[] = ['receita', 'despesa', 'parcela']
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Calendar() {
@@ -55,19 +57,22 @@ export default function Calendar() {
   }
 
   const prevMonth = () => {
-    if (month === 0) { setMonth(11); setYear((y) => y - 1) }
-    else setMonth((m) => m - 1)
+    if (month === 0) {
+      setMonth(11)
+      setYear((y) => y - 1)
+    } else setMonth((m) => m - 1)
   }
 
   const nextMonth = () => {
-    if (month === 11) { setMonth(0); setYear((y) => y + 1) }
-    else setMonth((m) => m + 1)
+    if (month === 11) {
+      setMonth(0)
+      setYear((y) => y + 1)
+    } else setMonth((m) => m + 1)
   }
 
   const selectedEvents = selectedDay !== null ? (eventsByDay.get(selectedDay) ?? []) : []
 
-  const upcomingEvents = FAKE_EVENTS
-    .filter((e) => e.dia >= today)
+  const upcomingEvents = FAKE_EVENTS.filter((e) => e.dia >= today)
     .sort((a, b) => a.dia - b.dia)
     .slice(0, 8)
 
@@ -87,16 +92,33 @@ export default function Calendar() {
           <button
             onClick={prevMonth}
             className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}
-          >←</button>
-          <span className="font-semibold text-sm" style={{ color: 'var(--color-text)', minWidth: 160, textAlign: 'center' }}>
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            ←
+          </button>
+          <span
+            className="font-semibold text-sm"
+            style={{ color: 'var(--color-text)', minWidth: 160, textAlign: 'center' }}
+          >
             {formatMonth(year, month)}
           </span>
           <button
             onClick={nextMonth}
             className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}
-          >→</button>
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            →
+          </button>
         </div>
       </div>
 
@@ -116,7 +138,7 @@ export default function Calendar() {
           <div className="grid grid-cols-7 gap-1">
             {/* Empty cells for first week offset */}
             {Array.from({ length: firstDay }, (_, i) => (
-              <div key={`empty-${i}`} />
+              <div key={`empty-${String(i)}`} />
             ))}
 
             {/* Day cells */}
@@ -130,7 +152,9 @@ export default function Calendar() {
               return (
                 <div
                   key={day}
-                  onClick={() => setSelectedDay(day === selectedDay ? null : day)}
+                  onClick={() => {
+                    setSelectedDay(day === selectedDay ? null : day)
+                  }}
                   className="rounded-xl flex flex-col items-center cursor-pointer transition-all"
                   style={{
                     padding: '8px 4px',
@@ -151,7 +175,9 @@ export default function Calendar() {
                     if (!isSelected) {
                       e.currentTarget.style.background = isToday
                         ? 'rgba(59,130,246,0.12)'
-                        : hasEvents ? 'rgba(255,255,255,0.02)' : 'transparent'
+                        : hasEvents
+                          ? 'rgba(255,255,255,0.02)'
+                          : 'transparent'
                     }
                   }}
                 >
@@ -187,10 +213,12 @@ export default function Calendar() {
 
           {/* Legend */}
           <div className="flex items-center gap-5 mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-            {(['receita', 'despesa', 'parcela'] as CalendarEventType[]).map((t) => (
+            {LEGEND_TYPES.map((t) => (
               <div key={t} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EVENT_COLORS[t] }} />
-                <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{EVENT_LABELS[t]}</span>
+                <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  {EVENT_LABELS[t]}
+                </span>
               </div>
             ))}
           </div>
@@ -205,7 +233,9 @@ export default function Calendar() {
                 Dia {selectedDay} de Março
               </h4>
               {selectedEvents.length === 0 ? (
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Sem eventos neste dia</p>
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  Sem eventos neste dia
+                </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {selectedEvents.map((ev, i) => (
@@ -215,13 +245,16 @@ export default function Calendar() {
                           className="w-2 h-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: EVENT_COLORS[ev.tipo] }}
                         />
-                        <span className="text-sm" style={{ color: 'var(--color-text)' }}>{ev.desc}</span>
+                        <span className="text-sm" style={{ color: 'var(--color-text)' }}>
+                          {ev.desc}
+                        </span>
                       </div>
                       <span
                         className="text-xs font-bold"
                         style={{ color: ev.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
                       >
-                        {ev.tipo === 'receita' ? '+' : '−'}{formatCurrency(ev.valor)}
+                        {ev.tipo === 'receita' ? '+' : '−'}
+                        {formatCurrency(ev.valor)}
                       </span>
                     </div>
                   ))}
@@ -253,10 +286,13 @@ export default function Calendar() {
                     >
                       {ev.dia}
                     </span>
-                    <span className="text-xs" style={{ color: 'var(--color-text)' }}>{ev.desc}</span>
+                    <span className="text-xs" style={{ color: 'var(--color-text)' }}>
+                      {ev.desc}
+                    </span>
                   </div>
                   <Badge color={ev.tipo === 'receita' ? 'green' : ev.tipo === 'parcela' ? 'orange' : 'red'} size="xs">
-                    {ev.tipo === 'receita' ? '+' : '−'}{formatCurrency(ev.valor)}
+                    {ev.tipo === 'receita' ? '+' : '−'}
+                    {formatCurrency(ev.valor)}
                   </Badge>
                 </div>
               ))}

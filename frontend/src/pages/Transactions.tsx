@@ -15,20 +15,65 @@ const FAKE_TRANSACTIONS: Transaction[] = [
   { id: 4, tipo: 'despesa', desc: 'Conta de Luz', categoria: 'Contas', emoji: '💡', valor: 145, data: '2026-03-07' },
   { id: 5, tipo: 'despesa', desc: 'Internet', categoria: 'Contas', emoji: '📡', valor: 120, data: '2026-03-07' },
   { id: 6, tipo: 'despesa', desc: 'Plano de Saúde', categoria: 'Saúde', emoji: '🏥', valor: 280, data: '2026-03-07' },
-  { id: 7, tipo: 'despesa', desc: 'Supermercado', categoria: 'Alimentação', emoji: '🛒', valor: 280, data: '2026-03-08' },
+  {
+    id: 7,
+    tipo: 'despesa',
+    desc: 'Supermercado',
+    categoria: 'Alimentação',
+    emoji: '🛒',
+    valor: 280,
+    data: '2026-03-08',
+  },
   { id: 8, tipo: 'despesa', desc: 'Farmácia', categoria: 'Saúde', emoji: '💊', valor: 85, data: '2026-03-09' },
   { id: 9, tipo: 'despesa', desc: 'Uber', categoria: 'Transporte', emoji: '🚗', valor: 35, data: '2026-03-09' },
-  { id: 10, tipo: 'despesa', desc: 'Netflix', categoria: 'Lazer', emoji: '🎬', valor: 55.90, data: '2026-03-10' },
-  { id: 11, tipo: 'despesa', desc: 'Spotify', categoria: 'Lazer', emoji: '🎵', valor: 22.90, data: '2026-03-10' },
-  { id: 12, tipo: 'despesa', desc: 'Restaurante', categoria: 'Alimentação', emoji: '🍽️', valor: 95, data: '2026-03-10' },
-  { id: 13, tipo: 'despesa', desc: 'Mercado Extra', categoria: 'Alimentação', emoji: '🛒', valor: 148, data: '2026-03-11' },
-  { id: 14, tipo: 'receita', desc: 'Freelance', categoria: 'Renda Extra', emoji: '💻', valor: 1000, data: '2026-03-11' },
+  { id: 10, tipo: 'despesa', desc: 'Netflix', categoria: 'Lazer', emoji: '🎬', valor: 55.9, data: '2026-03-10' },
+  { id: 11, tipo: 'despesa', desc: 'Spotify', categoria: 'Lazer', emoji: '🎵', valor: 22.9, data: '2026-03-10' },
+  {
+    id: 12,
+    tipo: 'despesa',
+    desc: 'Restaurante',
+    categoria: 'Alimentação',
+    emoji: '🍽️',
+    valor: 95,
+    data: '2026-03-10',
+  },
+  {
+    id: 13,
+    tipo: 'despesa',
+    desc: 'Mercado Extra',
+    categoria: 'Alimentação',
+    emoji: '🛒',
+    valor: 148,
+    data: '2026-03-11',
+  },
+  {
+    id: 14,
+    tipo: 'receita',
+    desc: 'Freelance',
+    categoria: 'Renda Extra',
+    emoji: '💻',
+    valor: 1000,
+    data: '2026-03-11',
+  },
   { id: 15, tipo: 'despesa', desc: 'Gasolina', categoria: 'Transporte', emoji: '⛽', valor: 120, data: '2026-03-11' },
 ]
 
-const CATEGORIAS = ['Todas', 'Trabalho', 'Renda Extra', 'Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Lazer', 'Contas']
+const CATEGORIAS = [
+  'Todas',
+  'Trabalho',
+  'Renda Extra',
+  'Moradia',
+  'Alimentação',
+  'Transporte',
+  'Saúde',
+  'Lazer',
+  'Contas',
+]
 
 type FilterType = 'todas' | TransactionType
+
+const TRANSACTION_TYPES: TransactionType[] = ['receita', 'despesa']
+const FILTER_TYPES: FilterType[] = ['todas', 'receita', 'despesa']
 
 interface FormState {
   tipo: TransactionType
@@ -109,15 +154,16 @@ export default function Transactions() {
             className="flex rounded-lg overflow-hidden border"
             style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
           >
-            {(['receita', 'despesa'] as TransactionType[]).map((t) => (
+            {TRANSACTION_TYPES.map((t) => (
               <button
                 key={t}
-                onClick={() => setForm((f) => ({ ...f, tipo: t }))}
+                onClick={() => {
+                  setForm((f) => ({ ...f, tipo: t }))
+                }}
                 className="px-4 py-2 text-sm font-medium transition-colors"
                 style={{
-                  background: form.tipo === t
-                    ? t === 'receita' ? 'var(--color-green)' : 'var(--color-red)'
-                    : 'transparent',
+                  background:
+                    form.tipo === t ? (t === 'receita' ? 'var(--color-green)' : 'var(--color-red)') : 'transparent',
                   color: form.tipo === t ? '#fff' : 'var(--color-muted)',
                   border: 'none',
                   cursor: 'pointer',
@@ -131,28 +177,38 @@ export default function Transactions() {
           <input
             placeholder="Valor (ex: 150,00)"
             value={form.valor}
-            onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, valor: e.target.value }))
+            }}
             style={{ width: 160 }}
           />
           <input
             placeholder="Descrição"
             value={form.desc}
-            onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, desc: e.target.value }))
+            }}
             style={{ flex: 1, minWidth: 180 }}
           />
           <select
             value={form.categoria}
-            onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, categoria: e.target.value }))
+            }}
             style={{ width: 170 }}
           >
             {CATEGORIAS.filter((c) => c !== 'Todas').map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
           <input
             type="date"
             value={form.data}
-            onChange={(e) => setForm((f) => ({ ...f, data: e.target.value }))}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, data: e.target.value }))
+            }}
             style={{ width: 150 }}
           />
           <Button onClick={handleAdd} variant="primary">
@@ -164,10 +220,12 @@ export default function Transactions() {
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="flex gap-1.5">
-          {(['todas', 'receita', 'despesa'] as FilterType[]).map((f) => (
+          {FILTER_TYPES.map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f)
+              }}
               className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
               style={{
                 background: filter === f ? 'var(--color-blue)' : 'var(--color-surface)',
@@ -183,11 +241,15 @@ export default function Transactions() {
         <div style={{ width: 1, height: 20, background: 'var(--color-border)' }} />
         <select
           value={catFilter}
-          onChange={(e) => setCatFilter(e.target.value)}
+          onChange={(e) => {
+            setCatFilter(e.target.value)
+          }}
           style={{ width: 180 }}
         >
           {CATEGORIAS.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </select>
         <span className="text-xs ml-auto" style={{ color: 'var(--color-muted)' }}>
@@ -215,8 +277,7 @@ export default function Transactions() {
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
                     style={{
-                      backgroundColor:
-                        tx.tipo === 'receita' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                      backgroundColor: tx.tipo === 'receita' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
                     }}
                   >
                     {tx.emoji}
@@ -249,7 +310,9 @@ export default function Transactions() {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleRemove(tx.id)}
+                    onClick={() => {
+                      handleRemove(tx.id)
+                    }}
                     className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-opacity"
                     style={{
                       background: 'rgba(239,68,68,0.12)',

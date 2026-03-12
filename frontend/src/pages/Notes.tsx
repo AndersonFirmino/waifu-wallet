@@ -10,22 +10,26 @@ const FAKE_NOTES: Note[] = [
   {
     id: 1,
     data: '2026-03-01',
-    conteudo: 'Início do mês. Meta: economizar pelo menos R$ 2.000 esse mês para a reserva de emergência. Salário cai dia 5, já vou separar antes de gastar com bobagem.',
+    conteudo:
+      'Início do mês. Meta: economizar pelo menos R$ 2.000 esse mês para a reserva de emergência. Salário cai dia 5, já vou separar antes de gastar com bobagem.',
   },
   {
     id: 2,
     data: '2026-03-05',
-    conteudo: 'Salário caiu! R$ 6.500 na conta. Paguei o aluguel e o condomínio na hora (R$ 1.820). Restando R$ 4.680 disponível pro mês. Vou tentar segurar em R$ 3.500 de gastos.',
+    conteudo:
+      'Salário caiu! R$ 6.500 na conta. Paguei o aluguel e o condomínio na hora (R$ 1.820). Restando R$ 4.680 disponível pro mês. Vou tentar segurar em R$ 3.500 de gastos.',
   },
   {
     id: 3,
     data: '2026-03-08',
-    conteudo: 'Fiz as compras do mês — gastei R$ 280 no Mercado. Menos que o mês passado (R$ 340). Tá melhorando. Aproveitei e renovei a farmácia por R$ 85.',
+    conteudo:
+      'Fiz as compras do mês — gastei R$ 280 no Mercado. Menos que o mês passado (R$ 340). Tá melhorando. Aproveitei e renovei a farmácia por R$ 85.',
   },
   {
     id: 4,
     data: '2026-03-11',
-    conteudo: 'Freelance caiu: R$ 1.000. Vai direto pra reserva de emergência. Também registrei os gastos de transporte da semana (uber + gasolina = R$ 155). Mês tá indo bem.',
+    conteudo:
+      'Freelance caiu: R$ 1.000. Vai direto pra reserva de emergência. Também registrei os gastos de transporte da semana (uber + gasolina = R$ 155). Mês tá indo bem.',
   },
 ]
 
@@ -39,19 +43,23 @@ export default function Notes() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const prevMonth = () => {
-    if (month === 0) { setMonth(11); setYear((y) => y - 1) }
-    else setMonth((m) => m - 1)
+    if (month === 0) {
+      setMonth(11)
+      setYear((y) => y - 1)
+    } else setMonth((m) => m - 1)
   }
 
   const nextMonth = () => {
-    if (month === 11) { setMonth(0); setYear((y) => y + 1) }
-    else setMonth((m) => m + 1)
+    if (month === 11) {
+      setMonth(0)
+      setYear((y) => y + 1)
+    } else setMonth((m) => m + 1)
   }
 
   const handleSave = () => {
     if (!content.trim()) return
     const now = new Date(2026, 2, 11)
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const dateStr = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     const note: Note = {
       id: Date.now(),
       data: dateStr,
@@ -89,16 +97,33 @@ export default function Notes() {
           <button
             onClick={prevMonth}
             className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}
-          >←</button>
-          <span className="font-semibold text-sm" style={{ color: 'var(--color-text)', minWidth: 150, textAlign: 'center' }}>
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            ←
+          </button>
+          <span
+            className="font-semibold text-sm"
+            style={{ color: 'var(--color-text)', minWidth: 150, textAlign: 'center' }}
+          >
             {formatMonth(year, month)}
           </span>
           <button
             onClick={nextMonth}
             className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}
-          >→</button>
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            →
+          </button>
         </div>
       </div>
 
@@ -111,7 +136,9 @@ export default function Notes() {
           ref={textareaRef}
           placeholder="O que você quer registrar sobre suas finanças hoje?"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value)
+          }}
           rows={4}
           style={{ resize: 'vertical', width: '100%', marginBottom: 12 }}
           onKeyDown={(e) => {
@@ -120,7 +147,9 @@ export default function Notes() {
         />
         <div className="flex items-center justify-between">
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {content.length > 0 ? `${content.length} caracteres · Ctrl+Enter para salvar` : 'Ctrl+Enter para salvar rapidamente'}
+            {content.length > 0
+              ? `${String(content.length)} caracteres · Ctrl+Enter para salvar`
+              : 'Ctrl+Enter para salvar rapidamente'}
           </span>
           <Button onClick={handleSave} disabled={!content.trim()}>
             Salvar Nota
@@ -130,10 +159,7 @@ export default function Notes() {
 
       {/* Notes List */}
       {filteredNotes.length === 0 ? (
-        <div
-          className="text-center py-16 rounded-2xl"
-          style={{ border: '2px dashed var(--color-border)' }}
-        >
+        <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed var(--color-border)' }}>
           <p className="text-4xl mb-3">📭</p>
           <p className="font-medium" style={{ color: 'var(--color-muted)' }}>
             Nenhuma nota em {formatMonth(year, month)}
@@ -173,7 +199,9 @@ export default function Notes() {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleDelete(note.id)}
+                    onClick={() => {
+                      handleDelete(note.id)
+                    }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-1"
                     style={{
                       background: 'rgba(239,68,68,0.1)',

@@ -43,7 +43,15 @@ const CATEGORIAS: CategoryData[] = [
 const ULTIMAS: Transaction[] = [
   { id: 1, tipo: 'receita', desc: 'Salário', categoria: 'Trabalho', emoji: '💼', valor: 6500, data: '2026-03-05' },
   { id: 2, tipo: 'despesa', desc: 'Aluguel', categoria: 'Moradia', emoji: '🏠', valor: 1500, data: '2026-03-05' },
-  { id: 3, tipo: 'despesa', desc: 'Supermercado', categoria: 'Alimentação', emoji: '🛒', valor: 280, data: '2026-03-08' },
+  {
+    id: 3,
+    tipo: 'despesa',
+    desc: 'Supermercado',
+    categoria: 'Alimentação',
+    emoji: '🛒',
+    valor: 280,
+    data: '2026-03-08',
+  },
   { id: 4, tipo: 'despesa', desc: 'Farmácia', categoria: 'Saúde', emoji: '💊', valor: 85, data: '2026-03-09' },
   { id: 5, tipo: 'receita', desc: 'Freelance', categoria: 'Renda Extra', emoji: '💻', valor: 1000, data: '2026-03-11' },
 ]
@@ -89,12 +97,14 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
   )
 }
 
-interface PieTooltipProps extends TooltipProps<number, string> {}
+type PieTooltipProps = TooltipProps<number, string>
 
 function PieTooltip({ active, payload }: PieTooltipProps) {
   if (!active || !payload?.length) return null
   const item = payload[0]
   if (!item) return null
+  const catEntry = CATEGORIAS.find((c) => c.name === item.name)
+  const color = catEntry?.color ?? 'var(--color-text)'
   return (
     <div
       style={{
@@ -105,7 +115,7 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
         fontSize: 13,
       }}
     >
-      <p style={{ color: item.payload.color, margin: 0, fontWeight: 600 }}>
+      <p style={{ color, margin: 0, fontWeight: 600 }}>
         {item.name}: {formatCurrency(item.value ?? 0)}
       </p>
     </div>
@@ -164,7 +174,10 @@ export default function Dashboard() {
           >
             ←
           </button>
-          <span className="font-semibold text-base px-2" style={{ color: 'var(--color-text)', minWidth: 180, textAlign: 'center' }}>
+          <span
+            className="font-semibold text-base px-2"
+            style={{ color: 'var(--color-text)', minWidth: 180, textAlign: 'center' }}
+          >
             {formatMonth(year, month)}
           </span>
           <button
@@ -184,10 +197,37 @@ export default function Dashboard() {
 
       {/* StatCards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon="💰" label="Saldo do Mês" value={formatCurrency(saldo)} sub="receitas − despesas" color="blue" trend={12} />
-        <StatCard icon="📈" label="Receitas" value={formatCurrency(receitas)} sub="2 fontes de renda" color="green" trend={0} />
-        <StatCard icon="📉" label="Despesas" value={formatCurrency(despesas)} sub="11 transações" color="red" trend={-6} />
-        <StatCard icon="⏳" label="Próximo Salário" value={`${NEXT_PAYDAY_DAYS} dias`} sub="dia 5 de Abril" color="purple" />
+        <StatCard
+          icon="💰"
+          label="Saldo do Mês"
+          value={formatCurrency(saldo)}
+          sub="receitas − despesas"
+          color="blue"
+          trend={12}
+        />
+        <StatCard
+          icon="📈"
+          label="Receitas"
+          value={formatCurrency(receitas)}
+          sub="2 fontes de renda"
+          color="green"
+          trend={0}
+        />
+        <StatCard
+          icon="📉"
+          label="Despesas"
+          value={formatCurrency(despesas)}
+          sub="11 transações"
+          color="red"
+          trend={-6}
+        />
+        <StatCard
+          icon="⏳"
+          label="Próximo Salário"
+          value={`${String(NEXT_PAYDAY_DAYS)} dias`}
+          sub="dia 5 de Abril"
+          color="purple"
+        />
       </div>
 
       {/* Payday Bar */}
@@ -234,8 +274,18 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: 'var(--color-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'var(--color-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => formatCurrencyShort(v)} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => formatCurrencyShort(v)}
+              />
               <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
               <Legend wrapperStyle={{ fontSize: 12, color: 'var(--color-muted)' }} />
               <Bar dataKey="receitas" name="Receitas" fill="url(#gradReceitas)" radius={[4, 4, 0, 0]} />
@@ -315,8 +365,7 @@ export default function Dashboard() {
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
                   style={{
-                    backgroundColor:
-                      tx.tipo === 'receita' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                    backgroundColor: tx.tipo === 'receita' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
                   }}
                 >
                   {tx.emoji}

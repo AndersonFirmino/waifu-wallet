@@ -7,7 +7,12 @@ export default function Layout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => {
+          setCollapsed((v) => !v)
+        }}
+      />
       <main
         style={{
           flex: 1,

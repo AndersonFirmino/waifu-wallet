@@ -27,11 +27,11 @@ const FAKE_CARDS: CreditCard[] = [
       { mes: 'Mar', valor: 1240, status: 'aberta' },
     ],
     itens: [
-      { desc: 'Amazon Prime', valor: 21.90, data: '10/03' },
-      { desc: 'Restaurante Outback', valor: 187.50, data: '07/03' },
-      { desc: 'Uber Eats', valor: 52.90, data: '06/03' },
-      { desc: 'Steam — CS2 Skins', valor: 189.90, data: '05/03' },
-      { desc: 'iFood', valor: 78.80, data: '04/03' },
+      { desc: 'Amazon Prime', valor: 21.9, data: '10/03' },
+      { desc: 'Restaurante Outback', valor: 187.5, data: '07/03' },
+      { desc: 'Uber Eats', valor: 52.9, data: '06/03' },
+      { desc: 'Steam — CS2 Skins', valor: 189.9, data: '05/03' },
+      { desc: 'iFood', valor: 78.8, data: '04/03' },
       { desc: 'Assinatura Claude', valor: 115, data: '03/03' },
       { desc: 'Magazine Luiza', valor: 594, data: '01/03' },
     ],
@@ -118,9 +118,7 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
             <p className="text-xl font-bold text-white">💵 {card.nome}</p>
             <span className="text-white font-bold text-sm opacity-90">{card.bandeira}</span>
           </div>
-          <p className="text-white font-mono tracking-widest text-base mb-5 opacity-85">
-            **** **** **** {card.final}
-          </p>
+          <p className="text-white font-mono tracking-widest text-base mb-5 opacity-85">**** **** **** {card.final}</p>
           <div className="flex justify-between items-end">
             <div>
               <p className="text-xs text-white opacity-60 mb-1">Limite disponível</p>
@@ -149,9 +147,23 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
 }
 
 function statusBadge(status: CardStatus) {
-  if (status === 'paga') return <Badge color="green" size="xs">Paga ✓</Badge>
-  if (status === 'fechada') return <Badge color="yellow" size="xs">Fechada</Badge>
-  return <Badge color="blue" size="xs">Aberta</Badge>
+  if (status === 'paga')
+    return (
+      <Badge color="green" size="xs">
+        Paga ✓
+      </Badge>
+    )
+  if (status === 'fechada')
+    return (
+      <Badge color="yellow" size="xs">
+        Fechada
+      </Badge>
+    )
+  return (
+    <Badge color="blue" size="xs">
+      Aberta
+    </Badge>
+  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -180,7 +192,9 @@ export default function CreditCards() {
               key={card.id}
               card={card}
               selected={selectedId === card.id}
-              onSelect={() => setSelectedId(card.id)}
+              onSelect={() => {
+                setSelectedId(card.id)
+              }}
             />
           ))}
         </div>
@@ -202,7 +216,9 @@ export default function CreditCards() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>Fatura atual</p>
+                <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                  Fatura atual
+                </p>
                 <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
                   {formatCurrency(selected.fatura)}
                 </p>

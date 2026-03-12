@@ -57,11 +57,11 @@ export default function ProgressBar({
       )}
       <div
         className="w-full rounded-full overflow-hidden"
-        style={{ height: `${height}px`, backgroundColor: 'var(--color-border)' }}
+        style={{ height: `${String(height)}px`, backgroundColor: 'var(--color-border)' }}
       >
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, backgroundColor: barColor }}
+          style={{ width: `${String(pct)}%`, backgroundColor: barColor }}
         />
       </div>
     </div>

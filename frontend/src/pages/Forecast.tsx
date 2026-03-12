@@ -38,6 +38,8 @@ const PERIODS: Record<ForecastPeriod, ForecastPeriodConfig> = {
   '6m': { label: '6 meses', months: 6 },
 }
 
+const FORECAST_PERIODS: ForecastPeriod[] = ['1m', '3m', '6m']
+
 const CONSIDERATIONS = [
   { desc: 'Salário mensal (fixo)', valor: 6500, tipo: 'receita' as const, impacto: 'Alto' },
   { desc: 'Freelances estimados', valor: 500, tipo: 'receita' as const, impacto: 'Médio' },
@@ -48,7 +50,7 @@ const CONSIDERATIONS = [
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
-interface ForecastTooltipProps extends TooltipProps<number, string> {}
+type ForecastTooltipProps = TooltipProps<number, string>
 
 function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
   if (!active || !payload?.length) return null
@@ -102,10 +104,12 @@ export default function Forecast() {
         className="flex gap-1 p-1 rounded-xl mb-6"
         style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', width: 'fit-content' }}
       >
-        {(Object.keys(PERIODS) as ForecastPeriod[]).map((p) => (
+        {FORECAST_PERIODS.map((p) => (
           <button
             key={p}
-            onClick={() => setPeriod(p)}
+            onClick={() => {
+              setPeriod(p)
+            }}
             className="px-5 py-2 rounded-lg text-sm font-medium transition-all"
             style={{
               background: period === p ? 'var(--color-blue)' : 'transparent',
@@ -124,7 +128,13 @@ export default function Forecast() {
         <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected)} color="blue" />
         <StatCard icon="🎯" label="Cenário Otimista" value={formatCurrency(optimistic)} color="green" />
         <StatCard icon="⚠️" label="Cenário Pessimista" value={formatCurrency(pessimistic)} color="red" />
-        <StatCard icon="📊" label="Maior Risco" value="Dívidas" sub={`${formatCurrency(1150)}/mês em parcelas`} color="orange" />
+        <StatCard
+          icon="📊"
+          label="Maior Risco"
+          value="Dívidas"
+          sub={`${formatCurrency(1150)}/mês em parcelas`}
+          color="orange"
+        />
       </div>
 
       {/* Chart */}
@@ -156,7 +166,12 @@ export default function Forecast() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="mes" tick={{ fill: 'var(--color-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
+            <XAxis
+              dataKey="mes"
+              tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
             <YAxis
               tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
               axisLine={false}
@@ -174,14 +189,7 @@ export default function Forecast() {
               fill="url(#gradOtimista)"
               strokeDasharray="6 3"
             />
-            <Area
-              type="monotone"
-              dataKey="base"
-              name="Base"
-              stroke="#3b82f6"
-              strokeWidth={2.5}
-              fill="url(#gradBase)"
-            />
+            <Area type="monotone" dataKey="base" name="Base" stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradBase)" />
             <Area
               type="monotone"
               dataKey="pessimista"
@@ -209,7 +217,9 @@ export default function Forecast() {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: c.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
                   />
-                  <span className="text-sm" style={{ color: 'var(--color-text)' }}>{c.desc}</span>
+                  <span className="text-sm" style={{ color: 'var(--color-text)' }}>
+                    {c.desc}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge color={c.impacto === 'Alto' ? 'red' : 'yellow'} size="xs">
@@ -219,7 +229,8 @@ export default function Forecast() {
                     className="text-sm font-bold"
                     style={{ color: c.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
                   >
-                    {c.tipo === 'receita' ? '+' : ''}{formatCurrency(c.valor)}
+                    {c.tipo === 'receita' ? '+' : ''}
+                    {formatCurrency(c.valor)}
                   </span>
                 </div>
               </div>
@@ -232,20 +243,38 @@ export default function Forecast() {
             Resumo do Período ({periodConfig.label})
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)' }}>
-              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>Total Entradas (est.)</span>
-              <span className="font-bold" style={{ color: 'var(--color-green)' }}>+{formatCurrency(totalEntradas)}</span>
+            <div
+              className="flex justify-between items-center p-3 rounded-xl"
+              style={{ background: 'rgba(16,185,129,0.08)' }}
+            >
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                Total Entradas (est.)
+              </span>
+              <span className="font-bold" style={{ color: 'var(--color-green)' }}>
+                +{formatCurrency(totalEntradas)}
+              </span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)' }}>
-              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>Total Saídas (est.)</span>
-              <span className="font-bold" style={{ color: 'var(--color-red)' }}>−{formatCurrency(totalSaidas)}</span>
+            <div
+              className="flex justify-between items-center p-3 rounded-xl"
+              style={{ background: 'rgba(239,68,68,0.08)' }}
+            >
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                Total Saídas (est.)
+              </span>
+              <span className="font-bold" style={{ color: 'var(--color-red)' }}>
+                −{formatCurrency(totalSaidas)}
+              </span>
             </div>
             <div
               className="flex justify-between items-center p-3 rounded-xl"
               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
             >
-              <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>Saldo Projetado</span>
-              <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>{formatCurrency(projected)}</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                Saldo Projetado
+              </span>
+              <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>
+                {formatCurrency(projected)}
+              </span>
             </div>
           </div>
         </Card>

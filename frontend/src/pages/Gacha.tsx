@@ -9,10 +9,46 @@ import { type GachaBanner, type GachaPriority } from '../types'
 // ─── Fake Data ────────────────────────────────────────────────────────────────
 
 const FAKE_BANNERS: GachaBanner[] = [
-  { id: 1, jogo: 'Genshin Impact', banner: 'Shenhe (Rerun)', custo: 180, inicio: '2026-03-05', fim: '2026-03-26', prioridade: 5, puxadas: 45 },
-  { id: 2, jogo: 'Wuthering Waves', banner: 'Camellya', custo: 120, inicio: '2026-03-12', fim: '2026-04-02', prioridade: 4, puxadas: 30 },
-  { id: 3, jogo: 'Blue Archive', banner: 'Himari (Limited)', custo: 250, inicio: '2026-03-15', fim: '2026-04-05', prioridade: 5, puxadas: 0 },
-  { id: 4, jogo: 'Azur Lane', banner: 'META Repair', custo: 80, inicio: '2026-03-01', fim: '2026-03-31', prioridade: 3, puxadas: 20 },
+  {
+    id: 1,
+    jogo: 'Genshin Impact',
+    banner: 'Shenhe (Rerun)',
+    custo: 180,
+    inicio: '2026-03-05',
+    fim: '2026-03-26',
+    prioridade: 5,
+    puxadas: 45,
+  },
+  {
+    id: 2,
+    jogo: 'Wuthering Waves',
+    banner: 'Camellya',
+    custo: 120,
+    inicio: '2026-03-12',
+    fim: '2026-04-02',
+    prioridade: 4,
+    puxadas: 30,
+  },
+  {
+    id: 3,
+    jogo: 'Blue Archive',
+    banner: 'Himari (Limited)',
+    custo: 250,
+    inicio: '2026-03-15',
+    fim: '2026-04-05',
+    prioridade: 5,
+    puxadas: 0,
+  },
+  {
+    id: 4,
+    jogo: 'Azur Lane',
+    banner: 'META Repair',
+    custo: 80,
+    inicio: '2026-03-01',
+    fim: '2026-03-31',
+    prioridade: 3,
+    puxadas: 20,
+  },
 ]
 
 const SALDO_DISPONIVEL = 3842
@@ -38,6 +74,8 @@ function priorityColor(p: GachaPriority): 'yellow' | 'orange' | 'red' | 'blue' |
 }
 
 type SafetyStatus = 'safe' | 'caution' | 'danger'
+
+const PRIORITY_LEVELS: GachaPriority[] = [1, 2, 3, 4, 5]
 
 interface BudgetAnalysis {
   total: number
@@ -123,7 +161,12 @@ export default function Gacha() {
             Planeje seus pulls e controle o impacto financeiro
           </p>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? 'outline' : 'primary'}>
+        <Button
+          onClick={() => {
+            setShowForm((v) => !v)
+          }}
+          variant={showForm ? 'outline' : 'primary'}
+        >
           {showForm ? 'Cancelar' : '+ Adicionar Banner'}
         </Button>
       </div>
@@ -139,7 +182,8 @@ export default function Gacha() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>
-              Saldo disponível: <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(SALDO_DISPONIVEL)}</strong>
+              Saldo disponível:{' '}
+              <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(SALDO_DISPONIVEL)}</strong>
               {'  ·  '}
               Total em pulls: <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(budget.total)}</strong>
             </p>
@@ -165,40 +209,54 @@ export default function Gacha() {
             <input
               placeholder="Jogo (ex: Genshin Impact)"
               value={formJogo}
-              onChange={(e) => setFormJogo(e.target.value)}
+              onChange={(e) => {
+                setFormJogo(e.target.value)
+              }}
             />
             <input
               placeholder="Nome do Banner"
               value={formBanner}
-              onChange={(e) => setFormBanner(e.target.value)}
+              onChange={(e) => {
+                setFormBanner(e.target.value)
+              }}
             />
             <input
               placeholder="Custo estimado (R$)"
               value={formCusto}
-              onChange={(e) => setFormCusto(e.target.value)}
+              onChange={(e) => {
+                setFormCusto(e.target.value)
+              }}
             />
             <div className="flex gap-3">
               <input
                 type="date"
                 value={formInicio}
-                onChange={(e) => setFormInicio(e.target.value)}
+                onChange={(e) => {
+                  setFormInicio(e.target.value)
+                }}
                 style={{ flex: 1 }}
               />
               <input
                 type="date"
                 value={formFim}
-                onChange={(e) => setFormFim(e.target.value)}
+                onChange={(e) => {
+                  setFormFim(e.target.value)
+                }}
                 style={{ flex: 1 }}
               />
             </div>
           </div>
           <div className="flex items-center gap-4 mt-4">
-            <span className="text-sm" style={{ color: 'var(--color-muted)' }}>Prioridade:</span>
+            <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Prioridade:
+            </span>
             <div className="flex gap-1">
-              {([1, 2, 3, 4, 5] as GachaPriority[]).map((p) => (
+              {PRIORITY_LEVELS.map((p) => (
                 <button
                   key={p}
-                  onClick={() => setFormPrioridade(p)}
+                  onClick={() => {
+                    setFormPrioridade(p)
+                  }}
                   className="text-xl transition-all"
                   style={{
                     background: 'none',
@@ -253,35 +311,54 @@ export default function Gacha() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleRemove(banner.id)}
+                    onClick={() => {
+                      handleRemove(banner.id)
+                    }}
                     className="opacity-40 hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                    style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-red)', border: 'none', cursor: 'pointer' }}
+                    style={{
+                      background: 'rgba(239,68,68,0.1)',
+                      color: 'var(--color-red)',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <div
+                  className="grid grid-cols-3 gap-3 mt-3 pt-3"
+                  style={{ borderTop: '1px solid var(--color-border)' }}
+                >
                   <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>Custo est.</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                      Custo est.
+                    </p>
                     <p className="font-bold" style={{ color: 'var(--color-yellow)' }}>
                       {formatCurrency(banner.custo)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>Puxadas</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                      Puxadas
+                    </p>
                     <p className="font-bold" style={{ color: 'var(--color-text)' }}>
                       {banner.puxadas}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>Termina</p>
-                    <p className="font-bold" style={{ color: daysLeft <= 5 ? 'var(--color-red)' : 'var(--color-muted)' }}>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                      Termina
+                    </p>
+                    <p
+                      className="font-bold"
+                      style={{ color: daysLeft <= 5 ? 'var(--color-red)' : 'var(--color-muted)' }}
+                    >
                       {daysLeft <= 0
                         ? 'Encerrado'
                         : daysLeft === 1
                           ? 'Hoje!'
-                          : `${daysLeft}d — ${formatDateShort(banner.fim)}`}
+                          : `${String(daysLeft)}d — ${formatDateShort(banner.fim)}`}
                     </p>
                   </div>
                 </div>

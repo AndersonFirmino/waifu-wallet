@@ -13,13 +13,10 @@ const MONTHS = [
   'Dezembro',
 ] as const
 
-const MONTHS_SHORT = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-] as const
+const MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const
 
 export function formatMonth(year: number, month: number): string {
-  return `${MONTHS[month] ?? ''} de ${year}`
+  return `${MONTHS[month] ?? ''} de ${String(year)}`
 }
 
 export function formatMonthShort(year: number, month: number): string {

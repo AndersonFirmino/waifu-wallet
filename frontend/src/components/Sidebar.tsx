@@ -76,9 +76,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 24 }}>💵</span>
             <div>
-              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', margin: 0 }}>
-                MeuCaixa
-              </p>
+              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', margin: 0 }}>MeuCaixa</p>
               <p style={{ fontSize: 11, color: 'var(--color-muted)', margin: 0 }}>v2.0</p>
             </div>
           </div>
@@ -145,9 +143,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 })}
               >
                 <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
-                {!collapsed && (
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>{item.label}</span>
-                )}
+                {!collapsed && <span style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>{item.label}</span>}
               </NavLink>
             ))}
           </div>

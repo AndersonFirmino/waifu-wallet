@@ -1,42 +1,47 @@
 import { useState, useEffect } from 'react'
 import { type FetchState, type PostState } from '../types'
 
-export function useFetch<T>(url: string): FetchState<T> {
+export function useFetch<T>(url: string, decode: (raw: unknown) => T): FetchState<T> {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
 
-    fetch('/api/v1' + url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<T>
-      })
-      .then((d) => {
+    const doFetch = async (): Promise<void> => {
+      setLoading(true)
+      try {
+        const r = await fetch('/api/v1' + url)
+        if (!r.ok) throw new Error(`HTTP ${String(r.status)}`)
+        const raw: unknown = await r.json()
         if (!cancelled) {
-          setData(d)
+          setData(decode(raw))
           setError(null)
         }
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e)
-      })
-      .finally(() => {
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e : new Error(String(e)))
+        }
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    }
+
+    void doFetch()
 
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, decode])
 
   return { data, loading, error }
 }
 
-export function usePost<TBody, TResponse>(url: string): PostState<TBody, TResponse> {
+export function usePost<TBody, TResponse>(
+  url: string,
+  decode: (raw: unknown) => TResponse,
+): PostState<TBody, TResponse> {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
@@ -49,10 +54,10 @@ export function usePost<TBody, TResponse>(url: string): PostState<TBody, TRespon
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const data: TResponse = await r.json()
-      return data
-    } catch (e) {
+      if (!r.ok) throw new Error(`HTTP ${String(r.status)}`)
+      const raw: unknown = await r.json()
+      return decode(raw)
+    } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
       setError(err)
       throw err
