@@ -116,7 +116,7 @@ interface ScheduleTableProps {
 
 function ScheduleTable({ planId }: ScheduleTableProps) {
   const url = `/salary-plans/${String(planId)}/schedule?months=12`
-  const decode = useCallback(decodeSalaryScheduleList, [])
+  const decode = useCallback((raw: unknown) => decodeSalaryScheduleList(raw), [])
   const { data, loading, error } = useFetch(url, decode)
 
   if (loading) {

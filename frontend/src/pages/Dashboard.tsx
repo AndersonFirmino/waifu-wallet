@@ -20,9 +20,9 @@ import Card from '../components/ui/Card'
 import ProgressBar from '../components/ui/ProgressBar'
 import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { formatMonth } from '../utils/date'
-import { type MonthlyData, type CategoryData } from '../types'
+import { type MonthlyData, type CategoryData, type SalaryPlan } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeSummary, decodeTransactionList, decodeNoteList } from '../lib/decode'
+import { decodeSummary, decodeTransactionList, decodeNoteList, decodeSalaryPlanList } from '../lib/decode'
 
 const MONTH_LABELS: readonly string[] = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -34,7 +34,124 @@ const CATEGORY_COLORS: readonly string[] = [
   '#f97316', '#64748b', '#ec4899', '#14b8a6',
 ]
 
-const PAYDAY_DAY = 5
+// ─── Payday helpers ───────────────────────────────────────────────────────────
+
+interface NextPayday {
+  date: Date
+  daysUntil: number
+  amount: number
+  label: string
+}
+
+function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
+  const todayDay = today.getDate()
+  const todayMonth = today.getMonth()
+  const todayYear = today.getFullYear()
+
+  if (plan.split_enabled) {
+    const firstDay = plan.split_first_day
+    const secondDay = plan.split_second_day
+    const firstAmount = Math.round(plan.current_salary * (plan.split_first_pct / 100) * 100) / 100
+    const secondAmount = Math.round(plan.current_salary * (plan.split_second_pct / 100) * 100) / 100
+
+    let targetDate: Date
+    let amount: number
+
+    if (todayDay < firstDay) {
+      targetDate = new Date(todayYear, todayMonth, firstDay)
+      amount = firstAmount
+    } else if (todayDay < secondDay) {
+      targetDate = new Date(todayYear, todayMonth, secondDay)
+      amount = secondAmount
+    } else {
+      targetDate = new Date(todayYear, todayMonth + 1, firstDay)
+      amount = firstAmount
+    }
+
+    const msPerDay = 1000 * 60 * 60 * 24
+    const daysUntil = Math.round((targetDate.getTime() - new Date(todayYear, todayMonth, todayDay).getTime()) / msPerDay)
+
+    return {
+      date: targetDate,
+      daysUntil,
+      amount,
+      label: targetDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }),
+    }
+  }
+
+  // Non-split: single payday on split_first_day
+  const payday = plan.split_first_day
+  const fullAmount = plan.current_salary
+
+  let targetDate: Date
+  if (todayDay < payday) {
+    targetDate = new Date(todayYear, todayMonth, payday)
+  } else {
+    targetDate = new Date(todayYear, todayMonth + 1, payday)
+  }
+
+  const msPerDay = 1000 * 60 * 60 * 24
+  const daysUntil = Math.round((targetDate.getTime() - new Date(todayYear, todayMonth, todayDay).getTime()) / msPerDay)
+
+  return {
+    date: targetDate,
+    daysUntil,
+    amount: fullAmount,
+    label: targetDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }),
+  }
+}
+
+function computePaydayProgress(plan: SalaryPlan, today: Date): { value: number; max: number; lastPayday: Date; nextPayday: Date } {
+  const todayDay = today.getDate()
+  const todayMonth = today.getMonth()
+  const todayYear = today.getFullYear()
+
+  if (plan.split_enabled) {
+    const firstDay = plan.split_first_day
+    const secondDay = plan.split_second_day
+
+    let lastPayday: Date
+    let nextPayday: Date
+
+    if (todayDay < firstDay) {
+      lastPayday = new Date(todayYear, todayMonth - 1, secondDay)
+      nextPayday = new Date(todayYear, todayMonth, firstDay)
+    } else if (todayDay < secondDay) {
+      lastPayday = new Date(todayYear, todayMonth, firstDay)
+      nextPayday = new Date(todayYear, todayMonth, secondDay)
+    } else {
+      lastPayday = new Date(todayYear, todayMonth, secondDay)
+      nextPayday = new Date(todayYear, todayMonth + 1, firstDay)
+    }
+
+    const msPerDay = 1000 * 60 * 60 * 24
+    const todayMs = new Date(todayYear, todayMonth, todayDay).getTime()
+    const max = Math.round((nextPayday.getTime() - lastPayday.getTime()) / msPerDay)
+    const value = Math.round((todayMs - lastPayday.getTime()) / msPerDay)
+
+    return { value, max, lastPayday, nextPayday }
+  }
+
+  // Non-split
+  const payday = plan.split_first_day
+  let lastPayday: Date
+  let nextPayday: Date
+
+  if (todayDay < payday) {
+    lastPayday = new Date(todayYear, todayMonth - 1, payday)
+    nextPayday = new Date(todayYear, todayMonth, payday)
+  } else {
+    lastPayday = new Date(todayYear, todayMonth, payday)
+    nextPayday = new Date(todayYear, todayMonth + 1, payday)
+  }
+
+  const msPerDay = 1000 * 60 * 60 * 24
+  const todayMs = new Date(todayYear, todayMonth, todayDay).getTime()
+  const max = Math.round((nextPayday.getTime() - lastPayday.getTime()) / msPerDay)
+  const value = Math.round((todayMs - lastPayday.getTime()) / msPerDay)
+
+  return { value, max, lastPayday, nextPayday }
+}
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
@@ -108,15 +225,18 @@ export default function Dashboard() {
   const { data: transactions } = useFetch(txUrl, decodeTransactionList)
   const { data: allTransactions } = useFetch('/transactions/', decodeTransactionList)
   const { data: allNotes } = useFetch('/notes/', decodeNoteList)
+  const { data: salaryPlans } = useFetch('/salary-plans/', decodeSalaryPlanList)
 
   const income = summary?.monthly_finances.income ?? 0
   const expenses = summary?.monthly_finances.expenses ?? 0
   const balance = summary?.monthly_finances.balance ?? 0
 
+  const activePlan = salaryPlans?.find((p) => p.active) ?? null
+
+  const nextPayday: NextPayday | null = activePlan ? computeNextPayday(activePlan, today) : null
+  const paydayProgress = activePlan ? computePaydayProgress(activePlan, today) : null
+
   const todayDay = today.getDate()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const nextPaydayDays = daysInMonth - todayDay + PAYDAY_DAY
-  const paydayPct = Math.round((todayDay / daysInMonth) * 100)
 
   const recentTransactions = (transactions ?? []).slice(0, 5)
   const recentNotes = [...(allNotes ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 3)
@@ -173,9 +293,6 @@ export default function Dashboard() {
       setMonth((m) => m + 1)
     }
   }
-
-  const nextPaydayDate = new Date(year, month + 1, PAYDAY_DAY)
-  const nextPaydayLabel = nextPaydayDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
 
   return (
     <div style={{ display: 'flex', gap: 24, padding: '28px 32px' }}>
@@ -249,8 +366,8 @@ export default function Dashboard() {
         <StatCard
           icon="⏳"
           label="Próximo Salário"
-          value={`${String(nextPaydayDays)} dias`}
-          sub={`dia ${String(PAYDAY_DAY)} — ${nextPaydayLabel}`}
+          value={nextPayday ? `${String(nextPayday.daysUntil)} dias` : '—'}
+          sub={nextPayday ? `${formatCurrency(nextPayday.amount)} — ${nextPayday.label}` : 'sem plano ativo'}
           color="purple"
         />
       </div>
@@ -265,16 +382,26 @@ export default function Dashboard() {
             </span>
           </div>
           <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Dia {todayDay} de {daysInMonth} — salário no dia {PAYDAY_DAY}
+            {paydayProgress
+              ? `Dia ${String(todayDay)} — próximo salário em ${String(paydayProgress.nextPayday.getDate())}/${String(paydayProgress.nextPayday.getMonth() + 1).padStart(2, '0')}`
+              : `Dia ${String(todayDay)}`}
           </span>
         </div>
-        <ProgressBar value={todayDay} max={daysInMonth} color="blue" height={10} showPercent />
+        <ProgressBar
+          value={paydayProgress ? paydayProgress.value : todayDay}
+          max={paydayProgress ? paydayProgress.max : new Date(year, month + 1, 0).getDate()}
+          color="blue"
+          height={10}
+          showPercent
+        />
         <div className="flex justify-between mt-2">
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {paydayPct}% do mês passou
+            {paydayProgress
+              ? `${String(Math.round((paydayProgress.value / paydayProgress.max) * 100))}% do período passou`
+              : `${String(Math.round((todayDay / new Date(year, month + 1, 0).getDate()) * 100))}% do mês passou`}
           </span>
           <span className="text-xs font-medium" style={{ color: 'var(--color-blue)' }}>
-            Próximo: {nextPaydayLabel} ({nextPaydayDays} dias)
+            {nextPayday ? `Próximo: ${nextPayday.label} (${String(nextPayday.daysUntil)} dias)` : ''}
           </span>
         </div>
       </Card>
