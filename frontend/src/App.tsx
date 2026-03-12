@@ -9,6 +9,7 @@ import Calendar from './pages/Calendar'
 import Forecast from './pages/Forecast'
 import Gacha from './pages/Gacha'
 import Notes from './pages/Notes'
+import SalaryPlans from './pages/SalaryPlans'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="forecast" element={<Forecast />} />
           <Route path="gacha" element={<Gacha />} />
           <Route path="notes" element={<Notes />} />
+          <Route path="salary" element={<SalaryPlans />} />
         </Route>
       </Routes>
     </BrowserRouter>
