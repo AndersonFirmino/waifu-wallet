@@ -15,6 +15,10 @@ backend/.pytest_cache/
 backend/.coverage
 backend/htmlcov/
 
+# Uploaded user images (gacha banners)
+frontend/public/gacha/*
+!frontend/public/gacha/.gitkeep
+
 # Geral
 .DS_Store
 *.env
