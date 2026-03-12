@@ -27,6 +27,8 @@ import type {
   SalaryPlan,
   SalarySchedulePayment,
   SalaryScheduleMonth,
+  SavingsAccount,
+  SavingsSummary,
 } from '../types'
 
 // ─── Primitive validators ─────────────────────────────────────────────────────
@@ -75,7 +77,7 @@ function asFixedExpenseKind(val: unknown): FixedExpenseKind {
 }
 
 function asCardStatus(val: unknown): CardStatus {
-  if (val === 'open' || val === 'closed' || val === 'paid') return val
+  if (val === 'open' || val === 'closed' || val === 'paid' || val === 'pending') return val
   throw new Error(`Invalid CardStatus: ${String(val)}`)
 }
 
@@ -377,6 +379,33 @@ export function decodeSalaryScheduleList(raw: unknown): SalaryScheduleMonth[] {
   return arr(raw, 'schedule').map(decodeSalaryScheduleMonth)
 }
 
+// ─── Savings ──────────────────────────────────────────────────────────────────
+
+export function decodeSavingsAccount(raw: unknown): SavingsAccount {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    bank: str(raw.bank, 'bank'),
+    balance: num(raw.balance, 'balance'),
+    goal: num(raw.goal, 'goal'),
+    emoji: str(raw.emoji, 'emoji'),
+    active: bool(raw.active, 'active'),
+  }
+}
+
+export function decodeSavingsAccountList(raw: unknown): SavingsAccount[] {
+  return arr(raw, 'savings_accounts').map(decodeSavingsAccount)
+}
+
+function decodeSavingsSummary(raw: unknown): SavingsSummary {
+  assertRecord(raw)
+  return {
+    total_savings: num(raw.total_savings, 'total_savings'),
+    accounts: arr(raw.accounts, 'accounts').map(decodeSavingsAccount),
+  }
+}
+
 export function decodeSummary(raw: unknown): Summary {
   assertRecord(raw)
   return {
@@ -387,6 +416,7 @@ export function decodeSummary(raw: unknown): Summary {
     cards: arr(raw.cards, 'cards').map(decodeCardOverview),
     fixed_costs: decodeFixedCostsOverview(raw.fixed_costs),
     gacha: decodeGachaOverview(raw.gacha),
+    savings: decodeSavingsSummary(raw.savings),
     alerts: arr(raw.alerts, 'alerts').map(decodeAlert),
   }
 }

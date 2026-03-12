@@ -73,6 +73,11 @@ export interface Alert {
   message: string
 }
 
+export interface SavingsSummary {
+  total_savings: number
+  accounts: SavingsAccount[]
+}
+
 export interface Summary {
   queried_at: string
   current_month: string
@@ -81,6 +86,7 @@ export interface Summary {
   cards: CardOverview[]
   fixed_costs: FixedCostsOverview
   gacha: GachaOverview
+  savings: SavingsSummary
   alerts: Alert[]
 }
 
@@ -123,7 +129,7 @@ export interface Loan {
 
 // ─── Credit Cards ─────────────────────────────────────────────────────────────
 
-export type CardStatus = 'open' | 'closed' | 'paid'
+export type CardStatus = 'open' | 'closed' | 'paid' | 'pending'
 export type CardBrand = 'Mastercard' | 'Visa' | 'Elo' | 'Amex'
 
 export interface CardBillHistory {
@@ -224,6 +230,18 @@ export interface SalaryScheduleMonth {
   month: string
   salary: number
   payments: SalarySchedulePayment[]
+}
+
+// ─── Savings ──────────────────────────────────────────────────────────────────
+
+export interface SavingsAccount {
+  id: number
+  name: string
+  bank: string
+  balance: number
+  goal: number
+  emoji: string
+  active: boolean
 }
 
 // ─── Notes ────────────────────────────────────────────────────────────────────
