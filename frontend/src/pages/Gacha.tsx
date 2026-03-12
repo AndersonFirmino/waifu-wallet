@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import AnimatedNumber from '../components/ui/AnimatedNumber'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import ImageCropUpload from '../components/ImageCropUpload'
 import { formatCurrency } from '../utils/currency'
-import { daysUntil, formatDateRange } from '../utils/date'
+import { daysUntil } from '../utils/date'
 import { type GachaBanner, type GachaPriority } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeGachaBanner, decodeBannerList, decodeSummary } from '../lib/decode'
@@ -78,6 +80,31 @@ const STATUS_COLORS: Record<SafetyStatus, { color: 'green' | 'yellow' | 'red'; b
   danger: { color: 'red', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)' },
 }
 
+// ─── useLiveCountdown ─────────────────────────────────────────────────────────
+
+function useLiveCountdown(targetDate: string): { days: number; hours: number; minutes: number; seconds: number; expired: boolean } {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => { setNow(new Date()) }, 1000)
+    return () => { clearInterval(timer) }
+  }, [])
+
+  const target = new Date(targetDate + 'T00:00:00')
+  const diff = target.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return { days, hours, minutes, seconds, expired: false }
+}
+
 // ─── BannerCard ───────────────────────────────────────────────────────────────
 
 interface BannerEditData {
@@ -104,7 +131,6 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
   const phase = getBannerPhase(banner.start_date, banner.end_date)
   const emoji = GAME_EMOJIS.get(banner.game) ?? '🎮'
 
-  const daysToStart = daysUntil(banner.start_date)
   const daysToEnd = daysUntil(banner.end_date)
 
   // Carousel state
@@ -133,6 +159,10 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
 
   // Image management state
   const [newImageUrl, setNewImageUrl] = useState('')
+
+  // Live countdown
+  const countdownTarget = phase === 'upcoming' ? banner.start_date : banner.end_date
+  const countdown = useLiveCountdown(countdownTarget)
 
   // Progress bar fill %
   let progressFill = 0
@@ -217,30 +247,6 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
     )
   })()
 
-  const countdownText = (() => {
-    if (phase === 'upcoming') {
-      return (
-        <span style={{ color: '#a78bfa', fontWeight: 600, fontSize: 13 }}>
-          ⏳ Chega em {String(daysToStart)} {daysToStart === 1 ? 'dia' : 'dias'}
-        </span>
-      )
-    }
-    if (phase === 'active') {
-      if (daysToEnd <= 0) return <span style={{ color: '#f59e0b', fontWeight: 600, fontSize: 13 }}>🔥 Último dia!</span>
-      if (daysToEnd <= 3)
-        return (
-          <span style={{ color: 'var(--color-red)', fontWeight: 600, fontSize: 13 }}>
-            🔥 Acaba em {String(daysToEnd)} {daysToEnd === 1 ? 'dia' : 'dias'}!
-          </span>
-        )
-      return (
-        <span style={{ color: '#f59e0b', fontWeight: 600, fontSize: 13 }}>
-          ⚡ Acaba em {String(daysToEnd)} {daysToEnd === 1 ? 'dia' : 'dias'}
-        </span>
-      )
-    }
-    return <span style={{ color: '#6b7280', fontWeight: 600, fontSize: 13 }}>Encerrado</span>
-  })()
 
   const handleSaveEdit = () => {
     const cost = parseFloat(editCost)
@@ -431,10 +437,10 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Custo (R$)</label>
-                <input
-                  value={editCost}
-                  onChange={(e) => { setEditCost(e.target.value) }}
-                  placeholder="ex: 2000"
+                <CurrencyInput
+                  value={parseFloat(editCost) || 0}
+                  onChange={(v) => { setEditCost(String(v)) }}
+                  placeholder="R$ 0,00"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -665,19 +671,87 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               {priorityStars(banner.priority)}
             </div>
 
-            {/* Row 4: Countdown */}
-            <div style={{ marginTop: 4 }}>{countdownText}</div>
+            {/* Row 4: Clear dates + live countdown */}
+            <div style={{ marginTop: 6 }}>
+              {/* Clear date labels */}
+              <div style={{ display: 'flex', gap: 8, fontSize: 12, marginBottom: 6 }}>
+                <span style={{ color: 'var(--color-muted)' }}>
+                  Início: <strong style={{ color: 'var(--color-text)' }}>
+                    {new Date(banner.start_date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </strong>
+                </span>
+                <span style={{ color: 'var(--color-muted)' }}>
+                  Fim: <strong style={{ color: phase === 'active' && daysToEnd <= 5 ? 'var(--color-red)' : 'var(--color-text)' }}>
+                    {new Date(banner.end_date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </strong>
+                </span>
+              </div>
 
-            {/* Row 5: Progress bar + date range */}
-            {phase !== 'ended' && (
-              <div style={{ marginTop: 4 }}>
+              {/* Live countdown */}
+              {phase !== 'ended' && !countdown.expired && (
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 6,
+                    marginBottom: 6,
+                  }}
+                >
+                  {[
+                    { val: countdown.days, unit: 'd' },
+                    { val: countdown.hours, unit: 'h' },
+                    { val: countdown.minutes, unit: 'm' },
+                    { val: countdown.seconds, unit: 's' },
+                  ].map((item) => (
+                    <div
+                      key={item.unit}
+                      style={{
+                        background: phase === 'active' ? 'rgba(245,158,11,0.1)' : 'rgba(139,92,246,0.1)',
+                        border: `1px solid ${phase === 'active' ? 'rgba(245,158,11,0.2)' : 'rgba(139,92,246,0.2)'}`,
+                        borderRadius: 6,
+                        padding: '3px 6px',
+                        textAlign: 'center',
+                        minWidth: 36,
+                      }}
+                    >
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: phase === 'active' ? '#f59e0b' : '#a78bfa',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {String(item.val).padStart(2, '0')}
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--color-muted)', textTransform: 'uppercase' }}>
+                        {item.unit}
+                      </div>
+                    </div>
+                  ))}
+                  <span style={{
+                    fontSize: 11,
+                    color: phase === 'active'
+                      ? (daysToEnd <= 3 ? 'var(--color-red)' : '#f59e0b')
+                      : '#a78bfa',
+                    fontWeight: 600,
+                    alignSelf: 'center',
+                    marginLeft: 4,
+                  }}>
+                    {phase === 'upcoming' ? 'para chegar' : (daysToEnd <= 3 ? 'restantes!' : 'restantes')}
+                  </span>
+                </div>
+              )}
+
+              {phase === 'ended' && (
+                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Encerrado</span>
+              )}
+
+              {/* Progress bar */}
+              {phase !== 'ended' && (
                 <div
                   style={{
                     height: 4,
                     borderRadius: 99,
                     background: 'var(--color-surface2)',
                     overflow: 'hidden',
-                    marginBottom: 3,
                   }}
                 >
                   <div
@@ -693,17 +767,8 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     }}
                   />
                 </div>
-                <span style={{ fontSize: 12, color: 'var(--color-muted)' }}>
-                  {formatDateRange(banner.start_date, banner.end_date)}
-                </span>
-              </div>
-            )}
-
-            {phase === 'ended' && (
-              <span style={{ fontSize: 12, color: '#6b7280', marginTop: 4, display: 'block' }}>
-                {formatDateRange(banner.start_date, banner.end_date)}
-              </span>
-            )}
+              )}
+            </div>
 
             {/* Row 6: Stats inline */}
             <div
@@ -718,11 +783,15 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             >
               <span>
                 <span style={{ color: 'var(--color-muted)' }}>💰 </span>
-                <span style={{ color: 'var(--color-yellow)', fontWeight: 600 }}>{formatCurrency(banner.cost)}</span>
+                <span style={{ color: 'var(--color-yellow)', fontWeight: 600 }}>
+                  <AnimatedNumber value={banner.cost} formatter={formatCurrency} />
+                </span>
               </span>
               <span>
                 <span style={{ color: 'var(--color-muted)' }}>🎯 </span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{banner.pulls}</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                  <AnimatedNumber value={banner.pulls} />
+                </span>
               </span>
               <span>
                 <span style={{ color: 'var(--color-muted)' }}>📅 </span>
@@ -867,15 +936,21 @@ export default function Gacha() {
           <div>
             <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>
               Saldo disponível:{' '}
-              <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(availableBalance)}</strong>
+              <strong style={{ color: 'var(--color-text)' }}>
+                <AnimatedNumber value={availableBalance} formatter={formatCurrency} />
+              </strong>
               {'  ·  '}
               Total em pulls:{' '}
-              <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(budget.total)}</strong>
+              <strong style={{ color: 'var(--color-text)' }}>
+                <AnimatedNumber value={budget.total} formatter={formatCurrency} />
+              </strong>
             </p>
             <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-              {budget.remaining > 0
-                ? `Sobraria ${formatCurrency(budget.remaining)} após todos os pulls`
-                : `Faltariam ${formatCurrency(Math.abs(budget.remaining))} para cobrir todos os pulls`}
+              {budget.remaining > 0 ? (
+                <>Sobraria <AnimatedNumber value={budget.remaining} formatter={formatCurrency} /> após todos os pulls</>
+              ) : (
+                <>Faltariam <AnimatedNumber value={Math.abs(budget.remaining)} formatter={formatCurrency} /> para cobrir todos os pulls</>
+              )}
             </p>
           </div>
           <Badge color={statusStyle.color} size="lg" pulse={budget.status === 'danger'}>
@@ -945,12 +1020,10 @@ export default function Gacha() {
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
                 Custo Estimado (R$)
               </label>
-              <input
-                placeholder="ex: 2000"
-                value={formCost}
-                onChange={(e) => {
-                  setFormCost(e.target.value)
-                }}
+              <CurrencyInput
+                value={parseFloat(formCost) || 0}
+                onChange={(v) => { setFormCost(String(v)) }}
+                placeholder="R$ 0,00"
               />
             </div>
             <div className="flex flex-col gap-1">

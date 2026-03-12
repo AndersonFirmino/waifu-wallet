@@ -383,6 +383,8 @@ export default function Dashboard() {
           icon="💰"
           label="Saldo do Mês"
           value={formatCurrency(balance)}
+          numericValue={balance}
+          numericFormatter={formatCurrency}
           sub="receitas − despesas"
           color="blue"
         />
@@ -390,6 +392,8 @@ export default function Dashboard() {
           icon="📈"
           label="Receitas"
           value={formatCurrency(income)}
+          numericValue={income}
+          numericFormatter={formatCurrency}
           sub="mês atual"
           color="green"
         />
@@ -397,6 +401,8 @@ export default function Dashboard() {
           icon="📉"
           label="Despesas"
           value={formatCurrency(expenses)}
+          numericValue={expenses}
+          numericFormatter={formatCurrency}
           sub="mês atual"
           color="red"
         />
@@ -404,6 +410,8 @@ export default function Dashboard() {
           icon="⏳"
           label="Próximo Salário"
           value={nextPayday ? `${String(nextPayday.daysUntil)} dias` : '—'}
+          numericValue={nextPayday ? nextPayday.daysUntil : undefined}
+          numericFormatter={(n: number) => `${String(Math.round(n))} dias`}
           sub={nextPayday ? `${formatCurrency(nextPayday.amount)} — ${nextPayday.label}` : 'sem plano ativo'}
           color="purple"
         />
