@@ -7,7 +7,7 @@ import { formatCurrency } from '../utils/currency'
 import { daysUntil, formatDateShort } from '../utils/date'
 import { type Debt, type Loan } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeDebt, decodeDebtList, decodeLoanList } from '../lib/decode'
+import { decodeDebt, decodeDebtList, decodeLoan, decodeLoanList } from '../lib/decode'
 
 type ActiveTab = 'debts' | 'loans'
 
@@ -50,6 +50,38 @@ function debtToForm(debt: Debt): DebtFormState {
   }
 }
 
+interface LoanFormState {
+  name: string
+  total: string
+  remaining: string
+  rate: string
+  installment: string
+  next_payment: string
+  installments: string
+}
+
+const EMPTY_LOAN_FORM: LoanFormState = {
+  name: '',
+  total: '',
+  remaining: '',
+  rate: '',
+  installment: '',
+  next_payment: '',
+  installments: '',
+}
+
+function loanToForm(loan: Loan): LoanFormState {
+  return {
+    name: loan.name,
+    total: String(loan.total),
+    remaining: String(loan.remaining),
+    rate: String(loan.rate),
+    installment: String(loan.installment),
+    next_payment: loan.next_payment,
+    installments: loan.installments,
+  }
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function urgencyLabel(days: number): { label: string; color: 'red' | 'yellow' | 'green' } {
@@ -79,14 +111,34 @@ export default function Debts() {
   // Delete confirmation
   const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState<number | null>(null)
 
+  // Loans CRUD state
+  const [loanAdditions, setLoanAdditions] = useState<Loan[]>([])
+  const [loanDeletedIds, setLoanDeletedIds] = useState<number[]>([])
+  const [loanEditedMap, setLoanEditedMap] = useState<Map<number, Loan>>(new Map())
+
+  // Loan form state
+  const [showLoanForm, setShowLoanForm] = useState(false)
+  const [editingLoanId, setEditingLoanId] = useState<number | null>(null)
+  const [loanForm, setLoanForm] = useState<LoanFormState>(EMPTY_LOAN_FORM)
+
+  // Loan delete confirmation
+  const [confirmDeleteLoanId, setConfirmDeleteLoanId] = useState<number | null>(null)
+
   const serverDebts = fetchedDebts ?? []
-  const loans: Loan[] = fetchedLoans ?? []
+  const serverLoans = fetchedLoans ?? []
 
   const debts: Debt[] = [
     ...debtAdditions.map((d) => debtEditedMap.get(d.id) ?? d),
     ...serverDebts
       .filter((d) => !debtDeletedIds.includes(d.id) && !debtAdditions.some((a) => a.id === d.id))
       .map((d) => debtEditedMap.get(d.id) ?? d),
+  ]
+
+  const loans: Loan[] = [
+    ...loanAdditions.map((l) => loanEditedMap.get(l.id) ?? l),
+    ...serverLoans
+      .filter((l) => !loanDeletedIds.includes(l.id) && !loanAdditions.some((a) => a.id === l.id))
+      .map((l) => loanEditedMap.get(l.id) ?? l),
   ]
 
   const totalOwed =
@@ -176,6 +228,96 @@ export default function Debts() {
     setDebtAdditions((prev) => prev.filter((d) => d.id !== id))
     setDebtDeletedIds((prev) => [...prev, id])
     setConfirmDeleteDebtId(null)
+  }
+
+  // ── Loan form helpers ───────────────────────────────────────────────────────
+
+  function openAddLoanForm() {
+    setEditingLoanId(null)
+    setLoanForm(EMPTY_LOAN_FORM)
+    setShowLoanForm(true)
+  }
+
+  function openEditLoanForm(loan: Loan) {
+    setEditingLoanId(loan.id)
+    setLoanForm(loanToForm(loan))
+    setShowLoanForm(true)
+  }
+
+  function closeLoanForm() {
+    setShowLoanForm(false)
+    setEditingLoanId(null)
+    setLoanForm(EMPTY_LOAN_FORM)
+  }
+
+  function setLoanField<K extends keyof LoanFormState>(key: K, value: LoanFormState[K]) {
+    setLoanForm((f) => ({ ...f, [key]: value }))
+  }
+
+  const handleSaveLoan = async () => {
+    const total = parseFloat(loanForm.total)
+    const remaining = parseFloat(loanForm.remaining)
+    const rate = parseFloat(loanForm.rate)
+    const installment = parseFloat(loanForm.installment)
+
+    if (
+      !loanForm.name ||
+      isNaN(total) ||
+      isNaN(remaining) ||
+      isNaN(rate) ||
+      isNaN(installment) ||
+      !loanForm.next_payment
+    )
+      return
+
+    const body = {
+      name: loanForm.name,
+      total,
+      remaining,
+      rate,
+      installment,
+      next_payment: loanForm.next_payment,
+      installments: loanForm.installments,
+    }
+
+    if (editingLoanId !== null) {
+      const r = await fetch(`/api/v1/loans/${String(editingLoanId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) return
+      const raw: unknown = await r.json()
+      const updated = decodeLoan(raw)
+      setLoanEditedMap((prev) => {
+        const next = new Map(prev)
+        next.set(updated.id, updated)
+        return next
+      })
+    } else {
+      const r = await fetch('/api/v1/loans/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) return
+      const raw: unknown = await r.json()
+      const created = decodeLoan(raw)
+      setLoanAdditions((prev) => [...prev, created])
+    }
+
+    closeLoanForm()
+  }
+
+  const handleDeleteLoan = async (id: number) => {
+    if (confirmDeleteLoanId !== id) {
+      setConfirmDeleteLoanId(id)
+      return
+    }
+    await fetch(`/api/v1/loans/${String(id)}`, { method: 'DELETE' })
+    setLoanAdditions((prev) => prev.filter((l) => l.id !== id))
+    setLoanDeletedIds((prev) => [...prev, id])
+    setConfirmDeleteLoanId(null)
   }
 
   return (
@@ -402,70 +544,133 @@ export default function Debts() {
 
       {/* ── Empréstimos ── */}
       {tab === 'loans' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {loans.length === 0 && (
-            <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-              Nenhum empréstimo cadastrado
-            </p>
-          )}
-          {loans.map((loan) => {
-            const days = daysUntil(loan.next_payment)
-            const urgency = urgencyLabel(days)
-            const paidPct = Math.round(((loan.total - loan.remaining) / loan.total) * 100)
+        <div>
+          {/* Add loan button */}
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={() => {
+                if (showLoanForm) {
+                  closeLoanForm()
+                } else {
+                  openAddLoanForm()
+                }
+              }}
+              variant={showLoanForm ? 'outline' : 'primary'}
+            >
+              {showLoanForm ? 'Cancelar' : '+ Adicionar Empréstimo'}
+            </Button>
+          </div>
 
-            return (
-              <Card key={loan.id} hover>
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-base mb-1" style={{ color: 'var(--color-text)' }}>
-                      🏦 {loan.name}
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        Parcela {loan.installments}
-                      </span>
-                      <Badge color="orange" size="xs">
-                        {loan.rate}% a.m.
-                      </Badge>
+          {/* Add / Edit form */}
+          {showLoanForm && (
+            <Card className="mb-4">
+              <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
+                {editingLoanId !== null ? 'Editar Empréstimo' : 'Novo Empréstimo'}
+              </h3>
+              <LoanForm
+                form={loanForm}
+                setField={setLoanField}
+                onSave={handleSaveLoan}
+                onCancel={closeLoanForm}
+                isEditing={editingLoanId !== null}
+              />
+            </Card>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {loans.length === 0 && (
+              <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
+                Nenhum empréstimo cadastrado
+              </p>
+            )}
+            {loans.map((loan) => {
+              const days = daysUntil(loan.next_payment)
+              const urgency = urgencyLabel(days)
+              const paidPct = Math.round(((loan.total - loan.remaining) / loan.total) * 100)
+
+              return (
+                <Card key={loan.id} hover>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-base mb-1" style={{ color: 'var(--color-text)' }}>
+                        🏦 {loan.name}
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          Parcela {loan.installments}
+                        </span>
+                        <Badge color="orange" size="xs">
+                          {loan.rate}% a.m.
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right mr-2">
+                        <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
+                          {formatCurrency(loan.remaining)}
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          restante de {formatCurrency(loan.total)}
+                        </p>
+                      </div>
+                      {/* Edit */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          openEditLoanForm(loan)
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      {/* Delete with confirmation */}
+                      <button
+                        onClick={() => {
+                          void handleDeleteLoan(loan.id)
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          background:
+                            confirmDeleteLoanId === loan.id ? 'var(--color-red)' : 'rgba(239,68,68,0.1)',
+                          color: confirmDeleteLoanId === loan.id ? '#fff' : 'var(--color-red)',
+                          border: `1px solid ${confirmDeleteLoanId === loan.id ? 'var(--color-red)' : 'rgba(239,68,68,0.3)'}`,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {confirmDeleteLoanId === loan.id ? 'Confirmar?' : 'Excluir'}
+                      </button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
-                      {formatCurrency(loan.remaining)}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                      restante de {formatCurrency(loan.total)}
-                    </p>
-                  </div>
-                </div>
 
-                <ProgressBar
-                  value={loan.total - loan.remaining}
-                  max={loan.total}
-                  color="auto"
-                  height={10}
-                  label={`Pago: ${String(paidPct)}%`}
-                />
+                  <ProgressBar
+                    value={loan.total - loan.remaining}
+                    max={loan.total}
+                    color="auto"
+                    height={10}
+                    label={`Pago: ${String(paidPct)}%`}
+                  />
 
-                <div className="flex items-center justify-between mt-3">
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                      Próxima parcela:{' '}
-                      <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.installment)}</strong>
-                      {' — '}
-                      {formatDateShort(loan.next_payment)}{' '}
-                      <Badge color={urgency.color} size="xs">
-                        {urgency.label}
-                      </Badge>
-                    </p>
+                  <div className="flex items-center justify-between mt-3">
+                    <div>
+                      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        Próxima parcela:{' '}
+                        <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.installment)}</strong>
+                        {' — '}
+                        {formatDateShort(loan.next_payment)}{' '}
+                        <Badge color={urgency.color} size="xs">
+                          {urgency.label}
+                        </Badge>
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      Registrar Parcela
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Registrar Parcela
-                  </Button>
-                </div>
-              </Card>
-            )
-          })}
+                </Card>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -552,6 +757,87 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing }: DebtFormProps
             {form.urgent ? '⚠ Urgente' : 'Urgente'}
           </span>
         </label>
+      </div>
+
+      <div className="flex gap-3 justify-end">
+        <Button variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          onClick={() => {
+            void onSave()
+          }}
+        >
+          {isEditing ? 'Salvar alterações' : 'Adicionar'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── LoanForm ──────────────────────────────────────────────────────────────────
+
+interface LoanFormProps {
+  form: LoanFormState
+  setField: <K extends keyof LoanFormState>(key: K, value: LoanFormState[K]) => void
+  onSave: () => Promise<void>
+  onCancel: () => void
+  isEditing: boolean
+}
+
+function LoanForm({ form, setField, onSave, onCancel, isEditing }: LoanFormProps) {
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <input
+          placeholder="Nome do empréstimo"
+          value={form.name}
+          onChange={(e) => {
+            setField('name', e.target.value)
+          }}
+        />
+        <input
+          placeholder="Total original (R$)"
+          value={form.total}
+          onChange={(e) => {
+            setField('total', e.target.value)
+          }}
+        />
+        <input
+          placeholder="Restante (R$)"
+          value={form.remaining}
+          onChange={(e) => {
+            setField('remaining', e.target.value)
+          }}
+        />
+        <input
+          placeholder="Juros a.m. (%)"
+          value={form.rate}
+          onChange={(e) => {
+            setField('rate', e.target.value)
+          }}
+        />
+        <input
+          placeholder="Valor da parcela (R$)"
+          value={form.installment}
+          onChange={(e) => {
+            setField('installment', e.target.value)
+          }}
+        />
+        <input
+          type="date"
+          value={form.next_payment}
+          onChange={(e) => {
+            setField('next_payment', e.target.value)
+          }}
+        />
+        <input
+          placeholder='Parcelas (ex: 2/25)'
+          value={form.installments}
+          onChange={(e) => {
+            setField('installments', e.target.value)
+          }}
+        />
       </div>
 
       <div className="flex gap-3 justify-end">
