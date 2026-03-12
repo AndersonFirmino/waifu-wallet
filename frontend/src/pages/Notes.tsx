@@ -1,12 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Card from '../components/ui/Card'
-import Button from '../components/ui/Button'
 import { formatMonth } from '../utils/date'
 import { type Note } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeNote, decodeNoteList } from '../lib/decode'
+import { decodeNoteList } from '../lib/decode'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -16,8 +15,6 @@ export default function Notes() {
   const [deletedIds, setDeletedIds] = useState<number[]>([])
   const [month, setMonth] = useState(new Date().getMonth())
   const [year, setYear] = useState(new Date().getFullYear())
-  const [content, setContent] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const notes = [...additions, ...(serverNotes ?? []).filter((n) => !deletedIds.includes(n.id))]
 
@@ -35,34 +32,20 @@ export default function Notes() {
     } else setMonth((m) => m + 1)
   }
 
-  const handleSave = async () => {
-    if (!content.trim()) return
-    const dateStr = new Date().toISOString().slice(0, 10)
-    const r = await fetch('/api/v1/notes/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: dateStr, content: content.trim() }),
-    })
-    if (!r.ok) return
-    const raw: unknown = await r.json()
-    const created = decodeNote(raw)
-    setAdditions((prev) => [created, ...prev])
-    setContent('')
-    textareaRef.current?.focus()
-  }
-
   const handleDelete = async (id: number) => {
     await fetch(`/api/v1/notes/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((n) => n.id !== id))
     setDeletedIds((prev) => [...prev, id])
   }
 
-  const filteredNotes = notes.filter((n) => {
-    const parts = n.date.split('-')
-    const noteYear = parseInt(parts[0] ?? '0', 10)
-    const noteMonth = parseInt(parts[1] ?? '0', 10) - 1
-    return noteYear === year && noteMonth === month
-  })
+  const filteredNotes = notes
+    .filter((n) => {
+      const parts = n.date.split('-')
+      const noteYear = parseInt(parts[0] ?? '0', 10)
+      const noteMonth = parseInt(parts[1] ?? '0', 10) - 1
+      return noteYear === year && noteMonth === month
+    })
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 800 }}>
@@ -110,41 +93,6 @@ export default function Notes() {
         </div>
       </div>
 
-      {/* New Note */}
-      <Card className="mb-6">
-        <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
-          Nova Nota — {new Date().toLocaleDateString('pt-BR')}
-        </h3>
-        <textarea
-          ref={textareaRef}
-          placeholder="O que você quer registrar sobre suas finanças hoje?"
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value)
-          }}
-          rows={4}
-          style={{ resize: 'vertical', width: '100%', marginBottom: 12 }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void handleSave()
-          }}
-        />
-        <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {content.length > 0
-              ? `${String(content.length)} caracteres · Ctrl+Enter para salvar`
-              : 'Ctrl+Enter para salvar rapidamente'}
-          </span>
-          <Button
-            onClick={() => {
-              void handleSave()
-            }}
-            disabled={!content.trim()}
-          >
-            Salvar Nota
-          </Button>
-        </div>
-      </Card>
-
       {/* Notes List */}
       {filteredNotes.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed var(--color-border)' }}>
@@ -153,7 +101,7 @@ export default function Notes() {
             Nenhuma nota em {formatMonth(year, month)}
           </p>
           <p className="text-sm mt-1" style={{ color: 'var(--color-border)' }}>
-            Escreva a primeira nota do mês acima
+            O conselheiro financeiro ainda não registrou nenhuma nota este mês
           </p>
         </div>
       ) : (

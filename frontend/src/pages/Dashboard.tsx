@@ -119,7 +119,7 @@ export default function Dashboard() {
   const paydayPct = Math.round((todayDay / daysInMonth) * 100)
 
   const recentTransactions = (transactions ?? []).slice(0, 5)
-  const recentNotes = (allNotes ?? []).slice(0, 3)
+  const recentNotes = [...(allNotes ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 3)
 
   const monthlyData: MonthlyData[] = useMemo(() => {
     if (!allTransactions) return []
@@ -178,7 +178,9 @@ export default function Dashboard() {
   const nextPaydayLabel = nextPaydayDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1400 }}>
+    <div style={{ display: 'flex', gap: 24, padding: '28px 32px' }}>
+    {/* Main content */}
+    <div style={{ flex: 1, minWidth: 0 }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -362,7 +364,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Transactions */}
-      <Card className="mb-6">
+      <Card>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
             Últimas Transações
@@ -427,10 +429,12 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+    </div>
 
-      {/* Advisor Notes */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
+    {/* Right sidebar — Advisor Notes */}
+    <div style={{ width: 360, flexShrink: 0, position: 'sticky', top: 28, alignSelf: 'flex-start', marginTop: 89 }}>
+      <Card style={{ maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
             📋 Notas do Conselheiro
           </h3>
@@ -447,43 +451,42 @@ export default function Dashboard() {
             Nenhuma nota registrada
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {recentNotes.map((note) => {
-              const parts = note.date.split('-')
-              const day = parts[2] ?? ''
-              const noteMonth = parts[1] ?? ''
-              const noteYear = parts[0] ?? ''
+          <div style={{ overflow: 'auto', flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {recentNotes.map((note) => {
+                const parts = note.date.split('-')
+                const day = parts[2] ?? ''
+                const noteMonth = parts[1] ?? ''
+                const noteYear = parts[0] ?? ''
 
-              return (
-                <div
-                  key={note.id}
-                  className="rounded-xl px-4 py-3"
-                  style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
+                return (
+                  <div key={note.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="px-2 py-0.5 rounded-md text-xs font-semibold"
+                        style={{
+                          background: 'rgba(59,130,246,0.12)',
+                          color: 'var(--color-blue)',
+                          border: '1px solid rgba(59,130,246,0.2)',
+                        }}
+                      >
+                        {day}/{noteMonth}/{noteYear}
+                      </div>
+                    </div>
                     <div
-                      className="px-2 py-0.5 rounded-md text-xs font-semibold"
-                      style={{
-                        background: 'rgba(59,130,246,0.12)',
-                        color: 'var(--color-blue)',
-                        border: '1px solid rgba(59,130,246,0.2)',
-                      }}
+                      className="text-sm leading-relaxed prose-notes"
+                      style={{ color: 'var(--color-text)' }}
                     >
-                      {day}/{noteMonth}/{noteYear}
+                      <Markdown remarkPlugins={[remarkGfm]}>{note.content}</Markdown>
                     </div>
                   </div>
-                  <div
-                    className="text-sm leading-relaxed prose-notes"
-                    style={{ color: 'var(--color-text)', maxHeight: 80, overflow: 'hidden' }}
-                  >
-                    <Markdown remarkPlugins={[remarkGfm]}>{note.content}</Markdown>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         )}
       </Card>
+    </div>
     </div>
   )
 }
