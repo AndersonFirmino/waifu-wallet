@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
@@ -14,8 +15,8 @@ import { decodeSavingsAccount, decodeSavingsAccountList } from '../lib/decode'
 interface AccountFormState {
   name: string
   bank: string
-  balance: string
-  goal: string
+  balance: number
+  goal: number
   emoji: string
   active: boolean
 }
@@ -23,8 +24,8 @@ interface AccountFormState {
 const EMPTY_FORM: AccountFormState = {
   name: '',
   bank: '',
-  balance: '',
-  goal: '',
+  balance: 0,
+  goal: 0,
   emoji: '🐷',
   active: true,
 }
@@ -33,8 +34,8 @@ function accountToForm(account: SavingsAccount): AccountFormState {
   return {
     name: account.name,
     bank: account.bank,
-    balance: String(account.balance),
-    goal: String(account.goal),
+    balance: account.balance,
+    goal: account.goal,
     emoji: account.emoji,
     active: account.active,
   }
@@ -97,16 +98,13 @@ export default function Savings() {
   }
 
   const handleSave = async () => {
-    const balance = parseFloat(form.balance.replace(',', '.'))
-    const goal = parseFloat(form.goal.replace(',', '.') || '0')
-
-    if (!form.name || !form.bank || isNaN(balance) || balance < 0) return
+    if (!form.name || !form.bank || form.balance < 0) return
 
     const body = {
       name: form.name,
       bank: form.bank,
-      balance,
-      goal: isNaN(goal) ? 0 : goal,
+      balance: form.balance,
+      goal: form.goal,
       emoji: form.emoji || '🐷',
       active: form.active,
     }
@@ -369,19 +367,19 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing }: AccountFor
             setField('emoji', e.target.value)
           }}
         />
-        <input
-          placeholder="Saldo atual (R$)"
+        <CurrencyInput
           value={form.balance}
-          onChange={(e) => {
-            setField('balance', e.target.value)
+          onChange={(v) => {
+            setField('balance', v)
           }}
+          placeholder="Saldo atual (R$)"
         />
-        <input
-          placeholder="Meta (R$) — 0 para sem meta"
+        <CurrencyInput
           value={form.goal}
-          onChange={(e) => {
-            setField('goal', e.target.value)
+          onChange={(v) => {
+            setField('goal', v)
           }}
+          placeholder="Meta (R$)"
         />
 
         {/* Active toggle */}

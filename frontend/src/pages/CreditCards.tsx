@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Card from '../components/ui/Card'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import StatCard from '../components/ui/StatCard'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
 import Badge from '../components/ui/Badge'
@@ -40,11 +41,11 @@ interface CardFormState {
   name: string
   brand: CardBrand
   last_four: string
-  limit: string
-  used: string
+  limit: number
+  used: number
   gradient_from: string
   gradient_to: string
-  bill: string
+  bill: number
   closing_day: string
   due_day: string
   status: CardStatus
@@ -54,11 +55,11 @@ const EMPTY_FORM: CardFormState = {
   name: '',
   brand: 'Visa',
   last_four: '',
-  limit: '',
-  used: '',
+  limit: 0,
+  used: 0,
   gradient_from: '#3b82f6',
   gradient_to: '#60a5fa',
-  bill: '',
+  bill: 0,
   closing_day: '',
   due_day: '',
   status: 'open',
@@ -69,11 +70,11 @@ function cardToForm(card: CreditCard): CardFormState {
     name: card.name,
     brand: card.brand,
     last_four: card.last_four,
-    limit: String(card.limit),
-    used: String(card.used),
+    limit: card.limit,
+    used: card.used,
     gradient_from: card.gradient_from,
     gradient_to: card.gradient_to,
-    bill: String(card.bill),
+    bill: card.bill,
     closing_day: String(card.closing_day),
     due_day: String(card.due_day),
     status: card.status,
@@ -139,11 +140,11 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
           <div className="flex justify-between items-end">
             <div>
               <p className="text-xs text-white opacity-60 mb-1">Limite disponível</p>
-              <p className="text-white font-bold">{formatCurrency(card.limit - card.used)}</p>
+              <p className="text-white font-bold"><AnimatedNumber value={card.limit - card.used} formatter={formatCurrency} /></p>
             </div>
             <div className="text-right">
               <p className="text-xs text-white opacity-60 mb-1">Limite total</p>
-              <p className="text-white font-semibold">{formatCurrency(card.limit)}</p>
+              <p className="text-white font-semibold"><AnimatedNumber value={card.limit} formatter={formatCurrency} /></p>
             </div>
           </div>
         </div>
@@ -154,7 +155,7 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
         <div className="flex justify-between text-xs mb-1">
           <span style={{ color: 'var(--color-muted)' }}>Uso do limite</span>
           <span style={{ color: usedPct > 70 ? 'var(--color-red)' : 'var(--color-green)' }}>
-            {formatCurrency(card.used)} ({usedPct}%)
+            <AnimatedNumber value={card.used} formatter={formatCurrency} /> ({usedPct}%)
           </span>
         </div>
         <ProgressBar value={card.used} max={card.limit} color="auto" showPercent={false} height={6} />
@@ -245,18 +246,15 @@ export default function CreditCards() {
   }
 
   const handleSave = async () => {
-    const limit = parseFloat(form.limit)
-    const used = parseFloat(form.used)
-    const bill = parseFloat(form.bill)
     const closing_day = parseInt(form.closing_day, 10)
     const due_day = parseInt(form.due_day, 10)
 
     if (
       !form.name ||
       !form.last_four ||
-      isNaN(limit) ||
-      isNaN(used) ||
-      isNaN(bill) ||
+      form.limit <= 0 ||
+      form.used < 0 ||
+      form.bill < 0 ||
       isNaN(closing_day) ||
       isNaN(due_day)
     )
@@ -266,11 +264,11 @@ export default function CreditCards() {
       name: form.name,
       brand: form.brand,
       last_four: form.last_four,
-      limit,
-      used,
+      limit: form.limit,
+      used: form.used,
       gradient_from: form.gradient_from,
       gradient_to: form.gradient_to,
-      bill,
+      bill: form.bill,
       closing_day,
       due_day,
       status: form.status,
@@ -593,26 +591,26 @@ function CardForm({ form, setField, onSave, onCancel, isEditing }: CardFormProps
             setField('last_four', e.target.value)
           }}
         />
-        <input
-          placeholder="Limite (R$)"
+        <CurrencyInput
           value={form.limit}
-          onChange={(e) => {
-            setField('limit', e.target.value)
+          onChange={(v) => {
+            setField('limit', v)
           }}
+          placeholder="Limite (R$)"
         />
-        <input
-          placeholder="Valor usado (R$)"
+        <CurrencyInput
           value={form.used}
-          onChange={(e) => {
-            setField('used', e.target.value)
+          onChange={(v) => {
+            setField('used', v)
           }}
+          placeholder="Valor usado (R$)"
         />
-        <input
-          placeholder="Fatura atual (R$)"
+        <CurrencyInput
           value={form.bill}
-          onChange={(e) => {
-            setField('bill', e.target.value)
+          onChange={(v) => {
+            setField('bill', v)
           }}
+          placeholder="Fatura atual (R$)"
         />
         <input
           placeholder="Dia fechamento (1-31)"

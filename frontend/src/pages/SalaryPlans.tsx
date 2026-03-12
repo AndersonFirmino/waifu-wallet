@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -18,9 +19,9 @@ import {
 
 interface FormState {
   employer: string
-  current_salary: string
-  target_salary: string
-  increment: string
+  current_salary: number
+  target_salary: number
+  increment: number
   increment_interval_months: string
   next_increment_date: string
   split_enabled: boolean
@@ -34,9 +35,9 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   employer: '',
-  current_salary: '',
-  target_salary: '',
-  increment: '',
+  current_salary: 0,
+  target_salary: 0,
+  increment: 0,
   increment_interval_months: '12',
   next_increment_date: '',
   split_enabled: false,
@@ -51,9 +52,9 @@ const EMPTY_FORM: FormState = {
 function planToForm(plan: SalaryPlan): FormState {
   return {
     employer: plan.employer,
-    current_salary: String(plan.current_salary),
-    target_salary: String(plan.target_salary),
-    increment: String(plan.increment),
+    current_salary: plan.current_salary,
+    target_salary: plan.target_salary,
+    increment: plan.increment,
     increment_interval_months: String(plan.increment_interval_months),
     next_increment_date: plan.next_increment_date,
     split_enabled: plan.split_enabled,
@@ -68,12 +69,9 @@ function planToForm(plan: SalaryPlan): FormState {
 
 function validateForm(form: FormState): string | null {
   if (!form.employer.trim()) return 'Informe o nome da empresa'
-  const cur = parseFloat(form.current_salary.replace(',', '.'))
-  if (isNaN(cur) || cur <= 0) return 'Salário atual inválido'
-  const target = parseFloat(form.target_salary.replace(',', '.'))
-  if (isNaN(target) || target <= 0) return 'Salário alvo inválido'
-  const inc = parseFloat(form.increment.replace(',', '.'))
-  if (isNaN(inc) || inc <= 0) return 'Incremento inválido'
+  if (form.current_salary <= 0) return 'Salário atual inválido'
+  if (form.target_salary <= 0) return 'Salário alvo inválido'
+  if (form.increment <= 0) return 'Incremento inválido'
   const interval = parseInt(form.increment_interval_months, 10)
   if (isNaN(interval) || interval <= 0) return 'Intervalo inválido'
   if (!form.next_increment_date) return 'Informe a data do próximo incremento'
@@ -97,9 +95,9 @@ function buildPayload(form: FormState): Record<string, unknown> {
   const splitEnabled = form.split_enabled
   return {
     employer: form.employer.trim(),
-    current_salary: parseFloat(form.current_salary.replace(',', '.')),
-    target_salary: parseFloat(form.target_salary.replace(',', '.')),
-    increment: parseFloat(form.increment.replace(',', '.')),
+    current_salary: form.current_salary,
+    target_salary: form.target_salary,
+    increment: form.increment,
     increment_interval_months: parseInt(form.increment_interval_months, 10),
     next_increment_date: form.next_increment_date,
     split_enabled: splitEnabled,
@@ -429,12 +427,12 @@ function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCa
           <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
             Salário atual (R$) *
           </label>
-          <input
-            placeholder="Ex: 5000"
+          <CurrencyInput
             value={form.current_salary}
-            onChange={(e) => {
-              onChange({ current_salary: e.target.value })
+            onChange={(v) => {
+              onChange({ current_salary: v })
             }}
+            placeholder="R$ 0,00"
           />
         </div>
 
@@ -443,12 +441,12 @@ function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCa
           <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
             Salário alvo (R$) *
           </label>
-          <input
-            placeholder="Ex: 8000"
+          <CurrencyInput
             value={form.target_salary}
-            onChange={(e) => {
-              onChange({ target_salary: e.target.value })
+            onChange={(v) => {
+              onChange({ target_salary: v })
             }}
+            placeholder="R$ 0,00"
           />
         </div>
 
@@ -457,12 +455,12 @@ function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCa
           <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
             Incremento (R$) *
           </label>
-          <input
-            placeholder="Ex: 300"
+          <CurrencyInput
             value={form.increment}
-            onChange={(e) => {
-              onChange({ increment: e.target.value })
+            onChange={(v) => {
+              onChange({ increment: v })
             }}
+            placeholder="R$ 0,00"
           />
         </div>
 

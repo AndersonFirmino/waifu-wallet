@@ -4,6 +4,7 @@ import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
 import Button from '../components/ui/Button'
 import StatCard from '../components/ui/StatCard'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import { formatCurrency } from '../utils/currency'
 import { type FixedExpense, type FixedExpenseKind } from '../types'
 import { useFetch } from '../hooks/useApi'
@@ -11,7 +12,7 @@ import { decodeFixedExpense, decodeFixedExpenseList } from '../lib/decode'
 
 interface FormState {
   name: string
-  amount: string
+  amount: number
   type: FixedExpenseKind
 }
 
@@ -28,7 +29,7 @@ export default function FixedExpenses() {
   const { data: serverData } = useFetch('/fixed-expenses/', decodeFixedExpenseList)
   const [additions, setAdditions] = useState<FixedExpense[]>([])
   const [deletedIds, setDeletedIds] = useState<number[]>([])
-  const [form, setForm] = useState<FormState>({ name: '', amount: '', type: 'fixed' })
+  const [form, setForm] = useState<FormState>({ name: '', amount: 0, type: 'fixed' })
 
   const expenses = [...additions, ...(serverData ?? []).filter((e) => !deletedIds.includes(e.id))]
 
@@ -38,14 +39,13 @@ export default function FixedExpenses() {
   const variableItems = expenses.filter((e) => e.type === 'variable')
 
   const handleAdd = async () => {
-    const amount = parseFloat(form.amount.replace(',', '.'))
-    if (!form.name || isNaN(amount) || amount <= 0) return
+    if (!form.name || form.amount <= 0) return
     const body = {
       name: form.name,
-      amount,
+      amount: form.amount,
       type: form.type,
       confidence: form.type === 'fixed' ? 100 : 70,
-      estimate: amount,
+      estimate: form.amount,
     }
     const r = await fetch('/api/v1/fixed-expenses/', {
       method: 'POST',
@@ -56,7 +56,7 @@ export default function FixedExpenses() {
     const raw: unknown = await r.json()
     const created = decodeFixedExpense(raw)
     setAdditions((prev) => [...prev, created])
-    setForm({ name: '', amount: '', type: 'fixed' })
+    setForm({ name: '', amount: 0, type: 'fixed' })
   }
 
   const handleRemove = async (id: number) => {
@@ -117,12 +117,12 @@ export default function FixedExpenses() {
             }}
             style={{ flex: 1, minWidth: 200 }}
           />
-          <input
-            placeholder="Valor"
+          <CurrencyInput
             value={form.amount}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, amount: e.target.value }))
+            onChange={(v) => {
+              setForm((f) => ({ ...f, amount: v }))
             }}
+            placeholder="R$ 0,00"
             style={{ width: 140 }}
           />
           <div

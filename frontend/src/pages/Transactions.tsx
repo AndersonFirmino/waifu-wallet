@@ -3,6 +3,7 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import StatCard from '../components/ui/StatCard'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import { formatCurrency } from '../utils/currency'
 import { type Transaction, type TransactionType } from '../types'
 import { useFetch } from '../hooks/useApi'
@@ -27,7 +28,7 @@ const FILTER_TYPES: FilterType[] = ['all', 'income', 'expense']
 
 interface FormState {
   type: TransactionType
-  amount: string
+  amount: number
   description: string
   category: string
   date: string
@@ -45,7 +46,7 @@ export default function Transactions() {
   const [catFilter, setCatFilter] = useState('Todas')
   const [form, setForm] = useState<FormState>({
     type: 'expense',
-    amount: '',
+    amount: 0,
     description: '',
     category: 'Alimentação',
     date: today,
@@ -64,14 +65,13 @@ export default function Transactions() {
   const balance = totalIncome - totalExpenses
 
   const handleAdd = async () => {
-    const amount = parseFloat(form.amount.replace(',', '.'))
-    if (!form.description || isNaN(amount) || amount <= 0) return
+    if (!form.description || form.amount <= 0) return
     const body = {
       type: form.type,
       description: form.description,
       category: form.category,
       emoji: form.type === 'income' ? '💰' : '💸',
-      amount,
+      amount: form.amount,
       date: form.date,
     }
     const r = await fetch('/api/v1/transactions/', {
@@ -83,7 +83,7 @@ export default function Transactions() {
     const raw: unknown = await r.json()
     const created = decodeTransaction(raw)
     setAdditions((prev) => [created, ...prev])
-    setForm((f) => ({ ...f, amount: '', description: '' }))
+    setForm((f) => ({ ...f, amount: 0, description: '' }))
   }
 
   const handleRemove = async (id: number) => {
@@ -139,12 +139,12 @@ export default function Transactions() {
             ))}
           </div>
 
-          <input
-            placeholder="Valor (ex: 150,00)"
+          <CurrencyInput
             value={form.amount}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, amount: e.target.value }))
+            onChange={(v) => {
+              setForm((f) => ({ ...f, amount: v }))
             }}
+            placeholder="R$ 0,00"
             style={{ width: 160 }}
           />
           <input

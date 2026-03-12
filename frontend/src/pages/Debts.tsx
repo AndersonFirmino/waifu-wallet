@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
@@ -21,8 +22,8 @@ const TABS: [ActiveTab, string][] = [
 
 interface DebtFormState {
   name: string
-  total: string
-  remaining: string
+  total: number
+  remaining: number
   rate: string
   due_date: string
   installments: string
@@ -31,8 +32,8 @@ interface DebtFormState {
 
 const EMPTY_DEBT_FORM: DebtFormState = {
   name: '',
-  total: '',
-  remaining: '',
+  total: 0,
+  remaining: 0,
   rate: '',
   due_date: '',
   installments: '',
@@ -42,8 +43,8 @@ const EMPTY_DEBT_FORM: DebtFormState = {
 function debtToForm(debt: Debt): DebtFormState {
   return {
     name: debt.name,
-    total: String(debt.total),
-    remaining: String(debt.remaining),
+    total: debt.total,
+    remaining: debt.remaining,
     rate: String(debt.rate),
     due_date: debt.due_date,
     installments: debt.installments,
@@ -53,20 +54,20 @@ function debtToForm(debt: Debt): DebtFormState {
 
 interface LoanFormState {
   name: string
-  total: string
-  remaining: string
+  total: number
+  remaining: number
   rate: string
-  installment: string
+  installment: number
   next_payment: string
   installments: string
 }
 
 const EMPTY_LOAN_FORM: LoanFormState = {
   name: '',
-  total: '',
-  remaining: '',
+  total: 0,
+  remaining: 0,
   rate: '',
-  installment: '',
+  installment: 0,
   next_payment: '',
   installments: '',
 }
@@ -74,10 +75,10 @@ const EMPTY_LOAN_FORM: LoanFormState = {
 function loanToForm(loan: Loan): LoanFormState {
   return {
     name: loan.name,
-    total: String(loan.total),
-    remaining: String(loan.remaining),
+    total: loan.total,
+    remaining: loan.remaining,
     rate: String(loan.rate),
-    installment: String(loan.installment),
+    installment: loan.installment,
     next_payment: loan.next_payment,
     installments: loan.installments,
   }
@@ -174,17 +175,15 @@ export default function Debts() {
   }
 
   const handleSaveDebt = async () => {
-    const total = parseFloat(debtForm.total)
-    const remaining = parseFloat(debtForm.remaining)
     const rate = parseFloat(debtForm.rate)
 
-    if (!debtForm.name || isNaN(total) || isNaN(remaining) || isNaN(rate) || !debtForm.due_date)
+    if (!debtForm.name || debtForm.total <= 0 || debtForm.remaining < 0 || isNaN(rate) || !debtForm.due_date)
       return
 
     const body = {
       name: debtForm.name,
-      total,
-      remaining,
+      total: debtForm.total,
+      remaining: debtForm.remaining,
       rate,
       due_date: debtForm.due_date,
       installments: debtForm.installments,
@@ -256,27 +255,24 @@ export default function Debts() {
   }
 
   const handleSaveLoan = async () => {
-    const total = parseFloat(loanForm.total)
-    const remaining = parseFloat(loanForm.remaining)
     const rate = parseFloat(loanForm.rate)
-    const installment = parseFloat(loanForm.installment)
 
     if (
       !loanForm.name ||
-      isNaN(total) ||
-      isNaN(remaining) ||
+      loanForm.total <= 0 ||
+      loanForm.remaining < 0 ||
       isNaN(rate) ||
-      isNaN(installment) ||
+      loanForm.installment <= 0 ||
       !loanForm.next_payment
     )
       return
 
     const body = {
       name: loanForm.name,
-      total,
-      remaining,
+      total: loanForm.total,
+      remaining: loanForm.remaining,
       rate,
-      installment,
+      installment: loanForm.installment,
       next_payment: loanForm.next_payment,
       installments: loanForm.installments,
     }
@@ -699,19 +695,19 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing }: DebtFormProps
             setField('name', e.target.value)
           }}
         />
-        <input
-          placeholder="Total original (R$)"
+        <CurrencyInput
           value={form.total}
-          onChange={(e) => {
-            setField('total', e.target.value)
+          onChange={(v) => {
+            setField('total', v)
           }}
+          placeholder="Total original (R$)"
         />
-        <input
-          placeholder="Restante (R$)"
+        <CurrencyInput
           value={form.remaining}
-          onChange={(e) => {
-            setField('remaining', e.target.value)
+          onChange={(v) => {
+            setField('remaining', v)
           }}
+          placeholder="Restante (R$)"
         />
         <input
           placeholder="Juros a.m. (%)"
@@ -797,19 +793,19 @@ function LoanForm({ form, setField, onSave, onCancel, isEditing }: LoanFormProps
             setField('name', e.target.value)
           }}
         />
-        <input
-          placeholder="Total original (R$)"
+        <CurrencyInput
           value={form.total}
-          onChange={(e) => {
-            setField('total', e.target.value)
+          onChange={(v) => {
+            setField('total', v)
           }}
+          placeholder="Total original (R$)"
         />
-        <input
-          placeholder="Restante (R$)"
+        <CurrencyInput
           value={form.remaining}
-          onChange={(e) => {
-            setField('remaining', e.target.value)
+          onChange={(v) => {
+            setField('remaining', v)
           }}
+          placeholder="Restante (R$)"
         />
         <input
           placeholder="Juros a.m. (%)"
@@ -818,12 +814,12 @@ function LoanForm({ form, setField, onSave, onCancel, isEditing }: LoanFormProps
             setField('rate', e.target.value)
           }}
         />
-        <input
-          placeholder="Valor da parcela (R$)"
+        <CurrencyInput
           value={form.installment}
-          onChange={(e) => {
-            setField('installment', e.target.value)
+          onChange={(v) => {
+            setField('installment', v)
           }}
+          placeholder="Valor da parcela (R$)"
         />
         <input
           type="date"
