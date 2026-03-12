@@ -1,0 +1,20 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Geral
+.DS_Store
+*.env
+.env.*
