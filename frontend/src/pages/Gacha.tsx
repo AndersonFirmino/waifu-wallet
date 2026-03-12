@@ -135,8 +135,8 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
 
   // Carousel state
   const allImages: string[] = [
-    ...banner.images.map((img) => img.url),
-    ...(banner.images.length === 0 && banner.image_url != null ? [banner.image_url] : []),
+    ...(banner.image_url != null ? [banner.image_url] : []),
+    ...banner.images.filter((img) => img.url !== banner.image_url).map((img) => img.url),
   ]
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -338,6 +338,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                 height: '100%',
                 objectFit: 'cover',
                 display: 'block',
+                animation: allImages.length > 1 ? 'carouselFadeIn 0.6s ease' : undefined,
               }}
             />
           ) : (
@@ -795,6 +796,10 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               </span>
               <span>
                 <span style={{ color: 'var(--color-muted)' }}>📅 </span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                  {banner.start_date.split('-').slice(1).reverse().join('/')}
+                </span>
+                <span style={{ color: 'var(--color-muted)', margin: '0 3px' }}>→</span>
                 <span
                   style={{
                     fontWeight: 600,
@@ -806,7 +811,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                           : 'var(--color-text)',
                   }}
                 >
-                  {banner.end_date.split('-').slice(1).join('/').replace('-', '/')}
+                  {banner.end_date.split('-').slice(1).reverse().join('/')}
                 </span>
               </span>
             </div>
@@ -1111,6 +1116,13 @@ export default function Gacha() {
           ))}
         </div>
       )}
+
+      <style>{`
+        @keyframes carouselFadeIn {
+          0% { opacity: 0; transform: scale(1.04); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   )
 }
