@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Card from './ui/Card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,12 +50,14 @@ function nodeEmoji(type: TimelineEventType): string {
 }
 
 function nodeSize(type: TimelineEventType): number {
-  return type === 'today' ? 14 : 10
+  return type === 'today' ? 18 : 10
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
   if (events.length === 0) {
     return (
       <Card className="mb-6">
@@ -80,12 +83,14 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
 
   const todayEvent = sortedEvents.find((e) => e.type === 'today')
   const todayTime = todayEvent ? todayEvent.date.getTime() : startTime
-  const todayPct = totalSpan > 0 ? ((todayTime - startTime) / totalSpan) * 100 : 0
+  const rawTodayPct = totalSpan > 0 ? ((todayTime - startTime) / totalSpan) * 100 : 0
+  const todayPct = 4 + (rawTodayPct * 92) / 100
 
   // Min spacing: nodes within 2% are considered overlapping — alternate above/below
   const getPosition = (d: Date): number => {
-    if (totalSpan === 0) return 0
-    return ((d.getTime() - startTime) / totalSpan) * 100
+    if (totalSpan === 0) return 50
+    const raw = ((d.getTime() - startTime) / totalSpan) * 100
+    return 4 + (raw * 92) / 100
   }
 
   // Assign label side: alternate above (even index) / below (odd index) for non-today nodes
@@ -95,15 +100,15 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
     return i % 2 === 0 ? ('above' as const) : ('below' as const)
   })
 
-  // Heights for top/bottom sections (enough space for labels)
-  const TRACK_TOP = 80    // px from top of inner area to track line
+  // Heights for top/bottom sections (labels only — images moved to tooltips)
+  const TRACK_TOP = 180   // px from top — enough space for tooltip above
   const TRACK_HEIGHT = 4  // px
   const BOTTOM_HEIGHT = 80 // px below track for bottom labels
 
   const totalHeight = TRACK_TOP + TRACK_HEIGHT + BOTTOM_HEIGHT
 
   return (
-    <Card className="mb-6" style={{ overflow: 'hidden' }}>
+    <Card className="mb-6">
       <div className="flex items-center gap-2 mb-4">
         <span style={{ fontSize: 16 }}>🗺️</span>
         <span className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
@@ -125,8 +130,8 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
             style={{
               position: 'absolute',
               top: TRACK_TOP,
-              left: 0,
-              right: 0,
+              left: '4%',
+              right: '4%',
               height: TRACK_HEIGHT,
               backgroundColor: 'var(--color-border)',
               borderRadius: 2,
@@ -138,8 +143,8 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
             style={{
               position: 'absolute',
               top: TRACK_TOP,
-              left: 0,
-              width: String(Math.max(0, Math.min(100, todayPct))) + '%',
+              left: '4%',
+              width: String(Math.max(0, todayPct - 4)) + '%',
               height: TRACK_HEIGHT,
               background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
               borderRadius: 2,
@@ -161,57 +166,29 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
                 style={{
                   position: 'absolute',
                   left: String(pct) + '%',
+                  top: 0,
                   transform: 'translateX(-50%)',
+                  width: 80,
+                  height: totalHeight,
+                  cursor: 'pointer',
                 }}
+                onMouseEnter={() => { setHoveredIndex(i) }}
+                onMouseLeave={() => { setHoveredIndex(null) }}
               >
-                {/* Image (gacha with imageUrl) — positioned above track */}
-                {ev.type === 'gacha' && ev.imageUrl && side === 'above' && (
+                {/* Vertical line for today */}
+                {isToday && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: nodeTop - 48,
+                      top: 0,
                       left: '50%',
                       transform: 'translateX(-50%)',
+                      width: 2,
+                      height: totalHeight,
+                      background: `linear-gradient(180deg, transparent 0%, ${color}88 30%, ${color}88 70%, transparent 100%)`,
+                      zIndex: 1,
                     }}
-                  >
-                    <img
-                      src={ev.imageUrl}
-                      alt={ev.label}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        border: `2px solid ${color}`,
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Image (gacha with imageUrl) — positioned below track */}
-                {ev.type === 'gacha' && ev.imageUrl && side === 'below' && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: nodeTop + size + 24,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                    }}
-                  >
-                    <img
-                      src={ev.imageUrl}
-                      alt={ev.label}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        border: `2px solid ${color}`,
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                  </div>
+                  />
                 )}
 
                 {/* Node dot */}
@@ -221,40 +198,118 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
                     top: nodeTop,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: size,
-                    height: size,
+                    width: hoveredIndex === i ? size + 4 : size,
+                    height: hoveredIndex === i ? size + 4 : size,
                     borderRadius: '50%',
                     backgroundColor: color,
-                    boxShadow: isToday ? `0 0 0 3px ${color}33` : undefined,
+                    boxShadow: isToday
+                      ? `0 0 8px ${color}, 0 0 0 4px ${color}44`
+                      : hoveredIndex === i
+                        ? `0 0 8px ${color}, 0 0 0 3px ${color}33`
+                        : undefined,
                     animation: isToday ? 'pulse 2s ease-in-out infinite' : undefined,
                     zIndex: 2,
+                    transition: 'width 0.15s ease, height 0.15s ease, box-shadow 0.15s ease',
                   }}
                 />
+
+                {/* Tooltip */}
+                {hoveredIndex === i && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: totalHeight - TRACK_TOP + 14,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 20,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: 'var(--color-surface)',
+                        border: `1px solid ${color}44`,
+                        borderRadius: 12,
+                        padding: 12,
+                        boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${color}22`,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        minWidth: 100,
+                      }}
+                    >
+                      {ev.imageUrl ? (
+                        <img
+                          src={ev.imageUrl}
+                          alt={ev.label}
+                          style={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: 10,
+                            border: `2px solid ${color}`,
+                            objectFit: 'cover',
+                            objectPosition: 'top center',
+                            display: 'block',
+                            margin: '0 auto 8px',
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 32, lineHeight: 1, marginBottom: 8 }}>
+                          {nodeEmoji(ev.type)}
+                        </div>
+                      )}
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: color, marginBottom: 2 }}
+                      >
+                        {ev.label}
+                      </div>
+                      {ev.sublabel && (
+                        <div className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          {ev.sublabel}
+                        </div>
+                      )}
+                      <div
+                        className="text-xs"
+                        style={{ color: 'var(--color-muted)', marginTop: 2 }}
+                      >
+                        {formatShortDate(ev.date)}
+                      </div>
+                    </div>
+                    {/* Arrow pointing down */}
+                    <div
+                      style={{
+                        width: 0,
+                        height: 0,
+                        borderLeft: '6px solid transparent',
+                        borderRight: '6px solid transparent',
+                        borderTop: `6px solid ${color}44`,
+                        margin: '0 auto',
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Label — above track */}
                 {side === 'above' && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: 0,
+                      bottom: BOTTOM_HEIGHT + TRACK_HEIGHT + 10,
                       left: '50%',
                       transform: 'translateX(-50%)',
                       textAlign: 'center',
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {ev.type !== 'gacha' || !ev.imageUrl ? (
-                      <div style={{ fontSize: 14, lineHeight: 1 }}>{nodeEmoji(ev.type)}</div>
-                    ) : null}
+                    <div style={{ fontSize: 14, lineHeight: 1 }}>{nodeEmoji(ev.type)}</div>
                     <div
                       className="text-xs font-medium"
                       style={{
                         color: color,
                         marginTop: 2,
-                        maxWidth: 90,
+                        maxWidth: 140,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
                       }}
                     >
                       {ev.label}
@@ -282,18 +337,15 @@ export default function TimelineRoadmap({ events }: TimelineRoadmapProps) {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {ev.type !== 'gacha' || !ev.imageUrl ? (
-                      <div style={{ fontSize: 14, lineHeight: 1 }}>{nodeEmoji(ev.type)}</div>
-                    ) : null}
+                    <div style={{ fontSize: 14, lineHeight: 1 }}>{nodeEmoji(ev.type)}</div>
                     <div
                       className="text-xs font-medium"
                       style={{
-                        color: isToday ? color : color,
+                        color: color,
                         marginTop: 2,
-                        maxWidth: 90,
+                        maxWidth: 140,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
                       }}
                     >
                       {ev.label}

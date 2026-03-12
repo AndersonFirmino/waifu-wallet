@@ -145,9 +145,21 @@ class GachaBannerCreate(BaseModel):
     image_url: str | None = None
 
 
+class GachaBannerImageCreate(BaseModel):
+    url: str
+    sort_order: int = 0
+
+
+class GachaBannerImageOut(GachaBannerImageCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    banner_id: int
+
+
 class GachaBannerOut(GachaBannerCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    images: list[GachaBannerImageOut] = []
 
 
 class PullsUpdate(BaseModel):

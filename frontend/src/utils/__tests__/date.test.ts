@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   formatMonth,
   formatMonthShort,
   formatDate,
   formatDateShort,
+  formatDateRange,
   getDaysInMonth,
   getFirstDayOfMonth,
   daysUntil,
@@ -79,6 +80,20 @@ describe('formatDateShort', () => {
   })
 })
 
+describe('formatDateRange', () => {
+  it('formats a date range with PT-BR month abbreviations', () => {
+    expect(formatDateRange('2026-04-21', '2026-05-13')).toBe('21/abr → 13/mai')
+  })
+
+  it('handles same-month range', () => {
+    expect(formatDateRange('2026-03-01', '2026-03-15')).toBe('01/mar → 15/mar')
+  })
+
+  it('handles cross-year range', () => {
+    expect(formatDateRange('2025-12-20', '2026-01-10')).toBe('20/dez → 10/jan')
+  })
+})
+
 describe('getDaysInMonth', () => {
   it('January has 31 days', () => {
     expect(getDaysInMonth(2026, 0)).toBe(31)
@@ -106,57 +121,55 @@ describe('getDaysInMonth', () => {
 })
 
 describe('getFirstDayOfMonth', () => {
-  // January 1, 2026 = Thursday = 4
   it('January 2026 starts on Thursday (4)', () => {
     expect(getFirstDayOfMonth(2026, 0)).toBe(4)
   })
 
-  // February 1, 2026 = Sunday = 0
   it('February 2026 starts on Sunday (0)', () => {
     expect(getFirstDayOfMonth(2026, 1)).toBe(0)
   })
 
-  // March 1, 2026 = Sunday = 0
   it('March 2026 starts on Sunday (0)', () => {
     expect(getFirstDayOfMonth(2026, 2)).toBe(0)
   })
 
-  // April 1, 2026 = Wednesday = 3
   it('April 2026 starts on Wednesday (3)', () => {
     expect(getFirstDayOfMonth(2026, 3)).toBe(3)
   })
 })
 
 describe('daysUntil', () => {
-  // Fake "today" hardcoded as March 11, 2026 in the source function.
-  // Note: the function uses new Date(2026, 2, 11) (local time) vs
-  // new Date(dateStr) (UTC). Results are ±1 in extreme UTC+ timezones.
-
-  it('returns positive for a clearly future date', () => {
-    expect(daysUntil('2026-06-11')).toBeGreaterThan(0)
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 2, 12))
   })
 
-  it('returns negative for a clearly past date', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns positive for a future date', () => {
+    expect(daysUntil('2026-06-12')).toBeGreaterThan(0)
+  })
+
+  it('returns negative for a past date', () => {
     expect(daysUntil('2025-01-01')).toBeLessThan(0)
   })
 
-  it('returns 15 for March 26 (UTC and UTC-3 both yield 15)', () => {
-    expect(daysUntil('2026-03-26')).toBe(15)
+  it('returns 14 for March 26 from March 12', () => {
+    expect(daysUntil('2026-03-26')).toBe(14)
   })
 
-  it('returns 1 for March 12 (one day after fake today)', () => {
-    expect(daysUntil('2026-03-12')).toBe(1)
+  it('returns 40 for April 21 from March 12', () => {
+    expect(daysUntil('2026-04-21')).toBe(40)
   })
 
-  it('returns 0 or 1 for the fake today itself (value is timezone-dependent for same-day UTC strings)', () => {
-    // new Date(2026, 2, 11) uses local time; new Date('2026-03-11') uses UTC.
-    // In UTC-3 (Brazil): diff = -3h → Math.ceil(-0.125) = 0
-    // In UTC+N (N>0):   diff = +N h → Math.ceil(N/24) = 1
-    const result = daysUntil('2026-03-11')
+  it('returns 0 or 1 for today itself (timezone-dependent)', () => {
+    const result = daysUntil('2026-03-12')
     expect(result === 0 || result === 1).toBe(true)
   })
 
-  it('returns -1 for March 10 (day before fake today)', () => {
-    expect(daysUntil('2026-03-10')).toBe(-1)
+  it('returns -1 for yesterday', () => {
+    expect(daysUntil('2026-03-11')).toBe(-1)
   })
 })

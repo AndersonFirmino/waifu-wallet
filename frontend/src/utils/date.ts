@@ -46,9 +46,21 @@ export function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay()
 }
 
-// Fake "today" = March 11, 2026
 export function daysUntil(dateStr: string): number {
-  const today = new Date(2026, 2, 11)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const target = new Date(dateStr)
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+const MONTHS_SHORT_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
+
+export function formatDateRange(startStr: string, endStr: string): string {
+  const startParts = startStr.split('-')
+  const endParts = endStr.split('-')
+  const startMonth = MONTHS_SHORT_PT[parseInt(startParts[1] ?? '1', 10) - 1] ?? ''
+  const endMonth = MONTHS_SHORT_PT[parseInt(endParts[1] ?? '1', 10) - 1] ?? ''
+  const startDay = startParts[2] ?? ''
+  const endDay = endParts[2] ?? ''
+  return `${startDay}/${startMonth} → ${endDay}/${endMonth}`
 }

@@ -12,6 +12,7 @@ import type {
   CardStatus,
   Note,
   GachaBanner,
+  GachaBannerImage,
   GachaPriority,
   CalendarEvent,
   CalendarEventType,
@@ -231,6 +232,16 @@ export function decodeNoteList(raw: unknown): Note[] {
   return arr(raw, 'notes').map(decodeNote)
 }
 
+function decodeGachaBannerImage(raw: unknown): GachaBannerImage {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    banner_id: num(raw.banner_id, 'banner_id'),
+    url: str(raw.url, 'url'),
+    sort_order: num(raw.sort_order, 'sort_order'),
+  }
+}
+
 export function decodeGachaBanner(raw: unknown): GachaBanner {
   assertRecord(raw)
   return {
@@ -243,6 +254,7 @@ export function decodeGachaBanner(raw: unknown): GachaBanner {
     priority: asGachaPriority(raw.priority),
     pulls: num(raw.pulls, 'pulls'),
     image_url: nullableStr(raw.image_url, 'image_url'),
+    images: Array.isArray(raw.images) ? arr(raw.images, 'images').map(decodeGachaBannerImage) : [],
   }
 }
 

@@ -235,12 +235,13 @@ function buildTimelineEvents(
       const startDate = new Date(banner.start_date + 'T00:00:00')
       if (startDate <= threeMonthsLater) {
         const truncatedLabel = banner.banner.length > 20 ? banner.banner.slice(0, 18) + '\u2026' : banner.banner
+        const bannerImage = banner.images[0]?.url ?? banner.image_url ?? undefined
         collected.push({
           date: startDate,
           label: truncatedLabel,
           sublabel: formatCurrency(banner.cost),
           type: 'gacha',
-          imageUrl: banner.image_url ?? undefined,
+          imageUrl: bannerImage,
         })
       }
     }

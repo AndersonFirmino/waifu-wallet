@@ -126,6 +126,21 @@ class GachaBanner(Base):
     pulls: Mapped[int] = mapped_column(Integer, default=0)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
 
+    images: Mapped[list[GachaBannerImage]] = relationship(
+        back_populates="banner", cascade="all, delete-orphan", order_by="GachaBannerImage.sort_order"
+    )
+
+
+class GachaBannerImage(Base):
+    __tablename__ = "gacha_banner_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    banner_id: Mapped[int] = mapped_column(ForeignKey("gacha_banners.id"))
+    url: Mapped[str] = mapped_column(String(500))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    banner: Mapped[GachaBanner] = relationship(back_populates="images")
+
 
 class SavingsAccount(Base):
     __tablename__ = "savings_accounts"

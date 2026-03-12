@@ -191,6 +191,13 @@ export type ForecastPeriod = '1m' | '3m' | '6m'
 
 export type GachaPriority = 1 | 2 | 3 | 4 | 5
 
+export interface GachaBannerImage {
+  id: number
+  banner_id: number
+  url: string
+  sort_order: number
+}
+
 export interface GachaBanner {
   id: number
   game: string
@@ -201,6 +208,7 @@ export interface GachaBanner {
   priority: GachaPriority
   pulls: number
   image_url: string | null
+  images: GachaBannerImage[]
 }
 
 // ─── Salary Plan ──────────────────────────────────────────────────────────────
