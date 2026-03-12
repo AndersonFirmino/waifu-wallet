@@ -24,6 +24,7 @@ interface FormState {
   increment_interval_months: string
   next_increment_date: string
   split_enabled: boolean
+  split_start_date: string
   split_first_pct: string
   split_first_day: string
   split_second_pct: string
@@ -39,6 +40,7 @@ const EMPTY_FORM: FormState = {
   increment_interval_months: '12',
   next_increment_date: '',
   split_enabled: false,
+  split_start_date: '',
   split_first_pct: '100',
   split_first_day: '5',
   split_second_pct: '0',
@@ -55,6 +57,7 @@ function planToForm(plan: SalaryPlan): FormState {
     increment_interval_months: String(plan.increment_interval_months),
     next_increment_date: plan.next_increment_date,
     split_enabled: plan.split_enabled,
+    split_start_date: plan.split_start_date ?? '',
     split_first_pct: String(plan.split_first_pct),
     split_first_day: String(plan.split_first_day),
     split_second_pct: String(plan.split_second_pct),
@@ -100,6 +103,7 @@ function buildPayload(form: FormState): Record<string, unknown> {
     increment_interval_months: parseInt(form.increment_interval_months, 10),
     next_increment_date: form.next_increment_date,
     split_enabled: splitEnabled,
+    split_start_date: splitEnabled && form.split_start_date !== '' ? form.split_start_date : null,
     split_first_pct: splitEnabled ? parseFloat(form.split_first_pct) : 100,
     split_first_day: parseInt(form.split_first_day, 10),
     split_second_pct: splitEnabled ? parseFloat(form.split_second_pct) : 0,
@@ -203,6 +207,10 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
   const splitLabel = plan.split_enabled
     ? `${String(plan.split_first_pct)}% dia ${String(plan.split_first_day)} / ${String(plan.split_second_pct)}% dia ${String(plan.split_second_day)}`
     : `100% dia ${String(plan.split_first_day)}`
+  const splitStartLabel =
+    plan.split_enabled && plan.split_start_date !== null
+      ? `Split a partir de ${plan.split_start_date}`
+      : null
 
   return (
     <Card>
@@ -227,6 +235,11 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
               📆 {splitLabel}
             </p>
+            {splitStartLabel !== null && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                🗓 {splitStartLabel}
+              </p>
+            )}
           </div>
         </div>
 
@@ -538,6 +551,26 @@ function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCa
               {form.split_enabled ? 'Dois pagamentos' : 'Pagamento único'}
             </span>
           </div>
+
+          {/* Split start date — only when split is enabled */}
+          {form.split_enabled && (
+            <div className="mb-3">
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                Split válido a partir de (mês/ano)
+              </label>
+              <input
+                type="date"
+                value={form.split_start_date}
+                onChange={(e) => {
+                  onChange({ split_start_date: e.target.value })
+                }}
+                placeholder="Deixe vazio para sempre"
+              />
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                Antes dessa data o pagamento é integral no 1º dia. Deixe vazio para aplicar desde sempre.
+              </p>
+            </div>
+          )}
 
           {/* Split fields */}
           <div className="grid grid-cols-2 gap-3">

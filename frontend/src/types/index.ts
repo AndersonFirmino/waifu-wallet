@@ -213,6 +213,7 @@ export interface SalaryPlan {
   increment_interval_months: number
   next_increment_date: string
   split_enabled: boolean
+  split_start_date: string | null
   split_first_pct: number
   split_first_day: number
   split_second_pct: number

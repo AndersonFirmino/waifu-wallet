@@ -43,12 +43,26 @@ interface NextPayday {
   label: string
 }
 
+function isSplitActiveForDate(plan: SalaryPlan, d: Date): boolean {
+  if (!plan.split_enabled) return false
+  if (plan.split_start_date === null) return true
+  // Compare year-month only
+  const splitParts = plan.split_start_date.split('-')
+  const splitYear = parseInt(splitParts[0] ?? '0', 10)
+  const splitMonth = parseInt(splitParts[1] ?? '1', 10) - 1 // 0-indexed
+  const dYear = d.getFullYear()
+  const dMonth = d.getMonth()
+  return dYear > splitYear || (dYear === splitYear && dMonth >= splitMonth)
+}
+
 function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
   const todayDay = today.getDate()
   const todayMonth = today.getMonth()
   const todayYear = today.getFullYear()
 
-  if (plan.split_enabled) {
+  const splitActive = isSplitActiveForDate(plan, today)
+
+  if (splitActive) {
     const firstDay = plan.split_first_day
     const secondDay = plan.split_second_day
     const firstAmount = Math.round(plan.current_salary * (plan.split_first_pct / 100) * 100) / 100
@@ -106,7 +120,9 @@ function computePaydayProgress(plan: SalaryPlan, today: Date): { value: number; 
   const todayMonth = today.getMonth()
   const todayYear = today.getFullYear()
 
-  if (plan.split_enabled) {
+  const splitActive = isSplitActiveForDate(plan, today)
+
+  if (splitActive) {
     const firstDay = plan.split_first_day
     const secondDay = plan.split_second_day
 

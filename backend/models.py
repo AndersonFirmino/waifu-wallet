@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
+from datetime import date
+
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -147,6 +149,7 @@ class SalaryPlan(Base):
     increment_interval_months: Mapped[int] = mapped_column(Integer)
     next_increment_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
     split_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    split_start_date: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
     split_first_pct: Mapped[int] = mapped_column(Integer, default=100)
     split_first_day: Mapped[int] = mapped_column(Integer, default=5)
     split_second_pct: Mapped[int] = mapped_column(Integer, default=0)

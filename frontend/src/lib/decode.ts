@@ -345,6 +345,7 @@ export function decodeSalaryPlan(raw: unknown): SalaryPlan {
     increment_interval_months: num(raw.increment_interval_months, 'increment_interval_months'),
     next_increment_date: str(raw.next_increment_date, 'next_increment_date'),
     split_enabled: bool(raw.split_enabled, 'split_enabled'),
+    split_start_date: nullableStr(raw.split_start_date, 'split_start_date'),
     split_first_pct: num(raw.split_first_pct, 'split_first_pct'),
     split_first_day: num(raw.split_first_day, 'split_first_day'),
     split_second_pct: num(raw.split_second_pct, 'split_second_pct'),

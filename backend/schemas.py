@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict
 
 # ─── Transaction ──────────────────────────────────────────────────────────────
@@ -181,6 +183,7 @@ class SalaryPlanCreate(BaseModel):
     increment_interval_months: int
     next_increment_date: str
     split_enabled: bool
+    split_start_date: date | None = None
     split_first_pct: int
     split_first_day: int
     split_second_pct: int

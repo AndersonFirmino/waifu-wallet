@@ -106,9 +106,16 @@ def get_salary_schedule(
             current_salary = min(current_salary + increment, target_salary)
             next_increment = _add_months(next_increment, interval)
 
+        # Determine whether split applies for this month.
+        # If split_start_date is set, the split only takes effect from that month onward.
+        split_active = plan.split_enabled
+        if split_active and plan.split_start_date is not None:
+            split_start_month = date(plan.split_start_date.year, plan.split_start_date.month, 1)
+            split_active = cursor_month_start >= split_start_month
+
         # Build payments
         payments: list[SalarySchedulePayment] = []
-        if plan.split_enabled:
+        if split_active:
             first_amount = round(current_salary * plan.split_first_pct / 100, 2)
             second_amount = round(current_salary * plan.split_second_pct / 100, 2)
             payments.append(SalarySchedulePayment(
