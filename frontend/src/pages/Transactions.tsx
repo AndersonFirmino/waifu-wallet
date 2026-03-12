@@ -5,60 +5,10 @@ import Button from '../components/ui/Button'
 import StatCard from '../components/ui/StatCard'
 import { formatCurrency } from '../utils/currency'
 import { type Transaction, type TransactionType } from '../types'
+import { useFetch } from '../hooks/useApi'
+import { decodeTransaction, decodeTransactionList } from '../lib/decode'
 
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const FAKE_TRANSACTIONS: Transaction[] = [
-  { id: 1, tipo: 'receita', desc: 'Salário', categoria: 'Trabalho', emoji: '💼', valor: 6500, data: '2026-03-05' },
-  { id: 2, tipo: 'despesa', desc: 'Aluguel', categoria: 'Moradia', emoji: '🏠', valor: 1500, data: '2026-03-05' },
-  { id: 3, tipo: 'despesa', desc: 'Condomínio', categoria: 'Moradia', emoji: '🏗️', valor: 320, data: '2026-03-05' },
-  { id: 4, tipo: 'despesa', desc: 'Conta de Luz', categoria: 'Contas', emoji: '💡', valor: 145, data: '2026-03-07' },
-  { id: 5, tipo: 'despesa', desc: 'Internet', categoria: 'Contas', emoji: '📡', valor: 120, data: '2026-03-07' },
-  { id: 6, tipo: 'despesa', desc: 'Plano de Saúde', categoria: 'Saúde', emoji: '🏥', valor: 280, data: '2026-03-07' },
-  {
-    id: 7,
-    tipo: 'despesa',
-    desc: 'Supermercado',
-    categoria: 'Alimentação',
-    emoji: '🛒',
-    valor: 280,
-    data: '2026-03-08',
-  },
-  { id: 8, tipo: 'despesa', desc: 'Farmácia', categoria: 'Saúde', emoji: '💊', valor: 85, data: '2026-03-09' },
-  { id: 9, tipo: 'despesa', desc: 'Uber', categoria: 'Transporte', emoji: '🚗', valor: 35, data: '2026-03-09' },
-  { id: 10, tipo: 'despesa', desc: 'Netflix', categoria: 'Lazer', emoji: '🎬', valor: 55.9, data: '2026-03-10' },
-  { id: 11, tipo: 'despesa', desc: 'Spotify', categoria: 'Lazer', emoji: '🎵', valor: 22.9, data: '2026-03-10' },
-  {
-    id: 12,
-    tipo: 'despesa',
-    desc: 'Restaurante',
-    categoria: 'Alimentação',
-    emoji: '🍽️',
-    valor: 95,
-    data: '2026-03-10',
-  },
-  {
-    id: 13,
-    tipo: 'despesa',
-    desc: 'Mercado Extra',
-    categoria: 'Alimentação',
-    emoji: '🛒',
-    valor: 148,
-    data: '2026-03-11',
-  },
-  {
-    id: 14,
-    tipo: 'receita',
-    desc: 'Freelance',
-    categoria: 'Renda Extra',
-    emoji: '💻',
-    valor: 1000,
-    data: '2026-03-11',
-  },
-  { id: 15, tipo: 'despesa', desc: 'Gasolina', categoria: 'Transporte', emoji: '⛽', valor: 120, data: '2026-03-11' },
-]
-
-const CATEGORIAS = [
+const CATEGORIES = [
   'Todas',
   'Trabalho',
   'Renda Extra',
@@ -70,61 +20,76 @@ const CATEGORIAS = [
   'Contas',
 ]
 
-type FilterType = 'todas' | TransactionType
+type FilterType = 'all' | TransactionType
 
-const TRANSACTION_TYPES: TransactionType[] = ['receita', 'despesa']
-const FILTER_TYPES: FilterType[] = ['todas', 'receita', 'despesa']
+const TRANSACTION_TYPES: TransactionType[] = ['income', 'expense']
+const FILTER_TYPES: FilterType[] = ['all', 'income', 'expense']
 
 interface FormState {
-  tipo: TransactionType
-  valor: string
-  desc: string
-  categoria: string
-  data: string
+  type: TransactionType
+  amount: string
+  description: string
+  category: string
+  date: string
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Transactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>(FAKE_TRANSACTIONS)
-  const [filter, setFilter] = useState<FilterType>('todas')
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data: serverData } = useFetch('/transactions/', decodeTransactionList)
+  const [additions, setAdditions] = useState<Transaction[]>([])
+  const [deletedIds, setDeletedIds] = useState<number[]>([])
+  const [filter, setFilter] = useState<FilterType>('all')
   const [catFilter, setCatFilter] = useState('Todas')
   const [form, setForm] = useState<FormState>({
-    tipo: 'despesa',
-    valor: '',
-    desc: '',
-    categoria: 'Alimentação',
-    data: '2026-03-11',
+    type: 'expense',
+    amount: '',
+    description: '',
+    category: 'Alimentação',
+    date: today,
   })
 
+  const transactions = [...additions, ...(serverData ?? []).filter((t) => !deletedIds.includes(t.id))]
+
   const filtered = transactions.filter((t) => {
-    const typeOk = filter === 'todas' || t.tipo === filter
-    const catOk = catFilter === 'Todas' || t.categoria === catFilter
+    const typeOk = filter === 'all' || t.type === filter
+    const catOk = catFilter === 'Todas' || t.category === catFilter
     return typeOk && catOk
   })
 
-  const totalReceitas = transactions.filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0)
-  const totalDespesas = transactions.filter((t) => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0)
-  const saldo = totalReceitas - totalDespesas
+  const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+  const totalExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const balance = totalIncome - totalExpenses
 
-  const handleAdd = () => {
-    const valor = parseFloat(form.valor.replace(',', '.'))
-    if (!form.desc || isNaN(valor) || valor <= 0) return
-    const next: Transaction = {
-      id: Date.now(),
-      tipo: form.tipo,
-      desc: form.desc,
-      categoria: form.categoria,
-      emoji: form.tipo === 'receita' ? '💰' : '💸',
-      valor,
-      data: form.data,
+  const handleAdd = async () => {
+    const amount = parseFloat(form.amount.replace(',', '.'))
+    if (!form.description || isNaN(amount) || amount <= 0) return
+    const body = {
+      type: form.type,
+      description: form.description,
+      category: form.category,
+      emoji: form.type === 'income' ? '💰' : '💸',
+      amount,
+      date: form.date,
     }
-    setTransactions((prev) => [next, ...prev])
-    setForm((f) => ({ ...f, valor: '', desc: '' }))
+    const r = await fetch('/api/v1/transactions/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) return
+    const raw: unknown = await r.json()
+    const created = decodeTransaction(raw)
+    setAdditions((prev) => [created, ...prev])
+    setForm((f) => ({ ...f, amount: '', description: '' }))
   }
 
-  const handleRemove = (id: number) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id))
+  const handleRemove = async (id: number) => {
+    await fetch(`/api/v1/transactions/${String(id)}`, { method: 'DELETE' })
+    setAdditions((prev) => prev.filter((t) => t.id !== id))
+    setDeletedIds((prev) => [...prev, id])
   }
 
   return (
@@ -133,14 +98,14 @@ export default function Transactions() {
         Transações
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
-        Março de 2026
+        Todas as transações
       </p>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <StatCard icon="📈" label="Receitas" value={formatCurrency(totalReceitas)} color="green" />
-        <StatCard icon="📉" label="Despesas" value={formatCurrency(totalDespesas)} color="red" />
-        <StatCard icon="💰" label="Saldo" value={formatCurrency(saldo)} color={saldo >= 0 ? 'blue' : 'red'} />
+        <StatCard icon="📈" label="Receitas" value={formatCurrency(totalIncome)} color="green" />
+        <StatCard icon="📉" label="Despesas" value={formatCurrency(totalExpenses)} color="red" />
+        <StatCard icon="💰" label="Saldo" value={formatCurrency(balance)} color={balance >= 0 ? 'blue' : 'red'} />
       </div>
 
       {/* Add Form */}
@@ -149,7 +114,7 @@ export default function Transactions() {
           Nova Transação
         </h3>
         <div className="flex gap-3 flex-wrap">
-          {/* Toggle Tipo */}
+          {/* Toggle Type */}
           <div
             className="flex rounded-lg overflow-hidden border"
             style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
@@ -158,46 +123,46 @@ export default function Transactions() {
               <button
                 key={t}
                 onClick={() => {
-                  setForm((f) => ({ ...f, tipo: t }))
+                  setForm((f) => ({ ...f, type: t }))
                 }}
                 className="px-4 py-2 text-sm font-medium transition-colors"
                 style={{
                   background:
-                    form.tipo === t ? (t === 'receita' ? 'var(--color-green)' : 'var(--color-red)') : 'transparent',
-                  color: form.tipo === t ? '#fff' : 'var(--color-muted)',
+                    form.type === t ? (t === 'income' ? 'var(--color-green)' : 'var(--color-red)') : 'transparent',
+                  color: form.type === t ? '#fff' : 'var(--color-muted)',
                   border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                {t === 'receita' ? '+ Receita' : '− Despesa'}
+                {t === 'income' ? '+ Receita' : '− Despesa'}
               </button>
             ))}
           </div>
 
           <input
             placeholder="Valor (ex: 150,00)"
-            value={form.valor}
+            value={form.amount}
             onChange={(e) => {
-              setForm((f) => ({ ...f, valor: e.target.value }))
+              setForm((f) => ({ ...f, amount: e.target.value }))
             }}
             style={{ width: 160 }}
           />
           <input
             placeholder="Descrição"
-            value={form.desc}
+            value={form.description}
             onChange={(e) => {
-              setForm((f) => ({ ...f, desc: e.target.value }))
+              setForm((f) => ({ ...f, description: e.target.value }))
             }}
             style={{ flex: 1, minWidth: 180 }}
           />
           <select
-            value={form.categoria}
+            value={form.category}
             onChange={(e) => {
-              setForm((f) => ({ ...f, categoria: e.target.value }))
+              setForm((f) => ({ ...f, category: e.target.value }))
             }}
             style={{ width: 170 }}
           >
-            {CATEGORIAS.filter((c) => c !== 'Todas').map((c) => (
+            {CATEGORIES.filter((c) => c !== 'Todas').map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -205,13 +170,18 @@ export default function Transactions() {
           </select>
           <input
             type="date"
-            value={form.data}
+            value={form.date}
             onChange={(e) => {
-              setForm((f) => ({ ...f, data: e.target.value }))
+              setForm((f) => ({ ...f, date: e.target.value }))
             }}
             style={{ width: 150 }}
           />
-          <Button onClick={handleAdd} variant="primary">
+          <Button
+            onClick={() => {
+              void handleAdd()
+            }}
+            variant="primary"
+          >
             Adicionar
           </Button>
         </div>
@@ -234,7 +204,7 @@ export default function Transactions() {
                 cursor: 'pointer',
               }}
             >
-              {f === 'todas' ? 'Todas' : f === 'receita' ? 'Receitas' : 'Despesas'}
+              {f === 'all' ? 'Todas' : f === 'income' ? 'Receitas' : 'Despesas'}
             </button>
           ))}
         </div>
@@ -246,7 +216,7 @@ export default function Transactions() {
           }}
           style={{ width: 180 }}
         >
-          {CATEGORIAS.map((c) => (
+          {CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -277,18 +247,18 @@ export default function Transactions() {
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
                     style={{
-                      backgroundColor: tx.tipo === 'receita' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                      backgroundColor: tx.type === 'income' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
                     }}
                   >
                     {tx.emoji}
                   </div>
                   <div>
                     <p className="text-sm font-medium" style={{ color: 'var(--color-text)', margin: 0 }}>
-                      {tx.desc}
+                      {tx.description}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge color="gray" size="xs">
-                        {tx.categoria}
+                        {tx.category}
                       </Badge>
                     </div>
                   </div>
@@ -298,20 +268,20 @@ export default function Transactions() {
                     <p
                       className="text-sm font-bold"
                       style={{
-                        color: tx.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)',
+                        color: tx.type === 'income' ? 'var(--color-green)' : 'var(--color-red)',
                         margin: 0,
                       }}
                     >
-                      {tx.tipo === 'receita' ? '+' : '−'}
-                      {formatCurrency(tx.valor)}
+                      {tx.type === 'income' ? '+' : '−'}
+                      {formatCurrency(tx.amount)}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-muted)', margin: 0 }}>
-                      {tx.data.slice(8)}/{tx.data.slice(5, 7)}
+                      {tx.date.slice(8)}/{tx.date.slice(5, 7)}
                     </p>
                   </div>
                   <button
                     onClick={() => {
-                      handleRemove(tx.id)
+                      void handleRemove(tx.id)
                     }}
                     className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-opacity"
                     style={{

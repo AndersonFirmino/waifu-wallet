@@ -6,70 +6,14 @@ import Button from '../components/ui/Button'
 import { formatCurrency } from '../utils/currency'
 import { daysUntil, formatDateShort } from '../utils/date'
 import { type Debt, type Loan } from '../types'
+import { useFetch } from '../hooks/useApi'
+import { decodeDebtList, decodeLoanList } from '../lib/decode'
 
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const FAKE_DEBTS: Debt[] = [
-  {
-    id: 1,
-    nome: 'Cartão Nubank',
-    total: 5000,
-    restante: 2340,
-    taxa: 3.5,
-    vencimento: '2026-03-15',
-    parcelas: '8/20',
-    urgente: false,
-  },
-  {
-    id: 2,
-    nome: 'Cartão Santander',
-    total: 8000,
-    restante: 5600,
-    taxa: 4.2,
-    vencimento: '2026-03-13',
-    parcelas: '3/12',
-    urgente: true,
-  },
-  {
-    id: 3,
-    nome: 'Fatura C6 Bank',
-    total: 1200,
-    restante: 1200,
-    taxa: 0,
-    vencimento: '2026-03-20',
-    parcelas: '1/1',
-    urgente: false,
-  },
-]
-
-const FAKE_LOANS: Loan[] = [
-  {
-    id: 1,
-    nome: 'Empréstimo Pessoal Itaú',
-    total: 15000,
-    restante: 9800,
-    taxa: 2.1,
-    parcela: 850,
-    proximaParcela: '2026-03-20',
-    parcelas: '7/20',
-  },
-  {
-    id: 2,
-    nome: 'Financiamento Notebook',
-    total: 3600,
-    restante: 2400,
-    taxa: 1.8,
-    parcela: 300,
-    proximaParcela: '2026-03-25',
-    parcelas: '4/12',
-  },
-]
-
-type ActiveTab = 'dividas' | 'emprestimos'
+type ActiveTab = 'debts' | 'loans'
 
 const TABS: [ActiveTab, string][] = [
-  ['dividas', '💳 Dívidas'],
-  ['emprestimos', '🏦 Empréstimos'],
+  ['debts', '💳 Dívidas'],
+  ['loans', '🏦 Empréstimos'],
 ]
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -83,13 +27,20 @@ function urgencyLabel(days: number): { label: string; color: 'red' | 'yellow' | 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Debts() {
-  const [tab, setTab] = useState<ActiveTab>('dividas')
+  const [tab, setTab] = useState<ActiveTab>('debts')
 
-  const totalDevendo = FAKE_DEBTS.reduce((s, d) => s + d.restante, 0) + FAKE_LOANS.reduce((s, l) => s + l.restante, 0)
-  const jurosEstimado =
-    FAKE_DEBTS.reduce((s, d) => s + d.restante * (d.taxa / 100), 0) +
-    FAKE_LOANS.reduce((s, l) => s + l.restante * (l.taxa / 100), 0)
-  const totalAtivos = FAKE_DEBTS.length + FAKE_LOANS.length
+  const { data: fetchedDebts } = useFetch('/debts/', decodeDebtList)
+  const { data: fetchedLoans } = useFetch('/loans/', decodeLoanList)
+
+  const debts: Debt[] = fetchedDebts ?? []
+  const loans: Loan[] = fetchedLoans ?? []
+
+  const totalOwed =
+    debts.reduce((s, d) => s + d.remaining, 0) + loans.reduce((s, l) => s + l.remaining, 0)
+  const estimatedInterest =
+    debts.reduce((s, d) => s + d.remaining * (d.rate / 100), 0) +
+    loans.reduce((s, l) => s + l.remaining * (l.rate / 100), 0)
+  const totalActive = debts.length + loans.length
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
@@ -111,7 +62,7 @@ export default function Debts() {
             </p>
           </div>
           <Badge color="red" size="md">
-            {totalAtivos} obrigações ativas
+            {totalActive} obrigações ativas
           </Badge>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-5">
@@ -123,7 +74,7 @@ export default function Debts() {
               Total Devendo
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-red)' }}>
-              {formatCurrency(totalDevendo)}
+              {formatCurrency(totalOwed)}
             </p>
           </div>
           <div
@@ -134,7 +85,7 @@ export default function Debts() {
               Juros / Mês (est.)
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-orange)' }}>
-              {formatCurrency(jurosEstimado)}
+              {formatCurrency(estimatedInterest)}
             </p>
           </div>
           <div
@@ -145,7 +96,7 @@ export default function Debts() {
               Obrigações Ativas
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-yellow)' }}>
-              {totalAtivos}
+              {totalActive}
             </p>
           </div>
         </div>
@@ -176,12 +127,17 @@ export default function Debts() {
       </div>
 
       {/* Dívidas */}
-      {tab === 'dividas' && (
+      {tab === 'debts' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {FAKE_DEBTS.map((debt) => {
-            const days = daysUntil(debt.vencimento)
+          {debts.length === 0 && (
+            <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
+              Nenhuma dívida cadastrada
+            </p>
+          )}
+          {debts.map((debt) => {
+            const days = daysUntil(debt.due_date)
             const urgency = urgencyLabel(days)
-            const paidPct = Math.round(((debt.total - debt.restante) / debt.total) * 100)
+            const paidPct = Math.round(((debt.total - debt.remaining) / debt.total) * 100)
 
             return (
               <Card key={debt.id} hover>
@@ -189,9 +145,9 @@ export default function Debts() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold text-base" style={{ color: 'var(--color-text)' }}>
-                        {debt.nome}
+                        {debt.name}
                       </h4>
-                      {debt.urgente && (
+                      {debt.urgent && (
                         <Badge color="red" pulse>
                           ⚠ URGENTE
                         </Badge>
@@ -199,18 +155,18 @@ export default function Debts() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        Parcela {debt.parcelas}
+                        Parcela {debt.installments}
                       </span>
-                      {debt.taxa > 0 && (
+                      {debt.rate > 0 && (
                         <Badge color="orange" size="xs">
-                          {debt.taxa}% a.m.
+                          {debt.rate}% a.m.
                         </Badge>
                       )}
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
-                      {formatCurrency(debt.restante)}
+                      {formatCurrency(debt.remaining)}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                       de {formatCurrency(debt.total)}
@@ -219,17 +175,17 @@ export default function Debts() {
                 </div>
 
                 <ProgressBar
-                  value={debt.total - debt.restante}
+                  value={debt.total - debt.remaining}
                   max={debt.total}
                   color="auto"
                   height={10}
-                  label={`Pago: ${formatCurrency(debt.total - debt.restante)} (${String(paidPct)}%)`}
+                  label={`Pago: ${formatCurrency(debt.total - debt.remaining)} (${String(paidPct)}%)`}
                 />
 
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                      Vencimento: {formatDateShort(debt.vencimento)}
+                      Vencimento: {formatDateShort(debt.due_date)}
                     </span>
                     <Badge color={urgency.color} size="xs">
                       {urgency.label}
@@ -246,32 +202,37 @@ export default function Debts() {
       )}
 
       {/* Empréstimos */}
-      {tab === 'emprestimos' && (
+      {tab === 'loans' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {FAKE_LOANS.map((loan) => {
-            const days = daysUntil(loan.proximaParcela)
+          {loans.length === 0 && (
+            <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
+              Nenhum empréstimo cadastrado
+            </p>
+          )}
+          {loans.map((loan) => {
+            const days = daysUntil(loan.next_payment)
             const urgency = urgencyLabel(days)
-            const paidPct = Math.round(((loan.total - loan.restante) / loan.total) * 100)
+            const paidPct = Math.round(((loan.total - loan.remaining) / loan.total) * 100)
 
             return (
               <Card key={loan.id} hover>
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h4 className="font-semibold text-base mb-1" style={{ color: 'var(--color-text)' }}>
-                      🏦 {loan.nome}
+                      🏦 {loan.name}
                     </h4>
                     <div className="flex items-center gap-3">
                       <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        Parcela {loan.parcelas}
+                        Parcela {loan.installments}
                       </span>
                       <Badge color="orange" size="xs">
-                        {loan.taxa}% a.m.
+                        {loan.rate}% a.m.
                       </Badge>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
-                      {formatCurrency(loan.restante)}
+                      {formatCurrency(loan.remaining)}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                       restante de {formatCurrency(loan.total)}
@@ -280,7 +241,7 @@ export default function Debts() {
                 </div>
 
                 <ProgressBar
-                  value={loan.total - loan.restante}
+                  value={loan.total - loan.remaining}
                   max={loan.total}
                   color="auto"
                   height={10}
@@ -291,9 +252,9 @@ export default function Debts() {
                   <div>
                     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                       Próxima parcela:{' '}
-                      <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.parcela)}</strong>
+                      <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.installment)}</strong>
                       {' — '}
-                      {formatDateShort(loan.proximaParcela)}{' '}
+                      {formatDateShort(loan.next_payment)}{' '}
                       <Badge color={urgency.color} size="xs">
                         {urgency.label}
                       </Badge>

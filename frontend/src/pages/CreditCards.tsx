@@ -4,66 +4,8 @@ import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
 import { formatCurrency } from '../utils/currency'
 import { type CreditCard, type CardStatus } from '../types'
-
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const FAKE_CARDS: CreditCard[] = [
-  {
-    id: 1,
-    nome: 'Nubank Roxo',
-    bandeira: 'Mastercard',
-    final: '4531',
-    limite: 8000,
-    usado: 3240,
-    gradientFrom: '#7c3aed',
-    gradientTo: '#4c1d95',
-    fatura: 1240,
-    fechamento: 15,
-    vencimento: 22,
-    status: 'aberta',
-    historico: [
-      { mes: 'Jan', valor: 1450, status: 'paga' },
-      { mes: 'Fev', valor: 2100, status: 'paga' },
-      { mes: 'Mar', valor: 1240, status: 'aberta' },
-    ],
-    itens: [
-      { desc: 'Amazon Prime', valor: 21.9, data: '10/03' },
-      { desc: 'Restaurante Outback', valor: 187.5, data: '07/03' },
-      { desc: 'Uber Eats', valor: 52.9, data: '06/03' },
-      { desc: 'Steam — CS2 Skins', valor: 189.9, data: '05/03' },
-      { desc: 'iFood', valor: 78.8, data: '04/03' },
-      { desc: 'Assinatura Claude', valor: 115, data: '03/03' },
-      { desc: 'Magazine Luiza', valor: 594, data: '01/03' },
-    ],
-  },
-  {
-    id: 2,
-    nome: 'Itaú Gold',
-    bandeira: 'Visa',
-    final: '7892',
-    limite: 5000,
-    usado: 1843,
-    gradientFrom: '#d97706',
-    gradientTo: '#92400e',
-    fatura: 1843,
-    fechamento: 10,
-    vencimento: 17,
-    status: 'fechada',
-    historico: [
-      { mes: 'Jan', valor: 2200, status: 'paga' },
-      { mes: 'Fev', valor: 1900, status: 'paga' },
-      { mes: 'Mar', valor: 1843, status: 'fechada' },
-    ],
-    itens: [
-      { desc: 'Posto Ipiranga', valor: 280, data: '02/03' },
-      { desc: 'Supermercado Extra', valor: 320, data: '04/03' },
-      { desc: 'Farmácia Drogasil', valor: 85, data: '05/03' },
-      { desc: 'Renner — Camisa', valor: 158, data: '06/03' },
-      { desc: 'Rappi Market', valor: 142, data: '08/03' },
-      { desc: 'Decathlon', valor: 858, data: '09/03' },
-    ],
-  },
-]
+import { useFetch } from '../hooks/useApi'
+import { decodeCreditCardList } from '../lib/decode'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -74,7 +16,7 @@ interface CreditCardVisualProps {
 }
 
 function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
-  const usePct = Math.round((card.usado / card.limite) * 100)
+  const usedPct = Math.round((card.used / card.limit) * 100)
 
   return (
     <div onClick={onSelect} style={{ cursor: 'pointer' }}>
@@ -82,11 +24,11 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
       <div
         className="rounded-2xl p-5 mb-3 relative overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${card.gradientFrom}, ${card.gradientTo})`,
+          background: `linear-gradient(135deg, ${card.gradient_from}, ${card.gradient_to})`,
           outline: selected ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
           transition: 'outline 0.15s, transform 0.15s',
           transform: selected ? 'scale(1.02)' : 'scale(1)',
-          boxShadow: selected ? `0 8px 32px ${card.gradientFrom}55` : 'none',
+          boxShadow: selected ? `0 8px 32px ${card.gradient_from}55` : 'none',
         }}
       >
         {/* Pattern overlay */}
@@ -115,18 +57,20 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
 
         <div className="relative">
           <div className="flex justify-between items-start mb-6">
-            <p className="text-xl font-bold text-white">💵 {card.nome}</p>
-            <span className="text-white font-bold text-sm opacity-90">{card.bandeira}</span>
+            <p className="text-xl font-bold text-white">💵 {card.name}</p>
+            <span className="text-white font-bold text-sm opacity-90">{card.brand}</span>
           </div>
-          <p className="text-white font-mono tracking-widest text-base mb-5 opacity-85">**** **** **** {card.final}</p>
+          <p className="text-white font-mono tracking-widest text-base mb-5 opacity-85">
+            **** **** **** {card.last_four}
+          </p>
           <div className="flex justify-between items-end">
             <div>
               <p className="text-xs text-white opacity-60 mb-1">Limite disponível</p>
-              <p className="text-white font-bold">{formatCurrency(card.limite - card.usado)}</p>
+              <p className="text-white font-bold">{formatCurrency(card.limit - card.used)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-white opacity-60 mb-1">Limite total</p>
-              <p className="text-white font-semibold">{formatCurrency(card.limite)}</p>
+              <p className="text-white font-semibold">{formatCurrency(card.limit)}</p>
             </div>
           </div>
         </div>
@@ -136,24 +80,24 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
       <div className="px-1">
         <div className="flex justify-between text-xs mb-1">
           <span style={{ color: 'var(--color-muted)' }}>Uso do limite</span>
-          <span style={{ color: usePct > 70 ? 'var(--color-red)' : 'var(--color-green)' }}>
-            {formatCurrency(card.usado)} ({usePct}%)
+          <span style={{ color: usedPct > 70 ? 'var(--color-red)' : 'var(--color-green)' }}>
+            {formatCurrency(card.used)} ({usedPct}%)
           </span>
         </div>
-        <ProgressBar value={card.usado} max={card.limite} color="auto" showPercent={false} height={6} />
+        <ProgressBar value={card.used} max={card.limit} color="auto" showPercent={false} height={6} />
       </div>
     </div>
   )
 }
 
 function statusBadge(status: CardStatus) {
-  if (status === 'paga')
+  if (status === 'paid')
     return (
       <Badge color="green" size="xs">
         Paga ✓
       </Badge>
     )
-  if (status === 'fechada')
+  if (status === 'closed')
     return (
       <Badge color="yellow" size="xs">
         Fechada
@@ -169,9 +113,25 @@ function statusBadge(status: CardStatus) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreditCards() {
-  const [selectedId, setSelectedId] = useState<number>(FAKE_CARDS[0]?.id ?? 1)
+  const { data: cards } = useFetch('/credit-cards/', decodeCreditCardList)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const selected = FAKE_CARDS.find((c) => c.id === selectedId) ?? FAKE_CARDS[0]
+  const cardList = cards ?? []
+  const effectiveId = selectedId ?? cardList[0]?.id ?? null
+  const selected = cardList.find((c) => c.id === effectiveId) ?? cardList[0]
+
+  if (cardList.length === 0) {
+    return (
+      <div style={{ padding: '28px 32px' }}>
+        <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
+          Cartões de Crédito
+        </h1>
+        <p className="text-sm mt-4" style={{ color: 'var(--color-muted)' }}>
+          Nenhum cartão cadastrado
+        </p>
+      </div>
+    )
+  }
 
   if (!selected) return null
 
@@ -181,13 +141,14 @@ export default function CreditCards() {
         Cartões de Crédito
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
-        {FAKE_CARDS.length} cartão{FAKE_CARDS.length !== 1 ? 'ões' : ''} cadastrado{FAKE_CARDS.length !== 1 ? 's' : ''}
+        {cardList.length} cartão{cardList.length !== 1 ? 'ões' : ''} cadastrado
+        {cardList.length !== 1 ? 's' : ''}
       </p>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '320px 1fr' }}>
         {/* Left: Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {FAKE_CARDS.map((card) => (
+          {cardList.map((card) => (
             <CreditCardVisual
               key={card.id}
               card={card}
@@ -201,17 +162,17 @@ export default function CreditCards() {
 
         {/* Right: Detail */}
         <div>
-          {/* Fatura Info */}
+          {/* Bill Info */}
           <Card className="mb-4">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--color-text)' }}>
-                  {selected.nome}
+                  {selected.name}
                 </h3>
                 <div className="flex items-center gap-3">
                   {statusBadge(selected.status)}
                   <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                    Fecha dia {selected.fechamento} · Vence dia {selected.vencimento}
+                    Fecha dia {selected.closing_day} · Vence dia {selected.due_day}
                   </span>
                 </div>
               </div>
@@ -220,7 +181,7 @@ export default function CreditCards() {
                   Fatura atual
                 </p>
                 <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-                  {formatCurrency(selected.fatura)}
+                  {formatCurrency(selected.bill)}
                 </p>
               </div>
             </div>
@@ -230,27 +191,33 @@ export default function CreditCards() {
               <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
                 Lançamentos recentes
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {selected.itens.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center px-2 py-2.5 rounded-lg"
-                    style={{ transition: 'background 0.12s' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface2)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: 'var(--color-muted)', fontSize: 12 }}>{item.data}</span>
-                      <span className="text-sm" style={{ color: 'var(--color-text)' }}>
-                        {item.desc}
+              {selected.items.length === 0 ? (
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  Nenhum lançamento
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {selected.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center px-2 py-2.5 rounded-lg"
+                      style={{ transition: 'background 0.12s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface2)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span style={{ color: 'var(--color-muted)', fontSize: 12 }}>{item.date}</span>
+                        <span className="text-sm" style={{ color: 'var(--color-text)' }}>
+                          {item.description}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                        {formatCurrency(item.amount)}
                       </span>
                     </div>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                      {formatCurrency(item.valor)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -259,25 +226,31 @@ export default function CreditCards() {
             <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
               Histórico de Faturas
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[...selected.historico].reverse().map((h, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 rounded-xl"
-                  style={{ background: 'var(--color-surface2)' }}
-                >
-                  <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
-                    {h.mes} 2026
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold" style={{ color: 'var(--color-text)' }}>
-                      {formatCurrency(h.valor)}
+            {selected.history.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Sem histórico
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[...selected.history].reverse().map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ background: 'var(--color-surface2)' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                      {h.month}
                     </span>
-                    {statusBadge(h.status)}
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold" style={{ color: 'var(--color-text)' }}>
+                        {formatCurrency(h.amount)}
+                      </span>
+                      {statusBadge(h.status)}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -6,24 +6,24 @@ export type ButtonVariant = 'primary' | 'danger' | 'ghost' | 'outline'
 
 // ─── Transaction ──────────────────────────────────────────────────────────────
 
-export type TransactionType = 'receita' | 'despesa'
+export type TransactionType = 'income' | 'expense'
 
 export interface Transaction {
   id: number
-  tipo: TransactionType
-  desc: string
-  categoria: string
+  type: TransactionType
+  description: string
+  category: string
   emoji: string
-  valor: number
-  data: string
+  amount: number
+  date: string
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export interface MonthlyData {
-  mes: string
-  receitas: number
-  despesas: number
+  month: string
+  income: number
+  expenses: number
 }
 
 export interface CategoryData {
@@ -32,95 +32,151 @@ export interface CategoryData {
   color: string
 }
 
+// ─── Summary ──────────────────────────────────────────────────────────────────
+
+export interface MonthlyFinances {
+  income: number
+  expenses: number
+  balance: number
+}
+
+export interface WealthSummary {
+  total_debt: number
+  total_loans: number
+  total_card_bills: number
+}
+
+export interface CardOverview {
+  id: number
+  name: string
+  used_pct: number
+  bill: number
+  due_day: number
+  status: CardStatus
+}
+
+export interface FixedCostsOverview {
+  confirmed_total: number
+  estimated_total: number
+}
+
+export interface GachaOverview {
+  active_banners: number
+  total_cost: number
+  next_due_date: string | null
+}
+
+export type AlertLevel = 'urgent' | 'warning' | 'info'
+
+export interface Alert {
+  level: AlertLevel
+  message: string
+}
+
+export interface Summary {
+  queried_at: string
+  current_month: string
+  monthly_finances: MonthlyFinances
+  wealth: WealthSummary
+  cards: CardOverview[]
+  fixed_costs: FixedCostsOverview
+  gacha: GachaOverview
+  alerts: Alert[]
+}
+
 // ─── Fixed Expenses ───────────────────────────────────────────────────────────
 
-export type FixedExpenseKind = 'Fixo' | 'Variável'
+export type FixedExpenseKind = 'fixed' | 'variable'
 
 export interface FixedExpense {
   id: number
-  nome: string
-  valor: number
-  tipo: FixedExpenseKind
-  confianca: number
-  previsao: number
+  name: string
+  amount: number
+  type: FixedExpenseKind
+  confidence: number
+  estimate: number
 }
 
 // ─── Debts ────────────────────────────────────────────────────────────────────
 
 export interface Debt {
   id: number
-  nome: string
+  name: string
   total: number
-  restante: number
-  taxa: number
-  vencimento: string
-  parcelas: string
-  urgente: boolean
+  remaining: number
+  rate: number
+  due_date: string
+  installments: string
+  urgent: boolean
 }
 
 export interface Loan {
   id: number
-  nome: string
+  name: string
   total: number
-  restante: number
-  taxa: number
-  parcela: number
-  proximaParcela: string
-  parcelas: string
+  remaining: number
+  rate: number
+  installment: number
+  next_payment: string
+  installments: string
 }
 
 // ─── Credit Cards ─────────────────────────────────────────────────────────────
 
-export type CardStatus = 'aberta' | 'fechada' | 'paga'
+export type CardStatus = 'open' | 'closed' | 'paid'
 export type CardBrand = 'Mastercard' | 'Visa' | 'Elo' | 'Amex'
 
 export interface CardBillHistory {
-  mes: string
-  valor: number
+  id: number
+  card_id: number
+  month: string
+  amount: number
   status: CardStatus
 }
 
 export interface CardBillItem {
-  desc: string
-  valor: number
-  data: string
+  id: number
+  card_id: number
+  description: string
+  amount: number
+  date: string
 }
 
 export interface CreditCard {
   id: number
-  nome: string
-  bandeira: CardBrand
-  final: string
-  limite: number
-  usado: number
-  gradientFrom: string
-  gradientTo: string
-  fatura: number
-  fechamento: number
-  vencimento: number
+  name: string
+  brand: CardBrand
+  last_four: string
+  limit: number
+  used: number
+  gradient_from: string
+  gradient_to: string
+  bill: number
+  closing_day: number
+  due_day: number
   status: CardStatus
-  historico: CardBillHistory[]
-  itens: CardBillItem[]
+  history: CardBillHistory[]
+  items: CardBillItem[]
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
 
-export type CalendarEventType = 'receita' | 'despesa' | 'parcela'
+export type CalendarEventType = 'income' | 'expense' | 'installment'
 
 export interface CalendarEvent {
-  dia: number
-  tipo: CalendarEventType
-  desc: string
-  valor: number
+  day: number
+  type: CalendarEventType
+  description: string
+  amount: number
 }
 
 // ─── Forecast ─────────────────────────────────────────────────────────────────
 
 export interface ForecastPoint {
-  mes: string
-  otimista: number
+  month: string
+  optimistic: number
   base: number
-  pessimista: number
+  pessimistic: number
 }
 
 export type ForecastPeriod = '1m' | '3m' | '6m'
@@ -131,21 +187,21 @@ export type GachaPriority = 1 | 2 | 3 | 4 | 5
 
 export interface GachaBanner {
   id: number
-  jogo: string
+  game: string
   banner: string
-  custo: number
-  inicio: string
-  fim: string
-  prioridade: GachaPriority
-  puxadas: number
+  cost: number
+  start_date: string
+  end_date: string
+  priority: GachaPriority
+  pulls: number
 }
 
 // ─── Notes ────────────────────────────────────────────────────────────────────
 
 export interface Note {
   id: number
-  data: string
-  conteudo: string
+  date: string
+  content: string
 }
 
 // ─── API Hook ─────────────────────────────────────────────────────────────────

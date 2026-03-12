@@ -4,56 +4,44 @@ import Badge from '../components/ui/Badge'
 import { formatCurrency } from '../utils/currency'
 import { formatMonth, getDaysInMonth, getFirstDayOfMonth } from '../utils/date'
 import { type CalendarEvent, type CalendarEventType } from '../types'
-
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const FAKE_EVENTS: CalendarEvent[] = [
-  { dia: 5, tipo: 'receita', desc: 'Salário', valor: 6500 },
-  { dia: 5, tipo: 'despesa', desc: 'Aluguel', valor: 1500 },
-  { dia: 5, tipo: 'despesa', desc: 'Condomínio', valor: 320 },
-  { dia: 7, tipo: 'despesa', desc: 'Conta de Luz', valor: 145 },
-  { dia: 7, tipo: 'despesa', desc: 'Internet', valor: 120 },
-  { dia: 7, tipo: 'despesa', desc: 'Plano de Saúde', valor: 280 },
-  { dia: 10, tipo: 'parcela', desc: 'Nubank Fatura', valor: 1240 },
-  { dia: 11, tipo: 'receita', desc: 'Freelance', valor: 1000 },
-  { dia: 15, tipo: 'despesa', desc: 'Condomínio Extra', valor: 80 },
-  { dia: 17, tipo: 'parcela', desc: 'Itaú Fatura', valor: 1843 },
-  { dia: 20, tipo: 'parcela', desc: 'Empréstimo Itaú', valor: 850 },
-  { dia: 22, tipo: 'despesa', desc: 'Nubank Vencimento', valor: 1240 },
-  { dia: 25, tipo: 'parcela', desc: 'Notebook Parcela', valor: 300 },
-]
+import { useFetch } from '../hooks/useApi'
+import { decodeCalendarEventList } from '../lib/decode'
 
 const DAYS_OF_WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 const EVENT_COLORS: Record<CalendarEventType, string> = {
-  receita: 'var(--color-green)',
-  despesa: 'var(--color-red)',
-  parcela: 'var(--color-orange)',
+  income: 'var(--color-green)',
+  expense: 'var(--color-red)',
+  installment: 'var(--color-orange)',
 }
 
 const EVENT_LABELS: Record<CalendarEventType, string> = {
-  receita: 'Receita',
-  despesa: 'Despesa',
-  parcela: 'Parcela',
+  income: 'Receita',
+  expense: 'Despesa',
+  installment: 'Parcela',
 }
 
-const LEGEND_TYPES: CalendarEventType[] = ['receita', 'despesa', 'parcela']
+const LEGEND_TYPES: CalendarEventType[] = ['income', 'expense', 'installment']
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Calendar() {
-  const [month, setMonth] = useState(2)
-  const [year, setYear] = useState(2026)
-  const [selectedDay, setSelectedDay] = useState<number | null>(11)
+  const today = new Date()
+  const [month, setMonth] = useState(today.getMonth())
+  const [year, setYear] = useState(today.getFullYear())
+  const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate())
 
   const daysInMonth = getDaysInMonth(year, month)
   const firstDay = getFirstDayOfMonth(year, month)
-  const today = 11
+  const todayDay = today.getDate()
+
+  const { data: events } = useFetch(`/calendar/${String(year)}/${String(month + 1)}`, decodeCalendarEventList)
+  const eventList: CalendarEvent[] = events ?? []
 
   const eventsByDay = new Map<number, CalendarEvent[]>()
-  for (const event of FAKE_EVENTS) {
-    const current = eventsByDay.get(event.dia) ?? []
-    eventsByDay.set(event.dia, [...current, event])
+  for (const event of eventList) {
+    const current = eventsByDay.get(event.day) ?? []
+    eventsByDay.set(event.day, [...current, event])
   }
 
   const prevMonth = () => {
@@ -72,8 +60,9 @@ export default function Calendar() {
 
   const selectedEvents = selectedDay !== null ? (eventsByDay.get(selectedDay) ?? []) : []
 
-  const upcomingEvents = FAKE_EVENTS.filter((e) => e.dia >= today)
-    .sort((a, b) => a.dia - b.dia)
+  const upcomingEvents = eventList
+    .filter((e) => e.day >= todayDay)
+    .sort((a, b) => a.day - b.day)
     .slice(0, 8)
 
   return (
@@ -144,10 +133,10 @@ export default function Calendar() {
             {/* Day cells */}
             {Array.from({ length: daysInMonth }, (_, i) => {
               const day = i + 1
-              const events = eventsByDay.get(day) ?? []
-              const isToday = day === today
+              const dayEvents = eventsByDay.get(day) ?? []
+              const isToday = day === todayDay
               const isSelected = day === selectedDay
-              const hasEvents = events.length > 0
+              const hasEvents = dayEvents.length > 0
 
               return (
                 <div
@@ -191,18 +180,18 @@ export default function Calendar() {
                   </span>
                   {/* Event dots */}
                   <div className="flex gap-0.5 flex-wrap justify-center" style={{ minHeight: 8 }}>
-                    {events.slice(0, 3).map((ev, i) => (
+                    {dayEvents.slice(0, 3).map((ev, i) => (
                       <div
                         key={i}
                         className="rounded-full"
                         style={{
                           width: 6,
                           height: 6,
-                          backgroundColor: isSelected ? 'rgba(255,255,255,0.8)' : EVENT_COLORS[ev.tipo],
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.8)' : EVENT_COLORS[ev.type],
                         }}
                       />
                     ))}
-                    {events.length > 3 && (
+                    {dayEvents.length > 3 && (
                       <span style={{ fontSize: 8, color: isSelected ? '#fff' : 'var(--color-muted)' }}>+</span>
                     )}
                   </div>
@@ -230,7 +219,7 @@ export default function Calendar() {
           {selectedDay !== null && (
             <Card>
               <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
-                Dia {selectedDay} de Março
+                Dia {selectedDay} de {formatMonth(year, month).split(' ')[0]}
               </h4>
               {selectedEvents.length === 0 ? (
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
@@ -243,18 +232,18 @@ export default function Calendar() {
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: EVENT_COLORS[ev.tipo] }}
+                          style={{ backgroundColor: EVENT_COLORS[ev.type] }}
                         />
                         <span className="text-sm" style={{ color: 'var(--color-text)' }}>
-                          {ev.desc}
+                          {ev.description}
                         </span>
                       </div>
                       <span
                         className="text-xs font-bold"
-                        style={{ color: ev.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
+                        style={{ color: ev.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
                       >
-                        {ev.tipo === 'receita' ? '+' : '−'}
-                        {formatCurrency(ev.valor)}
+                        {ev.type === 'income' ? '+' : '−'}
+                        {formatCurrency(ev.amount)}
                       </span>
                     </div>
                   ))}
@@ -268,35 +257,44 @@ export default function Calendar() {
             <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
               Próximos eventos
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {upcomingEvents.map((ev, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-2 rounded-lg"
-                  style={{ background: 'var(--color-surface2)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-bold w-6 text-center rounded"
-                      style={{
-                        color: ev.dia === today ? 'var(--color-blue)' : 'var(--color-muted)',
-                        background: ev.dia === today ? 'rgba(59,130,246,0.15)' : 'transparent',
-                        padding: '1px 4px',
-                      }}
+            {upcomingEvents.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Nenhum evento futuro
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {upcomingEvents.map((ev, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-2 rounded-lg"
+                    style={{ background: 'var(--color-surface2)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-xs font-bold w-6 text-center rounded"
+                        style={{
+                          color: ev.day === todayDay ? 'var(--color-blue)' : 'var(--color-muted)',
+                          background: ev.day === todayDay ? 'rgba(59,130,246,0.15)' : 'transparent',
+                          padding: '1px 4px',
+                        }}
+                      >
+                        {ev.day}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--color-text)' }}>
+                        {ev.description}
+                      </span>
+                    </div>
+                    <Badge
+                      color={ev.type === 'income' ? 'green' : ev.type === 'installment' ? 'orange' : 'red'}
+                      size="xs"
                     >
-                      {ev.dia}
-                    </span>
-                    <span className="text-xs" style={{ color: 'var(--color-text)' }}>
-                      {ev.desc}
-                    </span>
+                      {ev.type === 'income' ? '+' : '−'}
+                      {formatCurrency(ev.amount)}
+                    </Badge>
                   </div>
-                  <Badge color={ev.tipo === 'receita' ? 'green' : ev.tipo === 'parcela' ? 'orange' : 'red'} size="xs">
-                    {ev.tipo === 'receita' ? '+' : '−'}
-                    {formatCurrency(ev.valor)}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
       </div>

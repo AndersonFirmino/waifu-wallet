@@ -1,0 +1,342 @@
+import type {
+  Transaction,
+  TransactionType,
+  FixedExpense,
+  FixedExpenseKind,
+  Debt,
+  Loan,
+  CreditCard,
+  CardBillHistory,
+  CardBillItem,
+  CardBrand,
+  CardStatus,
+  Note,
+  GachaBanner,
+  GachaPriority,
+  CalendarEvent,
+  CalendarEventType,
+  ForecastPoint,
+  Summary,
+  MonthlyFinances,
+  WealthSummary,
+  CardOverview,
+  FixedCostsOverview,
+  GachaOverview,
+  Alert,
+  AlertLevel,
+} from '../types'
+
+// ─── Primitive validators ─────────────────────────────────────────────────────
+
+function assertRecord(val: unknown): asserts val is Record<string, unknown> {
+  if (typeof val !== 'object' || val === null || Array.isArray(val)) {
+    throw new Error('Expected plain object')
+  }
+}
+
+function num(val: unknown, field: string): number {
+  if (typeof val !== 'number') throw new Error(`${field}: expected number, got ${typeof val}`)
+  return val
+}
+
+function str(val: unknown, field: string): string {
+  if (typeof val !== 'string') throw new Error(`${field}: expected string, got ${typeof val}`)
+  return val
+}
+
+function bool(val: unknown, field: string): boolean {
+  if (typeof val !== 'boolean') throw new Error(`${field}: expected boolean, got ${typeof val}`)
+  return val
+}
+
+function arr(val: unknown, field: string): unknown[] {
+  if (!Array.isArray(val)) throw new Error(`${field}: expected array, got ${typeof val}`)
+  return val
+}
+
+function nullableStr(val: unknown, field: string): string | null {
+  if (val === null) return null
+  return str(val, field)
+}
+
+// ─── Union validators ─────────────────────────────────────────────────────────
+
+function asTransactionType(val: unknown): TransactionType {
+  if (val === 'income' || val === 'expense') return val
+  throw new Error(`Invalid TransactionType: ${String(val)}`)
+}
+
+function asFixedExpenseKind(val: unknown): FixedExpenseKind {
+  if (val === 'fixed' || val === 'variable') return val
+  throw new Error(`Invalid FixedExpenseKind: ${String(val)}`)
+}
+
+function asCardStatus(val: unknown): CardStatus {
+  if (val === 'open' || val === 'closed' || val === 'paid') return val
+  throw new Error(`Invalid CardStatus: ${String(val)}`)
+}
+
+function asCardBrand(val: unknown): CardBrand {
+  if (val === 'Mastercard' || val === 'Visa' || val === 'Elo' || val === 'Amex') return val
+  throw new Error(`Invalid CardBrand: ${String(val)}`)
+}
+
+function asCalendarEventType(val: unknown): CalendarEventType {
+  if (val === 'income' || val === 'expense' || val === 'installment') return val
+  throw new Error(`Invalid CalendarEventType: ${String(val)}`)
+}
+
+function asAlertLevel(val: unknown): AlertLevel {
+  if (val === 'urgent' || val === 'warning' || val === 'info') return val
+  throw new Error(`Invalid AlertLevel: ${String(val)}`)
+}
+
+function asGachaPriority(val: unknown): GachaPriority {
+  if (val === 1 || val === 2 || val === 3 || val === 4 || val === 5) return val
+  throw new Error(`Invalid GachaPriority: ${String(val)}`)
+}
+
+// ─── Decoders ─────────────────────────────────────────────────────────────────
+
+export function decodeTransaction(raw: unknown): Transaction {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    type: asTransactionType(raw.type),
+    description: str(raw.description, 'description'),
+    category: str(raw.category, 'category'),
+    emoji: str(raw.emoji, 'emoji'),
+    amount: num(raw.amount, 'amount'),
+    date: str(raw.date, 'date'),
+  }
+}
+
+export function decodeTransactionList(raw: unknown): Transaction[] {
+  return arr(raw, 'transactions').map(decodeTransaction)
+}
+
+export function decodeFixedExpense(raw: unknown): FixedExpense {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    amount: num(raw.amount, 'amount'),
+    type: asFixedExpenseKind(raw.type),
+    confidence: num(raw.confidence, 'confidence'),
+    estimate: num(raw.estimate, 'estimate'),
+  }
+}
+
+export function decodeFixedExpenseList(raw: unknown): FixedExpense[] {
+  return arr(raw, 'fixed_expenses').map(decodeFixedExpense)
+}
+
+export function decodeDebt(raw: unknown): Debt {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    total: num(raw.total, 'total'),
+    remaining: num(raw.remaining, 'remaining'),
+    rate: num(raw.rate, 'rate'),
+    due_date: str(raw.due_date, 'due_date'),
+    installments: str(raw.installments, 'installments'),
+    urgent: bool(raw.urgent, 'urgent'),
+  }
+}
+
+export function decodeDebtList(raw: unknown): Debt[] {
+  return arr(raw, 'debts').map(decodeDebt)
+}
+
+export function decodeLoan(raw: unknown): Loan {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    total: num(raw.total, 'total'),
+    remaining: num(raw.remaining, 'remaining'),
+    rate: num(raw.rate, 'rate'),
+    installment: num(raw.installment, 'installment'),
+    next_payment: str(raw.next_payment, 'next_payment'),
+    installments: str(raw.installments, 'installments'),
+  }
+}
+
+export function decodeLoanList(raw: unknown): Loan[] {
+  return arr(raw, 'loans').map(decodeLoan)
+}
+
+function decodeCardBillHistory(raw: unknown): CardBillHistory {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    card_id: num(raw.card_id, 'card_id'),
+    month: str(raw.month, 'month'),
+    amount: num(raw.amount, 'amount'),
+    status: asCardStatus(raw.status),
+  }
+}
+
+function decodeCardBillItem(raw: unknown): CardBillItem {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    card_id: num(raw.card_id, 'card_id'),
+    description: str(raw.description, 'description'),
+    amount: num(raw.amount, 'amount'),
+    date: str(raw.date, 'date'),
+  }
+}
+
+export function decodeCreditCard(raw: unknown): CreditCard {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    brand: asCardBrand(raw.brand),
+    last_four: str(raw.last_four, 'last_four'),
+    limit: num(raw.limit, 'limit'),
+    used: num(raw.used, 'used'),
+    gradient_from: str(raw.gradient_from, 'gradient_from'),
+    gradient_to: str(raw.gradient_to, 'gradient_to'),
+    bill: num(raw.bill, 'bill'),
+    closing_day: num(raw.closing_day, 'closing_day'),
+    due_day: num(raw.due_day, 'due_day'),
+    status: asCardStatus(raw.status),
+    history: arr(raw.history, 'history').map(decodeCardBillHistory),
+    items: arr(raw.items, 'items').map(decodeCardBillItem),
+  }
+}
+
+export function decodeCreditCardList(raw: unknown): CreditCard[] {
+  return arr(raw, 'credit_cards').map(decodeCreditCard)
+}
+
+export function decodeNote(raw: unknown): Note {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    date: str(raw.date, 'date'),
+    content: str(raw.content, 'content'),
+  }
+}
+
+export function decodeNoteList(raw: unknown): Note[] {
+  return arr(raw, 'notes').map(decodeNote)
+}
+
+export function decodeGachaBanner(raw: unknown): GachaBanner {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    game: str(raw.game, 'game'),
+    banner: str(raw.banner, 'banner'),
+    cost: num(raw.cost, 'cost'),
+    start_date: str(raw.start_date, 'start_date'),
+    end_date: str(raw.end_date, 'end_date'),
+    priority: asGachaPriority(raw.priority),
+    pulls: num(raw.pulls, 'pulls'),
+  }
+}
+
+export function decodeBannerList(raw: unknown): GachaBanner[] {
+  return arr(raw, 'banners').map(decodeGachaBanner)
+}
+
+export function decodeCalendarEvent(raw: unknown): CalendarEvent {
+  assertRecord(raw)
+  return {
+    day: num(raw.day, 'day'),
+    type: asCalendarEventType(raw.type),
+    description: str(raw.description, 'description'),
+    amount: num(raw.amount, 'amount'),
+  }
+}
+
+export function decodeCalendarEventList(raw: unknown): CalendarEvent[] {
+  return arr(raw, 'calendar_events').map(decodeCalendarEvent)
+}
+
+export function decodeForecastPoint(raw: unknown): ForecastPoint {
+  assertRecord(raw)
+  return {
+    month: str(raw.month, 'month'),
+    optimistic: num(raw.optimistic, 'optimistic'),
+    base: num(raw.base, 'base'),
+    pessimistic: num(raw.pessimistic, 'pessimistic'),
+  }
+}
+
+export function decodeForecastList(raw: unknown): ForecastPoint[] {
+  return arr(raw, 'forecast').map(decodeForecastPoint)
+}
+
+function decodeMonthlyFinances(raw: unknown): MonthlyFinances {
+  assertRecord(raw)
+  return {
+    income: num(raw.income, 'income'),
+    expenses: num(raw.expenses, 'expenses'),
+    balance: num(raw.balance, 'balance'),
+  }
+}
+
+function decodeWealthSummary(raw: unknown): WealthSummary {
+  assertRecord(raw)
+  return {
+    total_debt: num(raw.total_debt, 'total_debt'),
+    total_loans: num(raw.total_loans, 'total_loans'),
+    total_card_bills: num(raw.total_card_bills, 'total_card_bills'),
+  }
+}
+
+function decodeCardOverview(raw: unknown): CardOverview {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    name: str(raw.name, 'name'),
+    used_pct: num(raw.used_pct, 'used_pct'),
+    bill: num(raw.bill, 'bill'),
+    due_day: num(raw.due_day, 'due_day'),
+    status: asCardStatus(raw.status),
+  }
+}
+
+function decodeFixedCostsOverview(raw: unknown): FixedCostsOverview {
+  assertRecord(raw)
+  return {
+    confirmed_total: num(raw.confirmed_total, 'confirmed_total'),
+    estimated_total: num(raw.estimated_total, 'estimated_total'),
+  }
+}
+
+function decodeGachaOverview(raw: unknown): GachaOverview {
+  assertRecord(raw)
+  return {
+    active_banners: num(raw.active_banners, 'active_banners'),
+    total_cost: num(raw.total_cost, 'total_cost'),
+    next_due_date: nullableStr(raw.next_due_date, 'next_due_date'),
+  }
+}
+
+function decodeAlert(raw: unknown): Alert {
+  assertRecord(raw)
+  return {
+    level: asAlertLevel(raw.level),
+    message: str(raw.message, 'message'),
+  }
+}
+
+export function decodeSummary(raw: unknown): Summary {
+  assertRecord(raw)
+  return {
+    queried_at: str(raw.queried_at, 'queried_at'),
+    current_month: str(raw.current_month, 'current_month'),
+    monthly_finances: decodeMonthlyFinances(raw.monthly_finances),
+    wealth: decodeWealthSummary(raw.wealth),
+    cards: arr(raw.cards, 'cards').map(decodeCardOverview),
+    fixed_costs: decodeFixedCostsOverview(raw.fixed_costs),
+    gacha: decodeGachaOverview(raw.gacha),
+    alerts: arr(raw.alerts, 'alerts').map(decodeAlert),
+  }
+}

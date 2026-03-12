@@ -3,44 +3,21 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { formatMonth } from '../utils/date'
 import { type Note } from '../types'
-
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const FAKE_NOTES: Note[] = [
-  {
-    id: 1,
-    data: '2026-03-01',
-    conteudo:
-      'Início do mês. Meta: economizar pelo menos R$ 2.000 esse mês para a reserva de emergência. Salário cai dia 5, já vou separar antes de gastar com bobagem.',
-  },
-  {
-    id: 2,
-    data: '2026-03-05',
-    conteudo:
-      'Salário caiu! R$ 6.500 na conta. Paguei o aluguel e o condomínio na hora (R$ 1.820). Restando R$ 4.680 disponível pro mês. Vou tentar segurar em R$ 3.500 de gastos.',
-  },
-  {
-    id: 3,
-    data: '2026-03-08',
-    conteudo:
-      'Fiz as compras do mês — gastei R$ 280 no Mercado. Menos que o mês passado (R$ 340). Tá melhorando. Aproveitei e renovei a farmácia por R$ 85.',
-  },
-  {
-    id: 4,
-    data: '2026-03-11',
-    conteudo:
-      'Freelance caiu: R$ 1.000. Vai direto pra reserva de emergência. Também registrei os gastos de transporte da semana (uber + gasolina = R$ 155). Mês tá indo bem.',
-  },
-]
+import { useFetch } from '../hooks/useApi'
+import { decodeNote, decodeNoteList } from '../lib/decode'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Notes() {
-  const [notes, setNotes] = useState<Note[]>(FAKE_NOTES)
-  const [month, setMonth] = useState(2)
-  const [year, setYear] = useState(2026)
+  const { data: serverNotes } = useFetch('/notes/', decodeNoteList)
+  const [additions, setAdditions] = useState<Note[]>([])
+  const [deletedIds, setDeletedIds] = useState<number[]>([])
+  const [month, setMonth] = useState(new Date().getMonth())
+  const [year, setYear] = useState(new Date().getFullYear())
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const notes = [...additions, ...(serverNotes ?? []).filter((n) => !deletedIds.includes(n.id))]
 
   const prevMonth = () => {
     if (month === 0) {
@@ -56,26 +33,30 @@ export default function Notes() {
     } else setMonth((m) => m + 1)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!content.trim()) return
-    const now = new Date(2026, 2, 11)
-    const dateStr = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const note: Note = {
-      id: Date.now(),
-      data: dateStr,
-      conteudo: content.trim(),
-    }
-    setNotes((prev) => [note, ...prev])
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const r = await fetch('/api/v1/notes/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: dateStr, content: content.trim() }),
+    })
+    if (!r.ok) return
+    const raw: unknown = await r.json()
+    const created = decodeNote(raw)
+    setAdditions((prev) => [created, ...prev])
     setContent('')
     textareaRef.current?.focus()
   }
 
-  const handleDelete = (id: number) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id))
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/v1/notes/${String(id)}`, { method: 'DELETE' })
+    setAdditions((prev) => prev.filter((n) => n.id !== id))
+    setDeletedIds((prev) => [...prev, id])
   }
 
   const filteredNotes = notes.filter((n) => {
-    const parts = n.data.split('-')
+    const parts = n.date.split('-')
     const noteYear = parseInt(parts[0] ?? '0', 10)
     const noteMonth = parseInt(parts[1] ?? '0', 10) - 1
     return noteYear === year && noteMonth === month
@@ -130,7 +111,7 @@ export default function Notes() {
       {/* New Note */}
       <Card className="mb-6">
         <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
-          Nova Nota — 11/03/2026
+          Nova Nota — {new Date().toLocaleDateString('pt-BR')}
         </h3>
         <textarea
           ref={textareaRef}
@@ -142,7 +123,7 @@ export default function Notes() {
           rows={4}
           style={{ resize: 'vertical', width: '100%', marginBottom: 12 }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave()
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void handleSave()
           }}
         />
         <div className="flex items-center justify-between">
@@ -151,7 +132,12 @@ export default function Notes() {
               ? `${String(content.length)} caracteres · Ctrl+Enter para salvar`
               : 'Ctrl+Enter para salvar rapidamente'}
           </span>
-          <Button onClick={handleSave} disabled={!content.trim()}>
+          <Button
+            onClick={() => {
+              void handleSave()
+            }}
+            disabled={!content.trim()}
+          >
             Salvar Nota
           </Button>
         </div>
@@ -171,9 +157,10 @@ export default function Notes() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filteredNotes.map((note) => {
-            const parts = note.data.split('-')
+            const parts = note.date.split('-')
             const day = parts[2] ?? ''
-            const month_ = parts[1] ?? ''
+            const noteMonth = parts[1] ?? ''
+            const noteYear = parts[0] ?? ''
 
             return (
               <Card key={note.id} className="group animate-fade-in">
@@ -188,19 +175,19 @@ export default function Notes() {
                           border: '1px solid rgba(59,130,246,0.2)',
                         }}
                       >
-                        {day}/{month_}/2026
+                        {day}/{noteMonth}/{noteYear}
                       </div>
                     </div>
                     <p
                       className="text-sm leading-relaxed"
                       style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}
                     >
-                      {note.conteudo}
+                      {note.content}
                     </p>
                   </div>
                   <button
                     onClick={() => {
-                      handleDelete(note.id)
+                      void handleDelete(note.id)
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-1"
                     style={{

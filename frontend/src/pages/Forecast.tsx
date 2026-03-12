@@ -15,17 +15,8 @@ import StatCard from '../components/ui/StatCard'
 import Badge from '../components/ui/Badge'
 import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { type ForecastPoint, type ForecastPeriod } from '../types'
-
-// ─── Fake Data ────────────────────────────────────────────────────────────────
-
-const ALL_FORECAST: ForecastPoint[] = [
-  { mes: 'Mar', otimista: 5806, base: 3842, pessimista: 1900 },
-  { mes: 'Abr', otimista: 9512, base: 6084, pessimista: 2380 },
-  { mes: 'Mai', otimista: 13218, base: 8226, pessimista: 2860 },
-  { mes: 'Jun', otimista: 16924, base: 10368, pessimista: 3420 },
-  { mes: 'Jul', otimista: 20630, base: 12510, pessimista: 3940 },
-  { mes: 'Ago', otimista: 24336, base: 14652, pessimista: 4380 },
-]
+import { useFetch } from '../hooks/useApi'
+import { decodeForecastList } from '../lib/decode'
 
 interface ForecastPeriodConfig {
   label: string
@@ -40,12 +31,19 @@ const PERIODS: Record<ForecastPeriod, ForecastPeriodConfig> = {
 
 const FORECAST_PERIODS: ForecastPeriod[] = ['1m', '3m', '6m']
 
-const CONSIDERATIONS = [
-  { desc: 'Salário mensal (fixo)', valor: 6500, tipo: 'receita' as const, impacto: 'Alto' },
-  { desc: 'Freelances estimados', valor: 500, tipo: 'receita' as const, impacto: 'Médio' },
-  { desc: 'Gastos fixos mensais', valor: -2344, tipo: 'despesa' as const, impacto: 'Alto' },
-  { desc: 'Variáveis estimadas', valor: -1200, tipo: 'despesa' as const, impacto: 'Médio' },
-  { desc: 'Parcelas de dívidas', valor: -1150, tipo: 'despesa' as const, impacto: 'Alto' },
+interface ConsiderationItem {
+  description: string
+  amount: number
+  type: 'income' | 'expense'
+  impact: string
+}
+
+const CONSIDERATIONS: ConsiderationItem[] = [
+  { description: 'Salário mensal (fixo)', amount: 6500, type: 'income', impact: 'Alto' },
+  { description: 'Freelances estimados', amount: 500, type: 'income', impact: 'Médio' },
+  { description: 'Gastos fixos mensais', amount: -2344, type: 'expense', impact: 'Alto' },
+  { description: 'Variáveis estimadas', amount: -1200, type: 'expense', impact: 'Médio' },
+  { description: 'Parcelas de dívidas', amount: -1150, type: 'expense', impact: 'Alto' },
 ]
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
@@ -79,16 +77,18 @@ function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
 export default function Forecast() {
   const [period, setPeriod] = useState<ForecastPeriod>('6m')
 
-  const periodConfig = PERIODS[period]
-  const data = ALL_FORECAST.slice(0, periodConfig.months)
+  const { data: forecastData } = useFetch(`/forecast/?period=${period}`, decodeForecastList)
+  const data: ForecastPoint[] = forecastData ?? []
 
+  const periodConfig = PERIODS[period]
   const lastPoint = data[data.length - 1]
   const projected = lastPoint?.base ?? 0
-  const optimistic = lastPoint?.otimista ?? 0
-  const pessimistic = lastPoint?.pessimista ?? 0
+  const optimistic = lastPoint?.optimistic ?? 0
+  const pessimistic = lastPoint?.pessimistic ?? 0
 
-  const totalEntradas = periodConfig.months * 7000
-  const totalSaidas = periodConfig.months * 3842
+  const totalBase = data.reduce((s, p) => s + p.base, 0)
+  const totalOptimistic = data.reduce((s, p) => s + p.optimistic, 0)
+  const totalPessimistic = data.reduce((s, p) => s + p.pessimistic, 0)
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
@@ -156,18 +156,18 @@ export default function Forecast() {
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="gradOtimista" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="gradOptimistic" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="gradPessimista" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="gradPessimistic" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
-              dataKey="mes"
+              dataKey="month"
               tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
@@ -182,21 +182,28 @@ export default function Forecast() {
             <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="4 4" />
             <Area
               type="monotone"
-              dataKey="otimista"
+              dataKey="optimistic"
               name="Otimista"
               stroke="#10b981"
               strokeWidth={2}
-              fill="url(#gradOtimista)"
+              fill="url(#gradOptimistic)"
               strokeDasharray="6 3"
             />
-            <Area type="monotone" dataKey="base" name="Base" stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradBase)" />
             <Area
               type="monotone"
-              dataKey="pessimista"
+              dataKey="base"
+              name="Base"
+              stroke="#3b82f6"
+              strokeWidth={2.5}
+              fill="url(#gradBase)"
+            />
+            <Area
+              type="monotone"
+              dataKey="pessimistic"
               name="Pessimista"
               stroke="#ef4444"
               strokeWidth={2}
-              fill="url(#gradPessimista)"
+              fill="url(#gradPessimistic)"
               strokeDasharray="6 3"
             />
           </AreaChart>
@@ -215,22 +222,22 @@ export default function Forecast() {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: c.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
+                    style={{ backgroundColor: c.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
                   />
                   <span className="text-sm" style={{ color: 'var(--color-text)' }}>
-                    {c.desc}
+                    {c.description}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge color={c.impacto === 'Alto' ? 'red' : 'yellow'} size="xs">
-                    {c.impacto}
+                  <Badge color={c.impact === 'Alto' ? 'red' : 'yellow'} size="xs">
+                    {c.impact}
                   </Badge>
                   <span
                     className="text-sm font-bold"
-                    style={{ color: c.tipo === 'receita' ? 'var(--color-green)' : 'var(--color-red)' }}
+                    style={{ color: c.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
                   >
-                    {c.tipo === 'receita' ? '+' : ''}
-                    {formatCurrency(c.valor)}
+                    {c.type === 'income' ? '+' : ''}
+                    {formatCurrency(c.amount)}
                   </span>
                 </div>
               </div>
@@ -248,10 +255,10 @@ export default function Forecast() {
               style={{ background: 'rgba(16,185,129,0.08)' }}
             >
               <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                Total Entradas (est.)
+                Acumulado Otimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-green)' }}>
-                +{formatCurrency(totalEntradas)}
+                +{formatCurrency(totalOptimistic)}
               </span>
             </div>
             <div
@@ -259,10 +266,10 @@ export default function Forecast() {
               style={{ background: 'rgba(239,68,68,0.08)' }}
             >
               <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                Total Saídas (est.)
+                Acumulado Pessimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-red)' }}>
-                −{formatCurrency(totalSaidas)}
+                {formatCurrency(totalPessimistic)}
               </span>
             </div>
             <div
@@ -270,10 +277,10 @@ export default function Forecast() {
               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
             >
               <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
-                Saldo Projetado
+                Acumulado Base
               </span>
               <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>
-                {formatCurrency(projected)}
+                {formatCurrency(totalBase)}
               </span>
             </div>
           </div>
