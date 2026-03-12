@@ -812,6 +812,8 @@ export default function SalaryPlans() {
           icon="💰"
           label="Renda Mensal Total"
           value={formatCurrency(totalCurrentIncome)}
+          numericValue={totalCurrentIncome}
+          numericFormatter={formatCurrency}
           sub={`${String(activePlans.length)} plano${activePlans.length !== 1 ? 's' : ''} ativo${activePlans.length !== 1 ? 's' : ''}`}
           color="green"
         />
@@ -819,6 +821,8 @@ export default function SalaryPlans() {
           icon="🎯"
           label="Meta Total"
           value={formatCurrency(totalTargetIncome)}
+          numericValue={totalTargetIncome}
+          numericFormatter={formatCurrency}
           sub="soma dos salários-alvo"
           color="blue"
         />

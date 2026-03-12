@@ -103,9 +103,9 @@ export default function Transactions() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <StatCard icon="📈" label="Receitas" value={formatCurrency(totalIncome)} color="green" />
-        <StatCard icon="📉" label="Despesas" value={formatCurrency(totalExpenses)} color="red" />
-        <StatCard icon="💰" label="Saldo" value={formatCurrency(balance)} color={balance >= 0 ? 'blue' : 'red'} />
+        <StatCard icon="📈" label="Receitas" value={formatCurrency(totalIncome)} numericValue={totalIncome} numericFormatter={formatCurrency} color="green" />
+        <StatCard icon="📉" label="Despesas" value={formatCurrency(totalExpenses)} numericValue={totalExpenses} numericFormatter={formatCurrency} color="red" />
+        <StatCard icon="💰" label="Saldo" value={formatCurrency(balance)} numericValue={balance} numericFormatter={formatCurrency} color={balance >= 0 ? 'blue' : 'red'} />
       </div>
 
       {/* Add Form */}

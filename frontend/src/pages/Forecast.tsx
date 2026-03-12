@@ -13,6 +13,7 @@ import {
 import Card from '../components/ui/Card'
 import StatCard from '../components/ui/StatCard'
 import Badge from '../components/ui/Badge'
+import AnimatedNumber from '../components/ui/AnimatedNumber'
 import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { type ForecastPoint, type ForecastPeriod } from '../types'
 import { useFetch } from '../hooks/useApi'
@@ -155,9 +156,9 @@ export default function Forecast() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected)} color="blue" />
-        <StatCard icon="🎯" label="Cenário Otimista" value={formatCurrency(optimistic)} color="green" />
-        <StatCard icon="⚠️" label="Cenário Pessimista" value={formatCurrency(pessimistic)} color="red" />
+        <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected)} numericValue={projected} numericFormatter={formatCurrency} color="blue" />
+        <StatCard icon="🎯" label="Cenário Otimista" value={formatCurrency(optimistic)} numericValue={optimistic} numericFormatter={formatCurrency} color="green" />
+        <StatCard icon="⚠️" label="Cenário Pessimista" value={formatCurrency(pessimistic)} numericValue={pessimistic} numericFormatter={formatCurrency} color="red" />
         <StatCard
           icon="📊"
           label="Maior Risco"
@@ -288,7 +289,7 @@ export default function Forecast() {
                 Acumulado Otimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-green)' }}>
-                +{formatCurrency(totalOptimistic)}
+                +<AnimatedNumber value={totalOptimistic} formatter={formatCurrency} />
               </span>
             </div>
             <div
@@ -299,7 +300,7 @@ export default function Forecast() {
                 Acumulado Pessimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-red)' }}>
-                {formatCurrency(totalPessimistic)}
+                <AnimatedNumber value={totalPessimistic} formatter={formatCurrency} />
               </span>
             </div>
             <div
@@ -310,7 +311,7 @@ export default function Forecast() {
                 Acumulado Base
               </span>
               <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>
-                {formatCurrency(totalBase)}
+                <AnimatedNumber value={totalBase} formatter={formatCurrency} />
               </span>
             </div>
           </div>

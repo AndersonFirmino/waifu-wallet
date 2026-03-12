@@ -80,6 +80,8 @@ export default function FixedExpenses() {
           icon="📋"
           label="Total Mês Atual"
           value={formatCurrency(totalMonth)}
+          numericValue={totalMonth}
+          numericFormatter={formatCurrency}
           sub={`${String(expenses.length)} itens`}
           color="blue"
         />
@@ -87,6 +89,8 @@ export default function FixedExpenses() {
           icon="🔮"
           label="Previsão Próximo Mês"
           value={formatCurrency(totalForecast)}
+          numericValue={totalForecast}
+          numericFormatter={formatCurrency}
           sub="baseado em EMA"
           color="purple"
         />

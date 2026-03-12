@@ -166,6 +166,8 @@ export default function Savings() {
           icon="💰"
           label="Total Guardado"
           value={formatCurrency(totalSaved)}
+          numericValue={totalSaved}
+          numericFormatter={formatCurrency}
           sub={`${String(activeAccounts.length)} conta${activeAccounts.length !== 1 ? 's' : ''} ativa${activeAccounts.length !== 1 ? 's' : ''}`}
           color="green"
         />
@@ -180,6 +182,8 @@ export default function Savings() {
           icon="🏆"
           label="Maior Reserva"
           value={biggestAccount !== null ? formatCurrency(biggestAccount.balance) : '—'}
+          numericValue={biggestAccount?.balance}
+          numericFormatter={formatCurrency}
           sub={biggestAccount !== null ? biggestAccount.name : 'Nenhuma conta'}
           color="yellow"
         />

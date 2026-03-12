@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import AnimatedNumber from '../components/ui/AnimatedNumber'
 import ProgressBar from '../components/ui/ProgressBar'
 import Button from '../components/ui/Button'
 import { formatCurrency } from '../utils/currency'
@@ -352,7 +353,7 @@ export default function Debts() {
               Total Devendo
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-red)' }}>
-              {formatCurrency(totalOwed)}
+              <AnimatedNumber value={totalOwed} formatter={formatCurrency} />
             </p>
           </div>
           <div
@@ -363,7 +364,7 @@ export default function Debts() {
               Juros / Mês (est.)
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-orange)' }}>
-              {formatCurrency(estimatedInterest)}
+              <AnimatedNumber value={estimatedInterest} formatter={formatCurrency} />
             </p>
           </div>
           <div

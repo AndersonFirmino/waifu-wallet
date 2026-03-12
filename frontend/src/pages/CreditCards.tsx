@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Card from '../components/ui/Card'
 import StatCard from '../components/ui/StatCard'
+import AnimatedNumber from '../components/ui/AnimatedNumber'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import ProgressBar from '../components/ui/ProgressBar'
@@ -377,11 +378,13 @@ export default function CreditCards() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon="💳" label="Limite Total" value={formatCurrency(totalLimit)} color="blue" />
+        <StatCard icon="💳" label="Limite Total" value={formatCurrency(totalLimit)} numericValue={totalLimit} numericFormatter={formatCurrency} color="blue" />
         <StatCard
           icon="🔥"
           label="Total Usado"
           value={formatCurrency(totalUsed)}
+          numericValue={totalUsed}
+          numericFormatter={formatCurrency}
           sub={`${String(usedPct)}% do limite`}
           color="red"
         />
@@ -389,6 +392,8 @@ export default function CreditCards() {
           icon="✅"
           label="Disponível"
           value={formatCurrency(totalAvailable)}
+          numericValue={totalAvailable}
+          numericFormatter={formatCurrency}
           sub={`${String(100 - usedPct)}% livre`}
           color={totalAvailable > 0 ? 'green' : 'red'}
         />
@@ -396,6 +401,8 @@ export default function CreditCards() {
           icon="📄"
           label="Faturas Pendentes"
           value={formatCurrency(totalBills)}
+          numericValue={totalBills}
+          numericFormatter={formatCurrency}
           sub="a pagar este mês"
           color="orange"
         />
@@ -439,7 +446,7 @@ export default function CreditCards() {
                       Fatura atual
                     </p>
                     <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-                      {formatCurrency(selected.bill)}
+                      <AnimatedNumber value={selected.bill} formatter={formatCurrency} />
                     </p>
                   </div>
                   {/* Edit button */}
