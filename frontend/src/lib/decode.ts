@@ -24,6 +24,9 @@ import type {
   GachaOverview,
   Alert,
   AlertLevel,
+  SalaryPlan,
+  SalarySchedulePayment,
+  SalaryScheduleMonth,
 } from '../types'
 
 // ─── Primitive validators ─────────────────────────────────────────────────────
@@ -325,6 +328,53 @@ function decodeAlert(raw: unknown): Alert {
     level: asAlertLevel(raw.level),
     message: str(raw.message, 'message'),
   }
+}
+
+// ─── Salary Plan ──────────────────────────────────────────────────────────────
+
+export function decodeSalaryPlan(raw: unknown): SalaryPlan {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    employer: str(raw.employer, 'employer'),
+    current_salary: num(raw.current_salary, 'current_salary'),
+    target_salary: num(raw.target_salary, 'target_salary'),
+    increment: num(raw.increment, 'increment'),
+    increment_interval_months: num(raw.increment_interval_months, 'increment_interval_months'),
+    next_increment_date: str(raw.next_increment_date, 'next_increment_date'),
+    split_enabled: bool(raw.split_enabled, 'split_enabled'),
+    split_first_pct: num(raw.split_first_pct, 'split_first_pct'),
+    split_first_day: num(raw.split_first_day, 'split_first_day'),
+    split_second_pct: num(raw.split_second_pct, 'split_second_pct'),
+    split_second_day: num(raw.split_second_day, 'split_second_day'),
+    active: bool(raw.active, 'active'),
+  }
+}
+
+export function decodeSalaryPlanList(raw: unknown): SalaryPlan[] {
+  return arr(raw, 'salary_plans').map(decodeSalaryPlan)
+}
+
+export function decodeSalarySchedulePayment(raw: unknown): SalarySchedulePayment {
+  assertRecord(raw)
+  return {
+    day: num(raw.day, 'day'),
+    amount: num(raw.amount, 'amount'),
+    label: str(raw.label, 'label'),
+  }
+}
+
+export function decodeSalaryScheduleMonth(raw: unknown): SalaryScheduleMonth {
+  assertRecord(raw)
+  return {
+    month: str(raw.month, 'month'),
+    salary: num(raw.salary, 'salary'),
+    payments: arr(raw.payments, 'payments').map(decodeSalarySchedulePayment),
+  }
+}
+
+export function decodeSalaryScheduleList(raw: unknown): SalaryScheduleMonth[] {
+  return arr(raw, 'schedule').map(decodeSalaryScheduleMonth)
 }
 
 export function decodeSummary(raw: unknown): Summary {

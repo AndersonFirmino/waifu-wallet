@@ -122,3 +122,21 @@ class GachaBanner(Base):
     end_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
     priority: Mapped[int] = mapped_column(Integer)       # 1-5
     pulls: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SalaryPlan(Base):
+    __tablename__ = "salary_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    employer: Mapped[str] = mapped_column(String(200))
+    current_salary: Mapped[float] = mapped_column(Float)
+    target_salary: Mapped[float] = mapped_column(Float)
+    increment: Mapped[float] = mapped_column(Float)
+    increment_interval_months: Mapped[int] = mapped_column(Integer)
+    next_increment_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
+    split_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    split_first_pct: Mapped[int] = mapped_column(Integer, default=100)
+    split_first_day: Mapped[int] = mapped_column(Integer, default=5)
+    split_second_pct: Mapped[int] = mapped_column(Integer, default=0)
+    split_second_day: Mapped[int] = mapped_column(Integer, default=25)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)

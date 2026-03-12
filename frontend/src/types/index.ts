@@ -196,6 +196,36 @@ export interface GachaBanner {
   pulls: number
 }
 
+// ─── Salary Plan ──────────────────────────────────────────────────────────────
+
+export interface SalaryPlan {
+  id: number
+  employer: string
+  current_salary: number
+  target_salary: number
+  increment: number
+  increment_interval_months: number
+  next_increment_date: string
+  split_enabled: boolean
+  split_first_pct: number
+  split_first_day: number
+  split_second_pct: number
+  split_second_day: number
+  active: boolean
+}
+
+export interface SalarySchedulePayment {
+  day: number
+  amount: number
+  label: string
+}
+
+export interface SalaryScheduleMonth {
+  month: string
+  salary: number
+  payments: SalarySchedulePayment[]
+}
+
 // ─── Notes ────────────────────────────────────────────────────────────────────
 
 export interface Note {

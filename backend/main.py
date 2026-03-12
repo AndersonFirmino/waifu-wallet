@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
-from routers import calendar, credit_cards, debts, fixed_expenses, forecast, gacha, notes, summary, transactions
+from routers import calendar, credit_cards, debts, fixed_expenses, forecast, gacha, notes, salary_plans, summary, transactions
 
 app = FastAPI(
     title="MeuCaixa API",
@@ -33,6 +33,7 @@ app.include_router(notes.router, prefix=PREFIX)
 app.include_router(gacha.router, prefix=PREFIX)
 app.include_router(calendar.router, prefix=PREFIX)
 app.include_router(forecast.router, prefix=PREFIX)
+app.include_router(salary_plans.router, prefix=PREFIX)
 app.include_router(summary.router, prefix=PREFIX)
 
 

@@ -151,6 +151,40 @@ class PullsUpdate(BaseModel):
     pulls: int
 
 
+# ─── Salary Plan ──────────────────────────────────────────────────────────────
+
+class SalaryPlanCreate(BaseModel):
+    employer: str
+    current_salary: float
+    target_salary: float
+    increment: float
+    increment_interval_months: int
+    next_increment_date: str
+    split_enabled: bool
+    split_first_pct: int
+    split_first_day: int
+    split_second_pct: int
+    split_second_day: int
+    active: bool
+
+
+class SalaryPlanOut(SalaryPlanCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
+class SalarySchedulePayment(BaseModel):
+    day: int
+    amount: float
+    label: str
+
+
+class SalaryScheduleMonth(BaseModel):
+    month: str          # YYYY-MM
+    salary: float
+    payments: list[SalarySchedulePayment]
+
+
 # ─── Calendar ─────────────────────────────────────────────────────────────────
 
 class CalendarEventOut(BaseModel):

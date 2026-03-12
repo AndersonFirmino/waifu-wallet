@@ -6,11 +6,15 @@ if not exist "frontend\node_modules" (
   cd frontend && npm install && cd ..
 )
 
-start "MeuCaixa Frontend" cmd /k "cd frontend && npm run dev"
+start "MeuCaixa Backend" cmd /k "cd /d "%~dp0backend" && uv run uvicorn main:app --reload"
+
+timeout /t 2 /nobreak >nul
+
+start "MeuCaixa Frontend" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 
 timeout /t 3 /nobreak >nul
 start http://localhost:5173
 
 echo.
-echo Frontend rodando em http://localhost:5173
-echo Backend ainda nao configurado (Fase 2)
+echo Backend:  http://localhost:8000
+echo Frontend: http://localhost:5173
