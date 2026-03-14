@@ -550,8 +550,8 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
         <div
           style={{
             position: 'relative',
-            width: 160,
-            minWidth: 160,
+            width: 280,
+            minWidth: 280,
             alignSelf: 'stretch',
             overflow: 'hidden',
             background: 'var(--color-surface2)',
@@ -1905,11 +1905,10 @@ export default function Gacha() {
           Nenhum banner cadastrado
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
           {sortedBanners.map((banner) => (
             <div
               key={banner.id}
-              style={{ gridColumn: editingId === banner.id ? '1 / -1' : undefined }}
             >
               <BannerCard
                 banner={banner}
