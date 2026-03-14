@@ -1,8 +1,8 @@
-# waifu-wallet
+# 💵 Waifu Wallet
 
-> A personal finance dashboard built for one real purpose: spending smarter on gacha.
+> **A financial manager for people who LOVE gacha games and want to manage their spending the simple and easy way.**
 
-Track your income, expenses, debts, and savings — all so you can confidently know exactly how much you can throw at the next banner without destroying your life.
+Built by gacha players, for gacha players. Track your income, expenses, debts, credit cards, and savings — all so you can confidently know exactly how much you can throw at the next banner without destroying your life. Multi-game stash tracking, pull calculators, constellation/refinement targets, and real-time currency conversion included.
 
 ---
 
@@ -21,15 +21,15 @@ Track your income, expenses, debts, and savings — all so you can confidently k
 ## Features
 
 - **Dashboard** — balance overview, payday countdown, AI advisor notes, financial timeline roadmap
-- **Gacha Tracker** — banner management with image carousel, live countdown (D/H/M/S), pull calculator with stash allocation by priority
+- **Gacha Tracker** — multi-game banner management with image carousel, live countdown, pull calculator with per-game stash allocation, constellation/refinement tracking, and auto-calculated estimated pulls
 - **Transactions** — income and expense log
-- **Credit Cards** — multi-card management with bill tracking, subscriptions, and limit visualization
+- **Credit Cards** — multi-card management with inline bill editing, subscriptions (BRL/USD with live exchange rate), and limit visualization
 - **Fixed Expenses** — recurring monthly costs with EMA-based forecast
 - **Debts & Loans** — installment tracking with urgency alerts and progress bars
 - **Savings** — savings accounts with goal tracking
 - **Salary Plans** — salary progression planning with split-payment support and 12-month projection
 - **Forecast** — balance projection for 1 / 3 / 6 months across base, optimistic, and pessimistic scenarios
-- **Financial Calendar** — monthly view of all income, expenses, and installments by day
+- **Financial Calendar** — monthly view with holidays (BrasilAPI), automatic payment shifting on holidays/weekends, subscription billing dates, and credit card due dates
 - **Notes** — markdown notes (designed for an AI advisor to leave persistent observations)
 
 ---
@@ -145,7 +145,9 @@ Base URL: `http://localhost:8000/api/v1`
 | Salary Plans | `GET POST PUT DELETE /salary-plans/` |
 | Gacha Banners | `GET POST PUT DELETE /gacha/banners/` |
 | Banner Images | `POST DELETE /gacha/banners/{id}/images` |
+| Gacha Stashes | `GET /gacha/stashes` · `GET PATCH /gacha/stash/game?game=X` |
 | Image Upload | `POST /upload/gacha` |
+| Settings | `GET PATCH /settings/` |
 | Notes | `GET POST PUT DELETE /notes/` |
 | Forecast | `GET /forecast/?period=1m\|3m\|6m` |
 | Calendar | `GET /calendar/{year}/{month}` |
@@ -154,14 +156,39 @@ Full docs: `http://localhost:8000/docs`
 
 ---
 
+## Supported Gacha Games
+
+| Game | Char Pity | Weapon Pity | Currency |
+|------|-----------|-------------|----------|
+| Genshin Impact | 90 | 80 | Primogems / Intertwined Fate |
+| Honkai: Star Rail | 90 | 80 | Stellar Jade / Special Pass |
+| Zenless Zone Zero | 90 | 80 | Polychrome / Encrypted Master Tape |
+| Honkai Impact 3rd | 100 | 50 | Crystals / Supply Card |
+| Wuthering Waves | 80 | 80 | Astrite / Radiant Tide |
+| Blue Archive | 200 | — | Pyroxene / Recruitment Ticket |
+
+Per-game stash tracking, pull calculators, and currency labels are all automatic based on which games you have banners for.
+
+---
+
+## TODO
+
+- [ ] **Full responsive design** — make every page mobile-friendly so users can manage their finances from any device (phone, tablet, desktop)
+
+---
+
 ## Data & Privacy
 
-- All data lives in a local SQLite file (`backend/meucaixa.db`) — gitignored
+- All data lives in a local SQLite file (`backend/waifu_wallet.db`) — gitignored
 - Uploaded banner images live in `frontend/public/gacha/` — gitignored
-- No accounts, no telemetry, no external services
+- No accounts, no telemetry — only external calls are BrasilAPI (holidays) and AwesomeAPI (USD/BRL exchange rate)
 
 ---
 
 ## License
 
 [MIT](LICENSE) — do whatever you want with it.
+
+---
+
+*Made with love by a waifuist, for all the fellow waifuists who play gacha out there. May your pulls be golden and your wallet survive. 💵*
