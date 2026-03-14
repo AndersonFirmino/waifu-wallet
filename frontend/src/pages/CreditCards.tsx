@@ -7,7 +7,15 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import ProgressBar from '../components/ui/ProgressBar'
 import { formatCurrency } from '../utils/currency'
-import { type CreditCard, type CardStatus, type CardBrand } from '../types'
+import { type CreditCard, type CardStatus, type CardBrand, type SubscriptionCurrency } from '../types'
+
+const SUBSCRIPTION_CURRENCIES: SubscriptionCurrency[] = ['BRL', 'USD']
+
+function parseSubscriptionCurrency(val: string): SubscriptionCurrency {
+  const found = SUBSCRIPTION_CURRENCIES.find((c) => c === val)
+  if (found === undefined) throw new Error(`Invalid SubscriptionCurrency: ${val}`)
+  return found
+}
 import { useFetch } from '../hooks/useApi'
 import { decodeCreditCardList } from '../lib/decode'
 
@@ -216,6 +224,13 @@ export default function CreditCards() {
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
+  // Subscription form state
+  const [showSubForm, setShowSubForm] = useState(false)
+  const [subName, setSubName] = useState('')
+  const [subAmount, setSubAmount] = useState('')
+  const [subCurrency, setSubCurrency] = useState<SubscriptionCurrency>('BRL')
+  const [subBillingDay, setSubBillingDay] = useState('')
+
   const cardList = serverData ?? []
 
   const effectiveId = selectedId ?? cardList[0]?.id ?? null
@@ -305,6 +320,42 @@ export default function CreditCards() {
     await fetch(`/api/v1/credit-cards/${String(id)}`, { method: 'DELETE' })
     setConfirmDeleteId(null)
     if (selectedId === id) setSelectedId(null)
+  }
+
+  function resetSubForm() {
+    setSubName('')
+    setSubAmount('')
+    setSubCurrency('BRL')
+    setSubBillingDay('')
+    setShowSubForm(false)
+  }
+
+  const handleAddSubscription = async (cardId: number) => {
+    const amount = parseFloat(subAmount)
+    const billingDay = parseInt(subBillingDay, 10)
+    if (!subName || isNaN(amount) || amount <= 0 || isNaN(billingDay) || billingDay < 1 || billingDay > 31) return
+
+    const r = await fetch(`/api/v1/credit-cards/${String(cardId)}/subscriptions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: subName, amount, currency: subCurrency, billing_day: billingDay, active: true }),
+    })
+    if (!r.ok) return
+    resetSubForm()
+  }
+
+  const handleToggleSubscription = async (cardId: number, subId: number, currentActive: boolean) => {
+    await fetch(`/api/v1/credit-cards/${String(cardId)}/subscriptions/${String(subId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !currentActive }),
+    })
+  }
+
+  const handleDeleteSubscription = async (cardId: number, subId: number) => {
+    await fetch(`/api/v1/credit-cards/${String(cardId)}/subscriptions/${String(subId)}`, {
+      method: 'DELETE',
+    })
   }
 
   if (cardList.length === 0 && !showForm) {
@@ -502,6 +553,144 @@ export default function CreditCards() {
                   </div>
                 )}
               </div>
+            </Card>
+
+            {/* Subscriptions */}
+            <Card className="mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
+                  Assinaturas
+                </p>
+                <button
+                  onClick={() => { setShowSubForm((v) => !v) }}
+                  className="text-xs font-medium px-2 py-1 rounded-md transition-colors"
+                  style={{
+                    background: showSubForm ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)',
+                    color: showSubForm ? 'var(--color-red)' : 'var(--color-blue)',
+                    cursor: 'pointer',
+                    border: 'none',
+                  }}
+                >
+                  {showSubForm ? 'Cancelar' : '+ Adicionar'}
+                </button>
+              </div>
+
+              {/* Add subscription inline form */}
+              {showSubForm && (
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  <input
+                    placeholder="Nome"
+                    value={subName}
+                    onChange={(e) => { setSubName(e.target.value) }}
+                    className="col-span-1"
+                  />
+                  <input
+                    placeholder="Valor"
+                    value={subAmount}
+                    onChange={(e) => { setSubAmount(e.target.value) }}
+                    type="number"
+                    step="0.01"
+                  />
+                  <div className="flex gap-1">
+                    <select
+                      value={subCurrency}
+                      onChange={(e) => { setSubCurrency(parseSubscriptionCurrency(e.target.value)) }}
+                      style={{ flex: '0 0 70px' }}
+                    >
+                      <option value="BRL">BRL</option>
+                      <option value="USD">USD</option>
+                    </select>
+                    <input
+                      placeholder="Dia"
+                      value={subBillingDay}
+                      onChange={(e) => { setSubBillingDay(e.target.value) }}
+                      type="number"
+                      min="1"
+                      max="31"
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => { void handleAddSubscription(selected.id) }}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              )}
+
+              {selected.subscriptions.length === 0 && !showSubForm ? (
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  Nenhuma assinatura
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {selected.subscriptions.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="flex justify-between items-center px-2 py-2 rounded-lg"
+                      style={{
+                        transition: 'background 0.12s',
+                        opacity: sub.active ? 1 : 0.5,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface2)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { void handleToggleSubscription(selected.id, sub.id, sub.active) }}
+                          className="text-xs rounded-full px-1.5 py-0.5"
+                          style={{
+                            background: sub.active ? 'rgba(34,197,94,0.15)' : 'rgba(156,163,175,0.15)',
+                            color: sub.active ? 'var(--color-green)' : 'var(--color-muted)',
+                            cursor: 'pointer',
+                            border: 'none',
+                            lineHeight: 1,
+                          }}
+                          title={sub.active ? 'Ativa — clique para desativar' : 'Inativa — clique para ativar'}
+                        >
+                          {sub.active ? '●' : '○'}
+                        </button>
+                        <span className="text-sm" style={{ color: 'var(--color-text)' }}>{sub.name}</span>
+                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>dia {sub.billing_day}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                          {sub.currency === 'USD' ? `US$ ${sub.amount.toFixed(2)}` : formatCurrency(sub.amount)}
+                        </span>
+                        <button
+                          onClick={() => { void handleDeleteSubscription(selected.id, sub.id) }}
+                          className="text-xs opacity-40 hover:opacity-100 transition-opacity"
+                          style={{ cursor: 'pointer', border: 'none', background: 'none', color: 'var(--color-red)' }}
+                          title="Remover"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Total */}
+                  {selected.subscriptions.filter((s) => s.active).length > 0 && (
+                    <div className="flex justify-between items-center px-2 pt-2 mt-1" style={{ borderTop: '1px solid var(--color-border)' }}>
+                      <span className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
+                        Total mensal ({selected.subscriptions.filter((s) => s.active).length} ativas)
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                        <AnimatedNumber
+                          value={selected.subscriptions.filter((s) => s.active && s.currency === 'BRL').reduce((sum, s) => sum + s.amount, 0)}
+                          formatter={formatCurrency}
+                        />
+                        {selected.subscriptions.some((s) => s.active && s.currency === 'USD') && (
+                          <span className="ml-2" style={{ color: 'var(--color-muted)' }}>
+                            + US$ {selected.subscriptions.filter((s) => s.active && s.currency === 'USD').reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
 
             {/* History */}

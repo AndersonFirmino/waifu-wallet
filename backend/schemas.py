@@ -95,6 +95,33 @@ class CardBillItemOut(CardBillItemCreate):
     card_id: int
 
 
+class CardSubscriptionCreate(BaseModel):
+    name: str
+    amount: float
+    currency: str = "BRL"
+    billing_day: int
+    active: bool = True
+
+
+class CardSubscriptionUpdate(BaseModel):
+    name: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    billing_day: int | None = None
+    active: bool | None = None
+
+
+class CardSubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    card_id: int
+    name: str
+    amount: float
+    currency: str
+    billing_day: int
+    active: bool
+
+
 class CreditCardCreate(BaseModel):
     name: str
     brand: str
@@ -114,6 +141,7 @@ class CreditCardOut(CreditCardCreate):
     id: int
     history: list[CardBillHistoryOut]
     items: list[CardBillItemOut]
+    subscriptions: list[CardSubscriptionOut]
 
 
 # ─── Note ─────────────────────────────────────────────────────────────────────

@@ -5,12 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import CardBillHistory, CardBillItem, CreditCard
+from models import CardBillHistory, CardBillItem, CardSubscription, CreditCard
 from schemas import (
     CardBillHistoryCreate,
     CardBillHistoryOut,
     CardBillItemCreate,
     CardBillItemOut,
+    CardSubscriptionCreate,
+    CardSubscriptionOut,
+    CardSubscriptionUpdate,
     CreditCardCreate,
     CreditCardOut,
 )
@@ -117,4 +120,51 @@ def delete_item(
     if item is None or item.card_id != card_id:
         raise HTTPException(status_code=404, detail="Bill item not found")
     db.delete(item)
+    db.commit()
+
+
+# ─── Subscriptions ────────────────────────────────────────────────────────────
+
+@router.post("/{card_id}/subscriptions", response_model=CardSubscriptionOut, status_code=201)
+def add_subscription(
+    card_id: int,
+    body: CardSubscriptionCreate,
+    db: Session = Depends(get_db),
+) -> CardSubscription:
+    if db.get(CreditCard, card_id) is None:
+        raise HTTPException(status_code=404, detail="Credit card not found")
+    subscription = CardSubscription(card_id=card_id, **body.model_dump())
+    db.add(subscription)
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
+
+@router.put("/{card_id}/subscriptions/{sub_id}", response_model=CardSubscriptionOut)
+def update_subscription(
+    card_id: int,
+    sub_id: int,
+    body: CardSubscriptionUpdate,
+    db: Session = Depends(get_db),
+) -> CardSubscription:
+    subscription = db.get(CardSubscription, sub_id)
+    if subscription is None or subscription.card_id != card_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(subscription, field, value)
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
+
+@router.delete("/{card_id}/subscriptions/{sub_id}", status_code=204)
+def delete_subscription(
+    card_id: int,
+    sub_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    subscription = db.get(CardSubscription, sub_id)
+    if subscription is None or subscription.card_id != card_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    db.delete(subscription)
     db.commit()

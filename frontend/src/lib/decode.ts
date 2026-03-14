@@ -10,6 +10,8 @@ import type {
   CardBillItem,
   CardBrand,
   CardStatus,
+  CardSubscription,
+  SubscriptionCurrency,
   Note,
   GachaBanner,
   GachaBannerImage,
@@ -85,6 +87,11 @@ function asCardStatus(val: unknown): CardStatus {
 function asCardBrand(val: unknown): CardBrand {
   if (val === 'Mastercard' || val === 'Visa' || val === 'Elo' || val === 'Amex') return val
   throw new Error(`Invalid CardBrand: ${String(val)}`)
+}
+
+function asSubscriptionCurrency(val: unknown): SubscriptionCurrency {
+  if (val === 'BRL' || val === 'USD') return val
+  throw new Error(`Invalid SubscriptionCurrency: ${String(val)}`)
 }
 
 function asCalendarEventType(val: unknown): CalendarEventType {
@@ -195,6 +202,19 @@ function decodeCardBillItem(raw: unknown): CardBillItem {
   }
 }
 
+function decodeCardSubscription(raw: unknown): CardSubscription {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    card_id: num(raw.card_id, 'card_id'),
+    name: str(raw.name, 'name'),
+    amount: num(raw.amount, 'amount'),
+    currency: asSubscriptionCurrency(raw.currency),
+    billing_day: num(raw.billing_day, 'billing_day'),
+    active: bool(raw.active, 'active'),
+  }
+}
+
 export function decodeCreditCard(raw: unknown): CreditCard {
   assertRecord(raw)
   return {
@@ -212,6 +232,7 @@ export function decodeCreditCard(raw: unknown): CreditCard {
     status: asCardStatus(raw.status),
     history: arr(raw.history, 'history').map(decodeCardBillHistory),
     items: arr(raw.items, 'items').map(decodeCardBillItem),
+    subscriptions: arr(raw.subscriptions, 'subscriptions').map(decodeCardSubscription),
   }
 }
 

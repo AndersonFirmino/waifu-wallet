@@ -79,6 +79,9 @@ class CreditCard(Base):
     items: Mapped[list[CardBillItem]] = relationship(
         back_populates="card", cascade="all, delete-orphan"
     )
+    subscriptions: Mapped[list[CardSubscription]] = relationship(
+        back_populates="card", cascade="all, delete-orphan"
+    )
 
 
 class CardBillHistory(Base):
@@ -103,6 +106,20 @@ class CardBillItem(Base):
     date: Mapped[str] = mapped_column(String(10))
 
     card: Mapped[CreditCard] = relationship(back_populates="items")
+
+
+class CardSubscription(Base):
+    __tablename__ = "card_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    card_id: Mapped[int] = mapped_column(ForeignKey("credit_cards.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    amount: Mapped[float] = mapped_column(Float)
+    currency: Mapped[str] = mapped_column(String(3), default="BRL")
+    billing_day: Mapped[int] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    card: Mapped[CreditCard] = relationship(back_populates="subscriptions")
 
 
 class Note(Base):

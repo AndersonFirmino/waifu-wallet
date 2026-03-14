@@ -163,6 +163,19 @@ export interface CreditCard {
   status: CardStatus
   history: CardBillHistory[]
   items: CardBillItem[]
+  subscriptions: CardSubscription[]
+}
+
+export type SubscriptionCurrency = 'BRL' | 'USD'
+
+export interface CardSubscription {
+  id: number
+  card_id: number
+  name: string
+  amount: number
+  currency: SubscriptionCurrency
+  billing_day: number
+  active: boolean
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
