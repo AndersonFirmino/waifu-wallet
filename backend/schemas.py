@@ -184,7 +184,9 @@ class GachaBannerCreate(BaseModel):
     end_date: str
     priority: int
     pulls: int = 0
-    target: str | None = None
+    estimated_pulls: int = 0
+    char_target: str | None = None
+    weapon_target: str | None = None
     image_url: str | None = None
 
 
@@ -202,7 +204,8 @@ class GachaBannerImageOut(GachaBannerImageCreate):
 class GachaBannerOut(GachaBannerCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    target: str | None = None
+    char_target: str | None = None
+    weapon_target: str | None = None
     images: list[GachaBannerImageOut] = []
 
 

@@ -150,7 +150,9 @@ class GachaBanner(Base):
     end_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
     priority: Mapped[int] = mapped_column(Integer)       # 1-5
     pulls: Mapped[int] = mapped_column(Integer, default=0)
-    target: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)  # E0|E1|E2|E6S1
+    estimated_pulls: Mapped[int] = mapped_column(Integer, default=0)
+    char_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)    # E0-E6
+    weapon_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)  # S1-S5
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
 
     images: Mapped[list[GachaBannerImage]] = relationship(

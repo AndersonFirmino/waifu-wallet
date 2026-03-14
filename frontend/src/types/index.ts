@@ -211,7 +211,8 @@ export interface GachaBannerImage {
   sort_order: number
 }
 
-export type GachaTarget = 'E0' | 'E1' | 'E2' | 'E6S1'
+export type CharTarget = 'E0' | 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6'
+export type WeaponTarget = 'S1' | 'S2' | 'S3' | 'S4' | 'S5'
 
 export interface GachaBanner {
   id: number
@@ -222,7 +223,9 @@ export interface GachaBanner {
   end_date: string
   priority: GachaPriority
   pulls: number
-  target: GachaTarget | null
+  estimated_pulls: number
+  char_target: CharTarget | null
+  weapon_target: WeaponTarget | null
   image_url: string | null
   images: GachaBannerImage[]
 }

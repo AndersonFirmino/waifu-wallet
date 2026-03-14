@@ -7,16 +7,33 @@ import CurrencyInput from '../components/ui/CurrencyInput'
 import ImageCropUpload from '../components/ImageCropUpload'
 import { formatCurrency } from '../utils/currency'
 import { daysUntil } from '../utils/date'
-import { type GachaBanner, type GachaPriority, type GachaTarget } from '../types'
+import { type GachaBanner, type GachaPriority, type CharTarget, type WeaponTarget } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeGachaBanner, decodeBannerList, decodeSummary, decodeGachaStash } from '../lib/decode'
 
 // ─── Pull Calculator Constants ───────────────────────────────────────────────
 
-const JADE_PER_PULL = 160
+// Premium currency per pull by game
+const CURRENCY_PER_PULL: Record<string, number> = {
+  'Honkai: Star Rail': 160,      // Stellar Jade
+  'Genshin Impact': 160,          // Primogems
+  'Zenless Zone Zero': 160,       // Polychrome
+  'Honkai Impact 3rd': 280,       // Crystals
+}
 
-// Honkai: Star Rail official BRL top-up tiers (oneiric shards = stellar jade 1:1)
-const TOP_UP_TIERS = [
+const DEFAULT_CURRENCY_PER_PULL = 160
+
+function getCurrencyPerPull(game: string): number {
+  return CURRENCY_PER_PULL[game] ?? DEFAULT_CURRENCY_PER_PULL
+}
+
+// Official BRL top-up tiers per game (all HoYoverse games share same tier structure except HI3)
+interface TopUpTier {
+  shards: number
+  price: number
+}
+
+const HOYOVERSE_STANDARD_TIERS: readonly TopUpTier[] = [
   { shards: 60, price: 4.90 },
   { shards: 300, price: 24.90 },
   { shards: 980, price: 79.90 },
@@ -25,13 +42,34 @@ const TOP_UP_TIERS = [
   { shards: 6480, price: 499.90 },
 ] as const
 
+const HI3_TIERS: readonly TopUpTier[] = [
+  { shards: 60, price: 4.90 },
+  { shards: 330, price: 24.90 },
+  { shards: 1090, price: 79.90 },
+  { shards: 2190, price: 149.90 },
+  { shards: 3640, price: 249.90 },
+  { shards: 7200, price: 499.90 },
+] as const
+
+const GAME_TOP_UP_TIERS: Record<string, readonly TopUpTier[]> = {
+  'Honkai: Star Rail': HOYOVERSE_STANDARD_TIERS,
+  'Genshin Impact': HOYOVERSE_STANDARD_TIERS,
+  'Zenless Zone Zero': HOYOVERSE_STANDARD_TIERS,
+  'Honkai Impact 3rd': HI3_TIERS,
+}
+
+function getTiersForGame(game: string): readonly TopUpTier[] {
+  return GAME_TOP_UP_TIERS[game] ?? HOYOVERSE_STANDARD_TIERS
+}
+
 // With first-time/anniversary double gems each tier gives 2x shards
-function calculateCashCost(jadesToBuy: number, doubleGems: boolean): number {
-  if (jadesToBuy <= 0) return 0
-  let remaining = jadesToBuy
+function calculateCashCost(currencyToBuy: number, doubleGems: boolean, game: string): number {
+  if (currencyToBuy <= 0) return 0
+  const tiers = getTiersForGame(game)
+  let remaining = currencyToBuy
   let cost = 0
-  // Greedy: buy largest packs first for best $/jade ratio
-  const sortedTiers = [...TOP_UP_TIERS].sort((a, b) => b.shards - a.shards)
+  // Greedy: buy largest packs first for best $/currency ratio
+  const sortedTiers = [...tiers].sort((a, b) => b.shards - a.shards)
   for (const tier of sortedTiers) {
     const effective = doubleGems ? tier.shards * 2 : tier.shards
     while (remaining > 0 && remaining >= effective / 2) {
@@ -41,7 +79,7 @@ function calculateCashCost(jadesToBuy: number, doubleGems: boolean): number {
   }
   // If still remaining, buy smallest pack
   if (remaining > 0) {
-    const smallest = TOP_UP_TIERS[0]
+    const smallest = tiers[0]
     const effective = doubleGems ? smallest.shards * 2 : smallest.shards
     while (remaining > 0) {
       cost += smallest.price
@@ -51,22 +89,99 @@ function calculateCashCost(jadesToBuy: number, doubleGems: boolean): number {
   return cost
 }
 
-// Average pulls needed per target
-const TARGET_PULLS: Record<GachaTarget, { avg: number; label: string }> = {
-  E0: { avg: 90, label: 'E0 (pegar)' },
-  E1: { avg: 180, label: 'E1' },
-  E2: { avg: 270, label: 'E2' },
-  E6S1: { avg: 600, label: 'E6S1' },
+function formatInteger(n: number): string {
+  return Math.round(n).toLocaleString('pt-BR')
 }
 
-const GACHA_TARGETS: GachaTarget[] = ['E0', 'E1', 'E2', 'E6S1']
+// A banner has a pull target when the user set an estimated_pulls value
+function hasEstimate(b: GachaBanner): boolean {
+  return b.estimated_pulls > 0
+}
 
-function parseGachaTarget(val: string): GachaTarget | null {
+// Game-specific labels for character targets
+const GAME_CHAR_LABELS: Record<string, Record<CharTarget, string>> = {
+  'Honkai: Star Rail': { E0: 'E0', E1: 'E1', E2: 'E2', E3: 'E3', E4: 'E4', E5: 'E5', E6: 'E6' },
+  'Genshin Impact': { E0: 'C0', E1: 'C1', E2: 'C2', E3: 'C3', E4: 'C4', E5: 'C5', E6: 'C6' },
+  'Zenless Zone Zero': { E0: 'M0', E1: 'M1', E2: 'M2', E3: 'M3', E4: 'M4', E5: 'M5', E6: 'M6' },
+  'Honkai Impact 3rd': { E0: 'S', E1: 'SS', E2: 'SSS', E3: 'SSS', E4: 'SSS', E5: 'SSS', E6: 'SSS' },
+}
+
+const DEFAULT_CHAR_LABELS: Record<CharTarget, string> = {
+  E0: 'E0', E1: 'E1', E2: 'E2', E3: 'E3', E4: 'E4', E5: 'E5', E6: 'E6',
+}
+
+// Game-specific labels for weapon targets
+const GAME_WEAPON_LABELS: Record<string, Record<WeaponTarget, string>> = {
+  'Honkai: Star Rail': { S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5' },
+  'Genshin Impact': { S1: 'R1', S2: 'R2', S3: 'R3', S4: 'R4', S5: 'R5' },
+  'Zenless Zone Zero': { S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5' },
+  'Honkai Impact 3rd': { S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5' },
+}
+
+const DEFAULT_WEAPON_LABELS: Record<WeaponTarget, string> = {
+  S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5',
+}
+
+function getCharLabel(game: string, target: CharTarget): string {
+  const labels = GAME_CHAR_LABELS[game]
+  if (labels !== undefined) return labels[target]
+  return DEFAULT_CHAR_LABELS[target]
+}
+
+function getWeaponLabel(game: string, target: WeaponTarget): string {
+  const labels = GAME_WEAPON_LABELS[game]
+  if (labels !== undefined) return labels[target]
+  return DEFAULT_WEAPON_LABELS[target]
+}
+
+const ALL_CHAR_TARGETS: CharTarget[] = ['E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6']
+const ALL_WEAPON_TARGETS: WeaponTarget[] = ['S1', 'S2', 'S3', 'S4', 'S5']
+
+function parseCharTarget(val: string): CharTarget | null {
   if (val === '') return null
-  const found = GACHA_TARGETS.find((t) => t === val)
-  if (found === undefined) throw new Error(`Invalid GachaTarget: ${val}`)
+  const found = ALL_CHAR_TARGETS.find((t) => t === val)
+  if (found === undefined) throw new Error(`Invalid CharTarget: ${val}`)
   return found
 }
+
+function parseWeaponTarget(val: string): WeaponTarget | null {
+  if (val === '') return null
+  const found = ALL_WEAPON_TARGETS.find((t) => t === val)
+  if (found === undefined) throw new Error(`Invalid WeaponTarget: ${val}`)
+  return found
+}
+
+function getTargetSummary(game: string, charTarget: CharTarget | null, weaponTarget: WeaponTarget | null): string {
+  const parts: string[] = []
+  if (charTarget !== null) parts.push(getCharLabel(game, charTarget))
+  if (weaponTarget !== null) parts.push(getWeaponLabel(game, weaponTarget))
+  return parts.length > 0 ? parts.join(' + ') : 'Sem objetivo'
+}
+
+// Game-specific group labels for dropdowns
+function getCharGroupLabel(game: string): string {
+  if (game === 'Genshin Impact') return 'Constelação'
+  if (game === 'Honkai: Star Rail') return 'Eidolon'
+  if (game === 'Zenless Zone Zero') return 'Mindscape'
+  if (game === 'Honkai Impact 3rd') return 'Rank'
+  return 'Personagem'
+}
+
+function getWeaponGroupLabel(game: string): string {
+  if (game === 'Genshin Impact') return 'Arma (Refinamento)'
+  if (game === 'Honkai: Star Rail') return 'Cone de Luz'
+  if (game === 'Zenless Zone Zero') return 'W-Engine'
+  if (game === 'Honkai Impact 3rd') return 'Arma Signature'
+  return 'Arma / LC'
+}
+
+// Game names used in the "Jogo" dropdown and for identifying currency/tiers
+const SUPPORTED_GAMES = [
+  'Honkai: Star Rail',
+  'Genshin Impact',
+  'Zenless Zone Zero',
+  'Honkai Impact 3rd',
+] as const
 
 const GAME_EMOJIS = new Map<string, string>([
   ['Genshin Impact', '🌸'],
@@ -74,6 +189,8 @@ const GAME_EMOJIS = new Map<string, string>([
   ['Blue Archive', '📘'],
   ['Azur Lane', '⚓'],
   ['Honkai: Star Rail', '🚂'],
+  ['Zenless Zone Zero', '📺'],
+  ['Honkai Impact 3rd', '⚡'],
 ])
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -162,6 +279,43 @@ function useLiveCountdown(targetDate: string): { days: number; hours: number; mi
   return { days, hours, minutes, seconds, expired: false }
 }
 
+// ─── EstimatedPullsInput ──────────────────────────────────────────────────────
+
+function EstimatedPullsInputInner({ defaultValue, onCommit }: { defaultValue: number; onCommit: (v: number) => void }) {
+  const [local, setLocal] = useState(defaultValue === 0 ? '' : String(defaultValue))
+
+  const commit = () => {
+    const parsed = parseInt(local, 10)
+    const final = isNaN(parsed) ? 0 : Math.max(0, parsed)
+    if (final !== defaultValue) onCommit(final)
+  }
+
+  return (
+    <input
+      type="number"
+      value={local}
+      onChange={(e) => { setLocal(e.target.value) }}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit() }}
+      placeholder="Est. pulls"
+      style={{
+        background: 'var(--color-surface2)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 4,
+        color: 'var(--color-text)',
+        fontSize: 11,
+        padding: '3px 6px',
+        width: 80,
+      }}
+    />
+  )
+}
+
+function EstimatedPullsInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  // key forces remount when external value changes (e.g. after server save)
+  return <EstimatedPullsInputInner key={value} defaultValue={value} onCommit={onCommit} />
+}
+
 // ─── BannerCard ───────────────────────────────────────────────────────────────
 
 interface BannerEditData {
@@ -171,7 +325,9 @@ interface BannerEditData {
   start_date: string
   end_date: string
   priority: GachaPriority
-  target: GachaTarget | null
+  char_target: CharTarget | null
+  weapon_target: WeaponTarget | null
+  estimated_pulls: number
   image_url: string | null
 }
 
@@ -183,12 +339,14 @@ interface BannerCardProps {
   onSave: (id: number, data: BannerEditData) => void
   onCancel: () => void
   onImagesChanged: () => void
-  onSetTarget: (id: number, target: GachaTarget | null) => void
-  stashPulls: number
+  onSetCharTarget: (id: number, target: CharTarget | null) => void
+  onSetWeaponTarget: (id: number, target: WeaponTarget | null) => void
+  onSetEstimatedPulls: (id: number, pulls: number) => void
+  allocatedPulls: number
   doubleGemsAvailable: boolean
 }
 
-function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onImagesChanged, onSetTarget, stashPulls, doubleGemsAvailable }: BannerCardProps) {
+function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onImagesChanged, onSetCharTarget, onSetWeaponTarget, onSetEstimatedPulls, allocatedPulls, doubleGemsAvailable }: BannerCardProps) {
   const phase = getBannerPhase(banner.start_date, banner.end_date)
   const emoji = GAME_EMOJIS.get(banner.game) ?? '🎮'
 
@@ -319,7 +477,9 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
       start_date: editStartDate,
       end_date: editEndDate,
       priority: editPriority,
-      target: banner.target,
+      char_target: banner.char_target,
+      weapon_target: banner.weapon_target,
+      estimated_pulls: banner.estimated_pulls,
       image_url: editImageUrl.trim() !== '' ? editImageUrl.trim() : null,
     })
   }
@@ -458,11 +618,12 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Jogo</label>
-                <input
-                  value={editGame}
-                  onChange={(e) => { setEditGame(e.target.value) }}
-                  placeholder="ex: Honkai: Star Rail"
-                />
+                <select value={editGame} onChange={(e) => { setEditGame(e.target.value) }}>
+                  <option value="">Selecionar jogo...</option>
+                  {SUPPORTED_GAMES.map((g) => (
+                    <option key={g} value={g}>{GAME_EMOJIS.get(g) ?? '🎮'} {g}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Personagem / Banner</label>
@@ -833,94 +994,134 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               )}
             </div>
 
-            {/* Row 6: Stats inline */}
+            {/* Row 6: Stats — 2 lines for breathing room */}
             <div
               style={{
                 marginTop: 'auto',
                 paddingTop: 8,
                 borderTop: '1px solid var(--color-border)',
                 display: 'flex',
-                gap: 14,
-                fontSize: 13,
-                alignItems: 'center',
+                flexDirection: 'column',
+                gap: 6,
+                fontSize: 12,
               }}
             >
-              <span>
-                <span style={{ color: 'var(--color-muted)' }}>💰 </span>
-                <span style={{ color: 'var(--color-yellow)', fontWeight: 600 }}>
-                  <AnimatedNumber value={banner.cost} formatter={formatCurrency} />
+              {/* Line 1: progress, dates */}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span>
+                  <span style={{ color: 'var(--color-muted)' }}>🎯 </span>
+                  {(() => {
+                    const progress = banner.pulls + allocatedPulls
+                    const est = banner.estimated_pulls
+                    const complete = hasEstimate(banner) && progress >= est
+                    return (
+                      <>
+                        <span style={{ fontWeight: 600, color: complete ? 'var(--color-green)' : 'var(--color-text)' }}>
+                          <AnimatedNumber value={hasEstimate(banner) ? Math.min(progress, est) : banner.pulls} />
+                        </span>
+                        {hasEstimate(banner) && (
+                          <span style={{ color: 'var(--color-muted)' }}>/{est}</span>
+                        )}
+                      </>
+                    )
+                  })()}
                 </span>
-              </span>
-              <span>
-                <span style={{ color: 'var(--color-muted)' }}>🎯 </span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                  <AnimatedNumber value={banner.pulls} />
+                <span style={{ marginLeft: 'auto' }}>
+                  <span style={{ color: 'var(--color-muted)' }}>📅 </span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                    {banner.start_date.split('-').slice(1).reverse().join('/')}
+                  </span>
+                  <span style={{ color: 'var(--color-muted)', margin: '0 3px' }}>→</span>
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color:
+                        phase === 'ended'
+                          ? '#6b7280'
+                          : phase === 'active' && daysToEnd <= 5
+                            ? 'var(--color-red)'
+                            : 'var(--color-text)',
+                    }}
+                  >
+                    {banner.end_date.split('-').slice(1).reverse().join('/')}
+                  </span>
                 </span>
-                {banner.target !== null && (
-                  <span style={{ color: 'var(--color-muted)' }}>/{TARGET_PULLS[banner.target].avg}</span>
-                )}
-              </span>
-              <span className="flex items-center gap-1">
-                <span style={{ color: 'var(--color-muted)' }}>🏆 </span>
+              </div>
+
+              {/* Line 2: estimated pulls input + informational labels + cost indicator */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Estimated pulls input (saves on blur) */}
+                <span style={{ color: 'var(--color-muted)', fontSize: 11 }}>🏆</span>
+                <EstimatedPullsInput
+                  value={banner.estimated_pulls}
+                  onCommit={(val) => { onSetEstimatedPulls(banner.id, val) }}
+                />
+
+                {/* Informational target labels (no calculation impact) */}
                 <select
-                  value={banner.target ?? ''}
-                  onChange={(e) => { onSetTarget(banner.id, parseGachaTarget(e.target.value)) }}
+                  value={banner.char_target ?? ''}
+                  onChange={(e) => { onSetCharTarget(banner.id, parseCharTarget(e.target.value)) }}
                   style={{
                     background: 'var(--color-surface2)',
                     border: '1px solid var(--color-border)',
                     borderRadius: 4,
-                    color: 'var(--color-text)',
-                    fontSize: 12,
-                    padding: '1px 4px',
+                    color: 'var(--color-muted)',
+                    fontSize: 10,
+                    padding: '2px 4px',
                     cursor: 'pointer',
+                    minWidth: 60,
                   }}
+                  title={getCharGroupLabel(banner.game)}
                 >
                   <option value="">—</option>
-                  {GACHA_TARGETS.map((t) => (
-                    <option key={t} value={t}>{TARGET_PULLS[t].label}</option>
+                  {ALL_CHAR_TARGETS.map((t) => (
+                    <option key={t} value={t}>{getCharLabel(banner.game, t)}</option>
                   ))}
                 </select>
-                {banner.target !== null && (() => {
-                  const targetInfo = TARGET_PULLS[banner.target]
-                  const pullsNeeded = Math.max(0, targetInfo.avg - banner.pulls)
-                  const coveredByStash = Math.min(pullsNeeded, stashPulls)
-                  const pullsToCash = pullsNeeded - coveredByStash
-                  const jadesToCash = pullsToCash * JADE_PER_PULL
-                  const cashCost = calculateCashCost(jadesToCash, doubleGemsAvailable)
+                <select
+                  value={banner.weapon_target ?? ''}
+                  onChange={(e) => { onSetWeaponTarget(banner.id, parseWeaponTarget(e.target.value)) }}
+                  style={{
+                    background: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    color: 'var(--color-muted)',
+                    fontSize: 10,
+                    padding: '2px 4px',
+                    cursor: 'pointer',
+                    minWidth: 60,
+                  }}
+                  title={getWeaponGroupLabel(banner.game)}
+                >
+                  <option value="">—</option>
+                  {ALL_WEAPON_TARGETS.map((t) => (
+                    <option key={t} value={t}>{getWeaponLabel(banner.game, t)}</option>
+                  ))}
+                </select>
+
+                {/* Cost indicator — based on estimated_pulls */}
+                {hasEstimate(banner) && (() => {
+                  const pullsNeeded = Math.max(0, banner.estimated_pulls - banner.pulls)
+                  const pullsToCash = Math.max(0, pullsNeeded - allocatedPulls)
+                  const currencyToCash = pullsToCash * getCurrencyPerPull(banner.game)
+                  const cashCost = calculateCashCost(currencyToCash, doubleGemsAvailable, banner.game)
 
                   if (pullsNeeded === 0) {
-                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓</span>
+                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓ Completo</span>
                   }
                   if (cashCost === 0) {
-                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓ coberto</span>
+                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓ Coberto pelo estoque</span>
                   }
                   return (
-                    <span style={{ color: 'var(--color-red)', fontWeight: 600, fontSize: 11 }}>
-                      {formatCurrency(cashCost)}
+                    <span style={{ fontSize: 11 }}>
+                      <span style={{ color: 'var(--color-muted)' }}>Cashar: </span>
+                      <span style={{ color: 'var(--color-red)', fontWeight: 700 }}>
+                        {formatCurrency(cashCost)}
+                      </span>
                     </span>
                   )
                 })()}
-              </span>
-              <span>
-                <span style={{ color: 'var(--color-muted)' }}>📅 </span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                  {banner.start_date.split('-').slice(1).reverse().join('/')}
-                </span>
-                <span style={{ color: 'var(--color-muted)', margin: '0 3px' }}>→</span>
-                <span
-                  style={{
-                    fontWeight: 600,
-                    color:
-                      phase === 'ended'
-                        ? '#6b7280'
-                        : phase === 'active' && daysToEnd <= 5
-                          ? 'var(--color-red)'
-                          : 'var(--color-text)',
-                  }}
-                >
-                  {banner.end_date.split('-').slice(1).reverse().join('/')}
-                </span>
-              </span>
+              </div>
             </div>
           </>
         )}
@@ -977,7 +1178,8 @@ export default function Gacha() {
       end_date: formEndDate,
       priority: formPriority,
       pulls: 0,
-      target: null,
+      char_target: null,
+      weapon_target: null,
       image_url: formImageUrl.trim() !== '' ? formImageUrl.trim() : null,
     }
     const r = await fetch('/api/v1/gacha/banners', {
@@ -1008,7 +1210,6 @@ export default function Gacha() {
     const body = {
       ...data,
       pulls: existingBanner?.pulls ?? 0,
-      target: data.target,
     }
     const r = await fetch(`/api/v1/gacha/banners/${String(id)}`, {
       method: 'PUT',
@@ -1021,13 +1222,45 @@ export default function Gacha() {
     setEditingId(null)
   }
 
-  // Stash calculations
+  // Stash calculations (uses HSR's 160 jade per pull as base for the stash pool)
   const currentJade = stash?.stellar_jade ?? 0
   const currentPasses = stash?.special_passes ?? 0
   const doubleGems = stash?.double_gems_available ?? true
-  const pullsFromJade = Math.floor(currentJade / JADE_PER_PULL)
+  const pullsFromJade = Math.floor(currentJade / 160)
   const totalPulls = pullsFromJade + currentPasses
-  const leftoverJade = currentJade % JADE_PER_PULL
+  const leftoverJade = currentJade % 160
+
+  // Allocate stash pulls to banners by priority (greedy: highest priority first)
+  const stashAllocation: Map<number, number> = (() => {
+    const alloc = new Map<number, number>()
+    let remainingPool = totalPulls
+    banners
+      .filter(hasEstimate)
+      .sort((a, b) => a.priority - b.priority)
+      .forEach((b) => {
+        const pullsNeeded = Math.max(0, b.estimated_pulls - b.pulls)
+        const coveredByStash = Math.min(pullsNeeded, remainingPool)
+        alloc.set(b.id, coveredByStash)
+        remainingPool = Math.max(0, remainingPool - coveredByStash)
+      })
+    return alloc
+  })()
+
+  // Calculate total cash needed from pull calculator (uses estimated_pulls)
+  const totalCashNeeded = (() => {
+    let totalCash = 0
+    banners
+      .filter(hasEstimate)
+      .forEach((b) => {
+        const pullsNeeded = Math.max(0, b.estimated_pulls - b.pulls)
+        const allocated = stashAllocation.get(b.id) ?? 0
+        const pullsToCash = Math.max(0, pullsNeeded - allocated)
+        const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
+        const cashCost = calculateCashCost(currencyToCash, doubleGems, b.game)
+        totalCash += cashCost
+      })
+    return totalCash
+  })()
 
   function openStashEdit() {
     setStashJade(String(currentJade))
@@ -1049,23 +1282,44 @@ export default function Gacha() {
     setRefreshKey((k) => k + 1)
   }
 
-  const handleSetTarget = async (bannerId: number, target: GachaTarget | null) => {
-    const banner = banners.find((b) => b.id === bannerId)
-    if (banner === undefined) return
+  const makeBannerBody = (b: GachaBanner, overrides: Partial<Pick<GachaBanner, 'char_target' | 'weapon_target' | 'estimated_pulls'>>) => ({
+    game: b.game, banner: b.banner, cost: b.cost, start_date: b.start_date,
+    end_date: b.end_date, priority: b.priority, pulls: b.pulls,
+    char_target: overrides.char_target !== undefined ? overrides.char_target : b.char_target,
+    weapon_target: overrides.weapon_target !== undefined ? overrides.weapon_target : b.weapon_target,
+    estimated_pulls: overrides.estimated_pulls ?? b.estimated_pulls,
+    image_url: b.image_url,
+  })
+
+  const handleSetCharTarget = async (bannerId: number, charTarget: CharTarget | null) => {
+    const b = banners.find((x) => x.id === bannerId)
+    if (b === undefined) return
     await fetch(`/api/v1/gacha/banners/${String(bannerId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game: banner.game,
-        banner: banner.banner,
-        cost: banner.cost,
-        start_date: banner.start_date,
-        end_date: banner.end_date,
-        priority: banner.priority,
-        pulls: banner.pulls,
-        target,
-        image_url: banner.image_url,
-      }),
+      body: JSON.stringify(makeBannerBody(b, { char_target: charTarget })),
+    })
+    setRefreshKey((k) => k + 1)
+  }
+
+  const handleSetWeaponTarget = async (bannerId: number, weaponTarget: WeaponTarget | null) => {
+    const b = banners.find((x) => x.id === bannerId)
+    if (b === undefined) return
+    await fetch(`/api/v1/gacha/banners/${String(bannerId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(makeBannerBody(b, { weapon_target: weaponTarget })),
+    })
+    setRefreshKey((k) => k + 1)
+  }
+
+  const handleSetEstimatedPulls = async (bannerId: number, estimatedPulls: number) => {
+    const b = banners.find((x) => x.id === bannerId)
+    if (b === undefined) return
+    await fetch(`/api/v1/gacha/banners/${String(bannerId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(makeBannerBody(b, { estimated_pulls: estimatedPulls })),
     })
     setRefreshKey((k) => k + 1)
   }
@@ -1108,16 +1362,18 @@ export default function Gacha() {
                 <AnimatedNumber value={availableBalance} formatter={formatCurrency} />
               </strong>
               {'  ·  '}
-              Total em pulls:{' '}
-              <strong style={{ color: 'var(--color-text)' }}>
-                <AnimatedNumber value={budget.total} formatter={formatCurrency} />
+              Cash necessário (calculadora):{' '}
+              <strong style={{ color: totalCashNeeded > 0 ? 'var(--color-yellow)' : 'var(--color-green)' }}>
+                <AnimatedNumber value={totalCashNeeded} formatter={formatCurrency} />
               </strong>
             </p>
             <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-              {budget.remaining > 0 ? (
-                <>Sobraria <AnimatedNumber value={budget.remaining} formatter={formatCurrency} /> após todos os pulls</>
+              {totalCashNeeded === 0 ? (
+                <>Estoque cobre todos os pulls — sem gasto necessário</>
+              ) : availableBalance >= totalCashNeeded ? (
+                <>Saldo cobre o cash · Sobraria <AnimatedNumber value={availableBalance - totalCashNeeded} formatter={formatCurrency} /></>
               ) : (
-                <>Faltariam <AnimatedNumber value={Math.abs(budget.remaining)} formatter={formatCurrency} /> para cobrir todos os pulls</>
+                <>Faltariam <AnimatedNumber value={totalCashNeeded - availableBalance} formatter={formatCurrency} /> para cobrir todos os pulls</>
               )}
             </p>
           </div>
@@ -1190,7 +1446,7 @@ export default function Gacha() {
               <span style={{ fontSize: 20 }}>💎</span>
               <div>
                 <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                  <AnimatedNumber value={currentJade} />
+                  <AnimatedNumber value={currentJade} formatter={formatInteger} />
                 </p>
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Stellar Jade</p>
               </div>
@@ -1237,79 +1493,76 @@ export default function Gacha() {
         )}
 
         {/* Per-banner pull calculator */}
-        {banners.some((b) => b.target !== null) && totalPulls > 0 && (
+        {banners.some(hasEstimate) && (
           <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 12, paddingTop: 12 }}>
             <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
               Calculadora de Pulls
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {(() => {
-                let remainingPool = totalPulls
-                return banners
-                  .filter((b) => b.target !== null)
-                  .sort((a, b) => a.priority - b.priority)
-                  .map((b) => {
-                    const target = b.target
-                    if (target === null) return null
-                    const targetInfo = TARGET_PULLS[target]
-                    const pullsNeeded = Math.max(0, targetInfo.avg - b.pulls)
-                    const coveredByStash = Math.min(pullsNeeded, remainingPool)
-                    const pullsToCash = pullsNeeded - coveredByStash
-                    const jadesToCash = pullsToCash * JADE_PER_PULL
-                    const cashCost = calculateCashCost(jadesToCash, doubleGems)
-                    remainingPool = Math.max(0, remainingPool - coveredByStash)
+              {banners
+                .filter(hasEstimate)
+                .sort((a, b) => a.priority - b.priority)
+                .map((b) => {
+                  const pullsNeeded = Math.max(0, b.estimated_pulls - b.pulls)
+                  const allocated = stashAllocation.get(b.id) ?? 0
+                  const pullsToCash = Math.max(0, pullsNeeded - allocated)
+                  const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
+                  const cashCost = calculateCashCost(currencyToCash, doubleGems, b.game)
+                  const targetLabel = getTargetSummary(b.game, b.char_target, b.weapon_target)
+                  const progress = Math.min(b.pulls + allocated, b.estimated_pulls)
 
-                    return (
-                      <div
-                        key={b.id}
-                        className="flex items-center justify-between p-3 rounded-xl"
-                        style={{ background: 'var(--color-surface2)' }}
-                      >
-                        <div className="flex items-center gap-3" style={{ flex: 1, minWidth: 0 }}>
-                          <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                            {b.banner}
+                  return (
+                    <div
+                      key={b.id}
+                      className="flex items-center justify-between p-3 rounded-xl"
+                      style={{ background: 'var(--color-surface2)' }}
+                    >
+                      <div className="flex items-center gap-3" style={{ flex: 1, minWidth: 0 }}>
+                        <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                          {b.banner}
+                        </span>
+                        {targetLabel !== 'Sem objetivo' && (
+                          <Badge color="purple" size="xs">{targetLabel}</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4" style={{ flexShrink: 0 }}>
+                        <div className="text-right">
+                          <span className="text-xs" style={{ color: progress >= b.estimated_pulls ? 'var(--color-green)' : 'var(--color-muted)' }}>
+                            {progress}/{b.estimated_pulls} pulls
                           </span>
-                          <Badge color="purple" size="xs">{targetInfo.label}</Badge>
                         </div>
-                        <div className="flex items-center gap-4" style={{ flexShrink: 0 }}>
-                          <div className="text-right">
-                            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                              {b.pulls}/{targetInfo.avg} pulls
+                        <div className="text-right" style={{ minWidth: 80 }}>
+                          {pullsNeeded === 0 ? (
+                            <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>✓ Completo</span>
+                          ) : allocated >= pullsNeeded ? (
+                            <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>
+                              ✓ Coberto ({allocated} pulls)
                             </span>
-                          </div>
-                          <div className="text-right" style={{ minWidth: 80 }}>
-                            {pullsNeeded === 0 ? (
-                              <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>✓ Completo</span>
-                            ) : coveredByStash === pullsNeeded ? (
-                              <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>
-                                ✓ Coberto ({coveredByStash} pulls)
-                              </span>
-                            ) : (
-                              <div>
-                                {coveredByStash > 0 && (
-                                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                                    {coveredByStash} do estoque +{' '}
-                                  </span>
-                                )}
-                                <span className="text-xs font-bold" style={{ color: 'var(--color-red)' }}>
-                                  {pullsToCash} a cashar
+                          ) : (
+                            <div>
+                              {allocated > 0 && (
+                                <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                  {allocated} do estoque +{' '}
                                 </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-right" style={{ minWidth: 90 }}>
-                            <span
-                              className="text-sm font-bold"
-                              style={{ color: cashCost === 0 ? 'var(--color-green)' : 'var(--color-yellow)' }}
-                            >
-                              {cashCost === 0 ? 'R$ 0' : formatCurrency(cashCost)}
-                            </span>
-                          </div>
+                              )}
+                              <span className="text-xs font-bold" style={{ color: 'var(--color-red)' }}>
+                                {pullsToCash} a cashar
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right" style={{ minWidth: 90 }}>
+                          <span
+                            className="text-sm font-bold"
+                            style={{ color: cashCost === 0 ? 'var(--color-green)' : 'var(--color-yellow)' }}
+                          >
+                            {cashCost === 0 ? 'R$ 0' : formatCurrency(cashCost)}
+                          </span>
+                        </div>
                         </div>
                       </div>
                     )
-                  })
-              })()}
+                  })}
             </div>
           </div>
         )}
@@ -1326,13 +1579,12 @@ export default function Gacha() {
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
                 Jogo
               </label>
-              <input
-                placeholder="ex: Honkai: Star Rail"
-                value={formGame}
-                onChange={(e) => {
-                  setFormGame(e.target.value)
-                }}
-              />
+              <select value={formGame} onChange={(e) => { setFormGame(e.target.value) }}>
+                <option value="">Selecionar jogo...</option>
+                {SUPPORTED_GAMES.map((g) => (
+                  <option key={g} value={g}>{GAME_EMOJIS.get(g) ?? '🎮'} {g}</option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
@@ -1462,8 +1714,10 @@ export default function Gacha() {
                 onSave={(id, data) => { void handleSave(id, data) }}
                 onCancel={() => { setEditingId(null) }}
                 onImagesChanged={() => { setRefreshKey((k) => k + 1) }}
-                onSetTarget={(id, target) => { void handleSetTarget(id, target) }}
-                stashPulls={totalPulls}
+                onSetCharTarget={(id, t) => { void handleSetCharTarget(id, t) }}
+                onSetWeaponTarget={(id, t) => { void handleSetWeaponTarget(id, t) }}
+                onSetEstimatedPulls={(id, p) => { void handleSetEstimatedPulls(id, p) }}
+                allocatedPulls={stashAllocation.get(banner.id) ?? 0}
                 doubleGemsAvailable={doubleGems}
               />
             </div>

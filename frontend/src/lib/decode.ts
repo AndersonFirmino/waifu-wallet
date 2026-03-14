@@ -17,7 +17,8 @@ import type {
   GachaBannerImage,
   GachaPriority,
   GachaStash,
-  GachaTarget,
+  CharTarget,
+  WeaponTarget,
   CalendarEvent,
   CalendarEventType,
   ForecastPoint,
@@ -111,10 +112,16 @@ function asGachaPriority(val: unknown): GachaPriority {
   throw new Error(`Invalid GachaPriority: ${String(val)}`)
 }
 
-function asGachaTarget(val: unknown): GachaTarget | null {
+function asCharTarget(val: unknown): CharTarget | null {
   if (val === null || val === undefined) return null
-  if (val === 'E0' || val === 'E1' || val === 'E2' || val === 'E6S1') return val
-  throw new Error(`Invalid GachaTarget: ${typeof val === 'string' ? val : typeof val}`)
+  if (val === 'E0' || val === 'E1' || val === 'E2' || val === 'E3' || val === 'E4' || val === 'E5' || val === 'E6') return val
+  throw new Error(`Invalid CharTarget: ${typeof val === 'string' ? val : typeof val}`)
+}
+
+function asWeaponTarget(val: unknown): WeaponTarget | null {
+  if (val === null || val === undefined) return null
+  if (val === 'S1' || val === 'S2' || val === 'S3' || val === 'S4' || val === 'S5') return val
+  throw new Error(`Invalid WeaponTarget: ${typeof val === 'string' ? val : typeof val}`)
 }
 
 // ─── Decoders ─────────────────────────────────────────────────────────────────
@@ -282,7 +289,9 @@ export function decodeGachaBanner(raw: unknown): GachaBanner {
     end_date: str(raw.end_date, 'end_date'),
     priority: asGachaPriority(raw.priority),
     pulls: num(raw.pulls, 'pulls'),
-    target: asGachaTarget(raw.target),
+    estimated_pulls: num(raw.estimated_pulls, 'estimated_pulls'),
+    char_target: asCharTarget(raw.char_target),
+    weapon_target: asWeaponTarget(raw.weapon_target),
     image_url: nullableStr(raw.image_url, 'image_url'),
     images: Array.isArray(raw.images) ? arr(raw.images, 'images').map(decodeGachaBannerImage) : [],
   }
