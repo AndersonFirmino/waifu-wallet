@@ -47,7 +47,9 @@ export default function FixedExpenses() {
     estimate: 0,
   })
 
-  const expenses = [...additions, ...(serverData ?? []).filter((e) => !deletedIds.includes(e.id))]
+  const serverIds = new Set((serverData ?? []).map((e) => e.id))
+  const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
+  const expenses = [...pendingAdditions, ...(serverData ?? []).filter((e) => !deletedIds.includes(e.id))]
 
   const totalMonth = expenses.reduce((s, e) => s + e.amount, 0)
   const totalForecast = expenses.reduce((s, e) => s + e.estimate, 0)

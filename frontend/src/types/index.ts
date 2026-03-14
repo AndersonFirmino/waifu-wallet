@@ -213,6 +213,7 @@ export interface GachaBannerImage {
 
 export type CharTarget = 'E0' | 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6'
 export type WeaponTarget = 'S1' | 'S2' | 'S3' | 'S4' | 'S5'
+export type WeaponCurrent = 'S0' | 'S1' | 'S2' | 'S3' | 'S4' | 'S5'
 
 export interface GachaBanner {
   id: number
@@ -226,6 +227,8 @@ export interface GachaBanner {
   estimated_pulls: number
   char_target: CharTarget | null
   weapon_target: WeaponTarget | null
+  char_current: CharTarget | null
+  weapon_current: WeaponTarget | null
   image_url: string | null
   images: GachaBannerImage[]
 }
@@ -235,6 +238,21 @@ export interface GachaStash {
   stellar_jade: number
   special_passes: number
   double_gems_available: boolean
+}
+
+export interface GachaStashMulti {
+  id: number
+  game: string
+  premium_currency: number
+  passes: number
+  double_gems_available: boolean
+}
+
+// ─── App Settings ────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  id: number
+  manual_balance: number
 }
 
 // ─── Salary Plan ──────────────────────────────────────────────────────────────

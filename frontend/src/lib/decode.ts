@@ -17,6 +17,7 @@ import type {
   GachaBannerImage,
   GachaPriority,
   GachaStash,
+  GachaStashMulti,
   CharTarget,
   WeaponTarget,
   CalendarEvent,
@@ -35,6 +36,7 @@ import type {
   SalaryScheduleMonth,
   SavingsAccount,
   SavingsSummary,
+  AppSettings,
 } from '../types'
 
 // ─── Primitive validators ─────────────────────────────────────────────────────
@@ -292,6 +294,8 @@ export function decodeGachaBanner(raw: unknown): GachaBanner {
     estimated_pulls: num(raw.estimated_pulls, 'estimated_pulls'),
     char_target: asCharTarget(raw.char_target),
     weapon_target: asWeaponTarget(raw.weapon_target),
+    char_current: asCharTarget(raw.char_current),
+    weapon_current: asWeaponTarget(raw.weapon_current),
     image_url: nullableStr(raw.image_url, 'image_url'),
     images: Array.isArray(raw.images) ? arr(raw.images, 'images').map(decodeGachaBannerImage) : [],
   }
@@ -313,6 +317,33 @@ export function decodeBannerList(raw: unknown): GachaBanner[] {
 
 export function decodeGachaBannerList(raw: unknown): GachaBanner[] {
   return arr(raw, 'banners').map(decodeGachaBanner)
+}
+
+// ─── Multi-game Stash ────────────────────────────────────────────────────────
+
+export function decodeGachaStashMulti(raw: unknown): GachaStashMulti {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    game: str(raw.game, 'game'),
+    premium_currency: num(raw.premium_currency, 'premium_currency'),
+    passes: num(raw.passes, 'passes'),
+    double_gems_available: bool(raw.double_gems_available, 'double_gems_available'),
+  }
+}
+
+export function decodeGachaStashMultiList(raw: unknown): GachaStashMulti[] {
+  return arr(raw, 'stashes').map(decodeGachaStashMulti)
+}
+
+// ─── App Settings ────────────────────────────────────────────────────────────
+
+export function decodeAppSettings(raw: unknown): AppSettings {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    manual_balance: num(raw.manual_balance, 'manual_balance'),
+  }
 }
 
 export function decodeCalendarEvent(raw: unknown): CalendarEvent {

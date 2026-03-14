@@ -69,8 +69,10 @@ export default function Transactions() {
     date: today,
   })
 
+  const serverIds = new Set((serverData ?? []).map((t) => t.id))
+  const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
   const transactions = [
-    ...additions.map((t) => editedMap.get(t.id) ?? t),
+    ...pendingAdditions.map((t) => editedMap.get(t.id) ?? t),
     ...(serverData ?? []).filter((t) => !deletedIds.includes(t.id)).map((t) => editedMap.get(t.id) ?? t),
   ]
 

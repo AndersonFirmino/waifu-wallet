@@ -51,12 +51,12 @@ echo  Waifu Wallet iniciando...
 echo.
 
 :: ─── Start backend ───────────────────────────
-start "Waifu Wallet Backend" cmd /c "cd /d "%~dp0backend" && uv run uvicorn main:app --reload"
+start /min "Waifu Wallet Backend" cmd /c "cd /d "%~dp0backend" && uv run uvicorn main:app --reload"
 
 timeout /t 2 /nobreak >nul
 
 :: ─── Start frontend ──────────────────────────
-start "Waifu Wallet Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev"
+start /min "Waifu Wallet Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev"
 
 timeout /t 3 /nobreak >nul
 

@@ -78,8 +78,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 24 }}>💵</span>
             <div>
-              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', margin: 0 }}>MeuCaixa</p>
-              <p style={{ fontSize: 11, color: 'var(--color-muted)', margin: 0 }}>v2.0</p>
+              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', margin: 0 }}>Waifu Wallet</p>
+              <p style={{ fontSize: 11, color: 'var(--color-muted)', margin: 0 }}>beta</p>
             </div>
           </div>
         )}
@@ -162,7 +162,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             color: 'var(--color-muted)',
           }}
         >
-          <p style={{ margin: 0 }}>MeuCaixa v2.0</p>
+          <p style={{ margin: 0 }}>Waifu Wallet beta</p>
           <p style={{ margin: 0, opacity: 0.6 }}>Março 2026</p>
         </div>
       )}

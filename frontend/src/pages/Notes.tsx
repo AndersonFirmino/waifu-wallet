@@ -38,7 +38,9 @@ export default function Notes() {
   const [editDraft, setEditDraft] = useState('')
   const [editLoading, setEditLoading] = useState(false)
 
-  const notes = [...additions, ...(serverNotes ?? []).filter((n) => !deletedIds.includes(n.id))]
+  const serverIds = new Set((serverNotes ?? []).map((n) => n.id))
+  const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
+  const notes = [...pendingAdditions, ...(serverNotes ?? []).filter((n) => !deletedIds.includes(n.id))]
     .map((n) => {
       const patched = editedContent.get(n.id)
       return patched !== undefined ? { ...n, content: patched } : n

@@ -70,11 +70,12 @@ function planToForm(plan: SalaryPlan): FormState {
 function validateForm(form: FormState): string | null {
   if (!form.employer.trim()) return 'Informe o nome da empresa'
   if (form.current_salary <= 0) return 'Salário atual inválido'
-  if (form.target_salary <= 0) return 'Salário alvo inválido'
-  if (form.increment <= 0) return 'Incremento inválido'
-  const interval = parseInt(form.increment_interval_months, 10)
-  if (isNaN(interval) || interval <= 0) return 'Intervalo inválido'
-  if (!form.next_increment_date) return 'Informe a data do próximo incremento'
+  if (form.increment > 0) {
+    if (form.target_salary <= 0) return 'Salário alvo inválido'
+    const interval = parseInt(form.increment_interval_months, 10)
+    if (isNaN(interval) || interval <= 0) return 'Intervalo inválido'
+    if (!form.next_increment_date) return 'Informe a data do próximo incremento'
+  }
   if (form.split_enabled) {
     const p1 = parseFloat(form.split_first_pct)
     const p2 = parseFloat(form.split_second_pct)
@@ -93,13 +94,14 @@ function validateForm(form: FormState): string | null {
 
 function buildPayload(form: FormState): Record<string, unknown> {
   const splitEnabled = form.split_enabled
+  const hasIncrement = form.increment > 0
   return {
     employer: form.employer.trim(),
     current_salary: form.current_salary,
-    target_salary: form.target_salary,
+    target_salary: hasIncrement ? form.target_salary : form.current_salary,
     increment: form.increment,
-    increment_interval_months: parseInt(form.increment_interval_months, 10),
-    next_increment_date: form.next_increment_date,
+    increment_interval_months: hasIncrement ? parseInt(form.increment_interval_months, 10) : 12,
+    next_increment_date: hasIncrement && form.next_increment_date !== '' ? form.next_increment_date : new Date().toISOString().slice(0, 10),
     split_enabled: splitEnabled,
     split_start_date: splitEnabled && form.split_start_date !== '' ? form.split_start_date : null,
     split_first_pct: splitEnabled ? parseFloat(form.split_first_pct) : 100,
@@ -675,8 +677,10 @@ export default function SalaryPlans() {
   const [saving, setSaving] = useState(false)
 
   // Merge server data with local mutations
+  const serverIds = new Set((serverPlans ?? []).map((p) => p.id))
+  const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
   const plans: SalaryPlan[] = [
-    ...additions,
+    ...pendingAdditions,
     ...(serverPlans ?? [])
       .filter((p) => !deletedIds.includes(p.id))
       .map((p) => updatedPlans.find((u) => u.id === p.id) ?? p),

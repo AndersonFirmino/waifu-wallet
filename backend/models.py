@@ -153,6 +153,8 @@ class GachaBanner(Base):
     estimated_pulls: Mapped[int] = mapped_column(Integer, default=0)
     char_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)    # E0-E6
     weapon_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)  # S1-S5
+    char_current: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
+    weapon_current: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
 
     images: Mapped[list[GachaBannerImage]] = relationship(
@@ -200,3 +202,20 @@ class SalaryPlan(Base):
     split_second_pct: Mapped[int] = mapped_column(Integer, default=0)
     split_second_day: Mapped[int] = mapped_column(Integer, default=25)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class AppSettings(Base):
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    manual_balance: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class GachaStashMulti(Base):
+    __tablename__ = "gacha_stashes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    game: Mapped[str] = mapped_column(String(100), unique=True)
+    premium_currency: Mapped[int] = mapped_column(Integer, default=0)
+    passes: Mapped[int] = mapped_column(Integer, default=0)
+    double_gems_available: Mapped[bool] = mapped_column(Boolean, default=True)

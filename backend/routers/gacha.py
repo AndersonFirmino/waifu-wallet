@@ -5,12 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import GachaBanner, GachaBannerImage, GachaStash
+from models import GachaBanner, GachaBannerImage, GachaStash, GachaStashMulti
 from schemas import (
     GachaBannerCreate,
     GachaBannerImageCreate,
     GachaBannerImageOut,
     GachaBannerOut,
+    GachaStashMultiOut,
+    GachaStashMultiUpdate,
     GachaStashOut,
     GachaStashUpdate,
     PullsUpdate,
@@ -39,6 +41,38 @@ def get_stash(db: Session = Depends(get_db)) -> GachaStash:
 @router.patch("/stash", response_model=GachaStashOut)
 def update_stash(body: GachaStashUpdate, db: Session = Depends(get_db)) -> GachaStash:
     stash = _get_or_create_stash(db)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(stash, field, value)
+    db.commit()
+    db.refresh(stash)
+    return stash
+
+
+# ─── Multi-game stash ────────────────────────────────────────────────────────
+
+def _get_or_create_game_stash(db: Session, game: str) -> GachaStashMulti:
+    stash = db.scalars(select(GachaStashMulti).where(GachaStashMulti.game == game)).first()
+    if stash is None:
+        stash = GachaStashMulti(game=game, premium_currency=0, passes=0, double_gems_available=True)
+        db.add(stash)
+        db.commit()
+        db.refresh(stash)
+    return stash
+
+
+@router.get("/stashes", response_model=list[GachaStashMultiOut])
+def list_stashes(db: Session = Depends(get_db)) -> list[GachaStashMulti]:
+    return list(db.scalars(select(GachaStashMulti).order_by(GachaStashMulti.game)).all())
+
+
+@router.get("/stash/game", response_model=GachaStashMultiOut)
+def get_game_stash(game: str, db: Session = Depends(get_db)) -> GachaStashMulti:
+    return _get_or_create_game_stash(db, game)
+
+
+@router.patch("/stash/game", response_model=GachaStashMultiOut)
+def update_game_stash(game: str, body: GachaStashMultiUpdate, db: Session = Depends(get_db)) -> GachaStashMulti:
+    stash = _get_or_create_game_stash(db, game)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(stash, field, value)
     db.commit()

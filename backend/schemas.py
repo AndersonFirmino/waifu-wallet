@@ -160,6 +160,18 @@ class NoteOut(NoteCreate):
     id: int
 
 
+# ─── App Settings ────────────────────────────────────────────────────────────
+
+class AppSettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    manual_balance: float
+
+
+class AppSettingsUpdate(BaseModel):
+    manual_balance: float | None = None
+
+
 # ─── Gacha ────────────────────────────────────────────────────────────────────
 
 class GachaStashOut(BaseModel):
@@ -176,6 +188,21 @@ class GachaStashUpdate(BaseModel):
     double_gems_available: bool | None = None
 
 
+class GachaStashMultiOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    game: str
+    premium_currency: int
+    passes: int
+    double_gems_available: bool
+
+
+class GachaStashMultiUpdate(BaseModel):
+    premium_currency: int | None = None
+    passes: int | None = None
+    double_gems_available: bool | None = None
+
+
 class GachaBannerCreate(BaseModel):
     game: str
     banner: str
@@ -187,6 +214,8 @@ class GachaBannerCreate(BaseModel):
     estimated_pulls: int = 0
     char_target: str | None = None
     weapon_target: str | None = None
+    char_current: str | None = None
+    weapon_current: str | None = None
     image_url: str | None = None
 
 
@@ -206,6 +235,8 @@ class GachaBannerOut(GachaBannerCreate):
     id: int
     char_target: str | None = None
     weapon_target: str | None = None
+    char_current: str | None = None
+    weapon_current: str | None = None
     images: list[GachaBannerImageOut] = []
 
 

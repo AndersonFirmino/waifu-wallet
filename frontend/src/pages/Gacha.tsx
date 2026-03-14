@@ -7,9 +7,10 @@ import CurrencyInput from '../components/ui/CurrencyInput'
 import ImageCropUpload from '../components/ImageCropUpload'
 import { formatCurrency } from '../utils/currency'
 import { daysUntil } from '../utils/date'
-import { type GachaBanner, type GachaPriority, type CharTarget, type WeaponTarget } from '../types'
+import { type GachaBanner, type GachaPriority, type CharTarget, type WeaponTarget, type GachaStashMulti } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeGachaBanner, decodeBannerList, decodeSummary, decodeGachaStash } from '../lib/decode'
+import { decodeGachaBanner, decodeBannerList, decodeSummary, decodeGachaStashMultiList, decodeAppSettings } from '../lib/decode'
+import { calculateEstimatedPulls, getCurrencyLabels } from '../utils/gachaCalc'
 
 // ─── Pull Calculator Constants ───────────────────────────────────────────────
 
@@ -181,6 +182,8 @@ const SUPPORTED_GAMES = [
   'Genshin Impact',
   'Zenless Zone Zero',
   'Honkai Impact 3rd',
+  'Wuthering Waves',
+  'Blue Archive',
 ] as const
 
 const GAME_EMOJIS = new Map<string, string>([
@@ -327,6 +330,8 @@ interface BannerEditData {
   priority: GachaPriority
   char_target: CharTarget | null
   weapon_target: WeaponTarget | null
+  char_current: CharTarget | null
+  weapon_current: WeaponTarget | null
   estimated_pulls: number
   image_url: string | null
 }
@@ -341,12 +346,14 @@ interface BannerCardProps {
   onImagesChanged: () => void
   onSetCharTarget: (id: number, target: CharTarget | null) => void
   onSetWeaponTarget: (id: number, target: WeaponTarget | null) => void
+  onSetCharCurrent: (id: number, target: CharTarget | null) => void
+  onSetWeaponCurrent: (id: number, target: WeaponTarget | null) => void
   onSetEstimatedPulls: (id: number, pulls: number) => void
   allocatedPulls: number
   doubleGemsAvailable: boolean
 }
 
-function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onImagesChanged, onSetCharTarget, onSetWeaponTarget, onSetEstimatedPulls, allocatedPulls, doubleGemsAvailable }: BannerCardProps) {
+function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onImagesChanged, onSetCharTarget, onSetWeaponTarget, onSetCharCurrent, onSetWeaponCurrent, onSetEstimatedPulls, allocatedPulls, doubleGemsAvailable }: BannerCardProps) {
   const phase = getBannerPhase(banner.start_date, banner.end_date)
   const emoji = GAME_EMOJIS.get(banner.game) ?? '🎮'
 
@@ -479,6 +486,8 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
       priority: editPriority,
       char_target: banner.char_target,
       weapon_target: banner.weapon_target,
+      char_current: banner.char_current,
+      weapon_current: banner.weapon_current,
       estimated_pulls: banner.estimated_pulls,
       image_url: editImageUrl.trim() !== '' ? editImageUrl.trim() : null,
     })
@@ -1057,10 +1066,45 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                   onCommit={(val) => { onSetEstimatedPulls(banner.id, val) }}
                 />
 
-                {/* Informational target labels (no calculation impact) */}
+                {/* Current + Target selects with auto-calculation */}
+                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>
+                  {getCharGroupLabel(banner.game)}:
+                </span>
+                <select
+                  value={banner.char_current ?? ''}
+                  onChange={(e) => {
+                    const val = parseCharTarget(e.target.value)
+                    onSetCharCurrent(banner.id, val)
+                    // Auto-recalculate estimated pulls
+                    const auto = calculateEstimatedPulls(banner.game, val, banner.char_target, banner.weapon_current, banner.weapon_target)
+                    if (auto > 0) onSetEstimatedPulls(banner.id, auto)
+                  }}
+                  style={{
+                    background: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    color: 'var(--color-text)',
+                    fontSize: 10,
+                    padding: '2px 4px',
+                    cursor: 'pointer',
+                    minWidth: 46,
+                  }}
+                  title="Atual"
+                >
+                  <option value="">—</option>
+                  {ALL_CHAR_TARGETS.map((t) => (
+                    <option key={t} value={t}>{getCharLabel(banner.game, t)}</option>
+                  ))}
+                </select>
+                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>→</span>
                 <select
                   value={banner.char_target ?? ''}
-                  onChange={(e) => { onSetCharTarget(banner.id, parseCharTarget(e.target.value)) }}
+                  onChange={(e) => {
+                    const val = parseCharTarget(e.target.value)
+                    onSetCharTarget(banner.id, val)
+                    const auto = calculateEstimatedPulls(banner.game, banner.char_current, val, banner.weapon_current, banner.weapon_target)
+                    if (auto > 0) onSetEstimatedPulls(banner.id, auto)
+                  }}
                   style={{
                     background: 'var(--color-surface2)',
                     border: '1px solid var(--color-border)',
@@ -1069,7 +1113,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     fontSize: 10,
                     padding: '2px 4px',
                     cursor: 'pointer',
-                    minWidth: 60,
+                    minWidth: 46,
                   }}
                   title={getCharGroupLabel(banner.game)}
                 >
@@ -1078,9 +1122,44 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     <option key={t} value={t}>{getCharLabel(banner.game, t)}</option>
                   ))}
                 </select>
+                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>|</span>
+                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>
+                  {getWeaponGroupLabel(banner.game)}:
+                </span>
+                <select
+                  value={banner.weapon_current ?? ''}
+                  onChange={(e) => {
+                    const val = parseWeaponTarget(e.target.value)
+                    onSetWeaponCurrent(banner.id, val)
+                    const auto = calculateEstimatedPulls(banner.game, banner.char_current, banner.char_target, val, banner.weapon_target)
+                    if (auto > 0) onSetEstimatedPulls(banner.id, auto)
+                  }}
+                  style={{
+                    background: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    color: 'var(--color-text)',
+                    fontSize: 10,
+                    padding: '2px 4px',
+                    cursor: 'pointer',
+                    minWidth: 46,
+                  }}
+                  title="Atual"
+                >
+                  <option value="">—</option>
+                  {ALL_WEAPON_TARGETS.map((t) => (
+                    <option key={t} value={t}>{getWeaponLabel(banner.game, t)}</option>
+                  ))}
+                </select>
+                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>→</span>
                 <select
                   value={banner.weapon_target ?? ''}
-                  onChange={(e) => { onSetWeaponTarget(banner.id, parseWeaponTarget(e.target.value)) }}
+                  onChange={(e) => {
+                    const val = parseWeaponTarget(e.target.value)
+                    onSetWeaponTarget(banner.id, val)
+                    const auto = calculateEstimatedPulls(banner.game, banner.char_current, banner.char_target, banner.weapon_current, val)
+                    if (auto > 0) onSetEstimatedPulls(banner.id, auto)
+                  }}
                   style={{
                     background: 'var(--color-surface2)',
                     border: '1px solid var(--color-border)',
@@ -1089,7 +1168,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     fontSize: 10,
                     padding: '2px 4px',
                     cursor: 'pointer',
-                    minWidth: 60,
+                    minWidth: 46,
                   }}
                   title={getWeaponGroupLabel(banner.game)}
                 >
@@ -1136,14 +1215,17 @@ export default function Gacha() {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data: serverBanners } = useFetch(`/gacha/banners?_=${String(refreshKey)}`, decodeBannerList)
   const { data: summary } = useFetch('/summary/', decodeSummary)
-  const { data: stash } = useFetch(`/gacha/stash?_=${String(refreshKey)}`, decodeGachaStash)
+  const { data: stashes } = useFetch(`/gacha/stashes?_=${String(refreshKey)}`, decodeGachaStashMultiList)
+  const { data: appSettings } = useFetch('/settings/', decodeAppSettings)
   const [additions, setAdditions] = useState<GachaBanner[]>([])
   const [deletedIds, setDeletedIds] = useState<number[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editingStash, setEditingStash] = useState(false)
-  const [stashJade, setStashJade] = useState('')
+  const [editingStashGame, setEditingStashGame] = useState<string | null>(null)
+  const [stashCurrency, setStashCurrency] = useState('')
   const [stashPasses, setStashPasses] = useState('')
   const [stashDouble, setStashDouble] = useState(true)
+  const [editingManualBalance, setEditingManualBalance] = useState(false)
+  const [manualBalanceInput, setManualBalanceInput] = useState('')
   const [formGame, setFormGame] = useState('')
   const [formBanner, setFormBanner] = useState('')
   const [formCost, setFormCost] = useState('')
@@ -1153,8 +1235,12 @@ export default function Gacha() {
   const [formImageUrl, setFormImageUrl] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
 
-  const banners = [...additions, ...(serverBanners ?? []).filter((b) => !deletedIds.includes(b.id))]
-  const availableBalance = summary?.monthly_finances.balance ?? 0
+  const serverBannerIds = new Set((serverBanners ?? []).map((b) => b.id))
+  const pendingBannerAdditions = additions.filter((a) => !serverBannerIds.has(a.id))
+  const banners = [...pendingBannerAdditions, ...(serverBanners ?? []).filter((b) => !deletedIds.includes(b.id))]
+  const transactionBalance = summary?.monthly_finances.balance ?? 0
+  const manualBalance = appSettings?.manual_balance ?? 0
+  const availableBalance = transactionBalance !== 0 ? transactionBalance : manualBalance
   const budget = analyzeBudget(banners, availableBalance)
   const statusStyle = STATUS_COLORS[budget.status]
 
@@ -1180,6 +1266,8 @@ export default function Gacha() {
       pulls: 0,
       char_target: null,
       weapon_target: null,
+      char_current: null,
+      weapon_current: null,
       image_url: formImageUrl.trim() !== '' ? formImageUrl.trim() : null,
     }
     const r = await fetch('/api/v1/gacha/banners', {
@@ -1222,31 +1310,44 @@ export default function Gacha() {
     setEditingId(null)
   }
 
-  // Stash calculations (uses HSR's 160 jade per pull as base for the stash pool)
-  const currentJade = stash?.stellar_jade ?? 0
-  const currentPasses = stash?.special_passes ?? 0
-  const doubleGems = stash?.double_gems_available ?? true
-  const pullsFromJade = Math.floor(currentJade / 160)
-  const totalPulls = pullsFromJade + currentPasses
-  const leftoverJade = currentJade % 160
+  // Helper to get stash for a specific game
+  function getGameStash(game: string): GachaStashMulti | undefined {
+    return (stashes ?? []).find((s) => s.game === game)
+  }
 
-  // Allocate stash pulls to banners by priority (greedy: highest priority first)
+  // Detect which games have active banners
+  const activeGames = [...new Set(banners.map((b) => b.game))]
+
+  // Allocate stash pulls to banners by priority, per game
   const stashAllocation: Map<number, number> = (() => {
     const alloc = new Map<number, number>()
-    let remainingPool = totalPulls
-    banners
-      .filter(hasEstimate)
-      .sort((a, b) => a.priority - b.priority)
-      .forEach((b) => {
-        const pullsNeeded = Math.max(0, b.estimated_pulls - b.pulls)
-        const coveredByStash = Math.min(pullsNeeded, remainingPool)
-        alloc.set(b.id, coveredByStash)
-        remainingPool = Math.max(0, remainingPool - coveredByStash)
-      })
+    // Group banners by game
+    const byGame = new Map<string, GachaBanner[]>()
+    for (const b of banners.filter(hasEstimate)) {
+      const existing = byGame.get(b.game) ?? []
+      existing.push(b)
+      byGame.set(b.game, existing)
+    }
+    // For each game, allocate from that game's stash
+    for (const [game, gameBanners] of byGame) {
+      const gameStash = getGameStash(game)
+      const currencyPerPull = getCurrencyPerPull(game)
+      const pullsFromCurrency = Math.floor((gameStash?.premium_currency ?? 0) / currencyPerPull)
+      const gamePulls = pullsFromCurrency + (gameStash?.passes ?? 0)
+      let remainingPool = gamePulls
+      gameBanners
+        .sort((a, b) => a.priority - b.priority)
+        .forEach((b) => {
+          const pullsNeeded = Math.max(0, b.estimated_pulls - b.pulls)
+          const coveredByStash = Math.min(pullsNeeded, remainingPool)
+          alloc.set(b.id, coveredByStash)
+          remainingPool = Math.max(0, remainingPool - coveredByStash)
+        })
+    }
     return alloc
   })()
 
-  // Calculate total cash needed from pull calculator (uses estimated_pulls)
+  // Calculate total cash needed from pull calculator (uses estimated_pulls, per-game double gems)
   const totalCashNeeded = (() => {
     let totalCash = 0
     banners
@@ -1256,37 +1357,43 @@ export default function Gacha() {
         const allocated = stashAllocation.get(b.id) ?? 0
         const pullsToCash = Math.max(0, pullsNeeded - allocated)
         const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
-        const cashCost = calculateCashCost(currencyToCash, doubleGems, b.game)
+        const gameStash = getGameStash(b.game)
+        const gameDoubleGems = gameStash?.double_gems_available ?? true
+        const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game)
         totalCash += cashCost
       })
     return totalCash
   })()
 
-  function openStashEdit() {
-    setStashJade(String(currentJade))
-    setStashPasses(String(currentPasses))
-    setStashDouble(doubleGems)
-    setEditingStash(true)
+  function openStashEdit(game: string) {
+    const gameStash = getGameStash(game)
+    setStashCurrency(String(gameStash?.premium_currency ?? 0))
+    setStashPasses(String(gameStash?.passes ?? 0))
+    setStashDouble(gameStash?.double_gems_available ?? true)
+    setEditingStashGame(game)
   }
 
   const handleSaveStash = async () => {
-    const jade = parseInt(stashJade, 10)
+    if (editingStashGame === null) return
+    const currency = parseInt(stashCurrency, 10)
     const passes = parseInt(stashPasses, 10)
-    if (isNaN(jade) || isNaN(passes)) return
-    await fetch('/api/v1/gacha/stash', {
+    if (isNaN(currency) || isNaN(passes)) return
+    await fetch(`/api/v1/gacha/stash/game?game=${encodeURIComponent(editingStashGame)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stellar_jade: jade, special_passes: passes, double_gems_available: stashDouble }),
+      body: JSON.stringify({ premium_currency: currency, passes, double_gems_available: stashDouble }),
     })
-    setEditingStash(false)
+    setEditingStashGame(null)
     setRefreshKey((k) => k + 1)
   }
 
-  const makeBannerBody = (b: GachaBanner, overrides: Partial<Pick<GachaBanner, 'char_target' | 'weapon_target' | 'estimated_pulls'>>) => ({
+  const makeBannerBody = (b: GachaBanner, overrides: Partial<Pick<GachaBanner, 'char_target' | 'weapon_target' | 'char_current' | 'weapon_current' | 'estimated_pulls'>>) => ({
     game: b.game, banner: b.banner, cost: b.cost, start_date: b.start_date,
     end_date: b.end_date, priority: b.priority, pulls: b.pulls,
     char_target: overrides.char_target !== undefined ? overrides.char_target : b.char_target,
     weapon_target: overrides.weapon_target !== undefined ? overrides.weapon_target : b.weapon_target,
+    char_current: overrides.char_current !== undefined ? overrides.char_current : b.char_current,
+    weapon_current: overrides.weapon_current !== undefined ? overrides.weapon_current : b.weapon_current,
     estimated_pulls: overrides.estimated_pulls ?? b.estimated_pulls,
     image_url: b.image_url,
   })
@@ -1324,6 +1431,40 @@ export default function Gacha() {
     setRefreshKey((k) => k + 1)
   }
 
+  const handleSetCharCurrent = async (bannerId: number, charCurrent: CharTarget | null) => {
+    const b = banners.find((x) => x.id === bannerId)
+    if (b === undefined) return
+    await fetch(`/api/v1/gacha/banners/${String(bannerId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(makeBannerBody(b, { char_current: charCurrent })),
+    })
+    setRefreshKey((k) => k + 1)
+  }
+
+  const handleSetWeaponCurrent = async (bannerId: number, weaponCurrent: WeaponTarget | null) => {
+    const b = banners.find((x) => x.id === bannerId)
+    if (b === undefined) return
+    await fetch(`/api/v1/gacha/banners/${String(bannerId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(makeBannerBody(b, { weapon_current: weaponCurrent })),
+    })
+    setRefreshKey((k) => k + 1)
+  }
+
+  const handleSaveManualBalance = async () => {
+    const val = parseFloat(manualBalanceInput)
+    if (isNaN(val)) return
+    await fetch('/api/v1/settings/', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ manual_balance: val }),
+    })
+    setEditingManualBalance(false)
+    setRefreshKey((k) => k + 1)
+  }
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
       {/* Header */}
@@ -1358,9 +1499,31 @@ export default function Gacha() {
           <div>
             <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>
               Saldo disponível:{' '}
-              <strong style={{ color: 'var(--color-text)' }}>
-                <AnimatedNumber value={availableBalance} formatter={formatCurrency} />
-              </strong>
+              {editingManualBalance ? (
+                <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                  <CurrencyInput
+                    value={parseFloat(manualBalanceInput) || 0}
+                    onChange={(v) => { setManualBalanceInput(String(v)) }}
+                    placeholder="R$ 0,00"
+                  />
+                  <button onClick={() => { void handleSaveManualBalance() }} style={{ background: 'var(--color-green)', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>OK</button>
+                  <button onClick={() => { setEditingManualBalance(false) }} style={{ background: 'var(--color-surface2)', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>×</button>
+                </span>
+              ) : (
+                <>
+                  <strong style={{ color: 'var(--color-text)' }}>
+                    <AnimatedNumber value={availableBalance} formatter={formatCurrency} />
+                  </strong>
+                  {transactionBalance === 0 && (
+                    <button
+                      onClick={() => { setManualBalanceInput(String(manualBalance)); setEditingManualBalance(true) }}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-purple)', cursor: 'pointer', fontSize: 10, marginLeft: 4 }}
+                    >
+                      {manualBalance > 0 ? '(manual) ✏️' : '(definir saldo) ✏️'}
+                    </button>
+                  )}
+                </>
+              )}
               {'  ·  '}
               Cash necessário (calculadora):{' '}
               <strong style={{ color: totalCashNeeded > 0 ? 'var(--color-yellow)' : 'var(--color-green)' }}>
@@ -1389,106 +1552,120 @@ export default function Gacha() {
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
             💎 Estoque de Recursos
           </p>
-          {!editingStash && (
-            <button
-              onClick={openStashEdit}
-              className="text-xs font-medium px-2 py-1 rounded-md"
-              style={{
-                background: 'rgba(139,92,246,0.1)',
-                color: 'var(--color-purple)',
-                cursor: 'pointer',
-                border: 'none',
-              }}
-            >
-              Atualizar
-            </button>
-          )}
         </div>
 
-        {editingStash ? (
-          <div className="grid grid-cols-4 gap-3 mb-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Stellar Jade</label>
-              <input
-                type="number"
-                value={stashJade}
-                onChange={(e) => { setStashJade(e.target.value) }}
-                placeholder="0"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Special Pass</label>
-              <input
-                type="number"
-                value={stashPasses}
-                onChange={(e) => { setStashPasses(e.target.value) }}
-                placeholder="0"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Double Gems</label>
-              <select
-                value={stashDouble ? 'yes' : 'no'}
-                onChange={(e) => { setStashDouble(e.target.value === 'yes') }}
-              >
-                <option value="yes">Disponível</option>
-                <option value="no">Não disponível</option>
-              </select>
-            </div>
-            <div className="flex items-end gap-2">
-              <Button size="sm" onClick={() => { void handleSaveStash() }}>Salvar</Button>
-              <Button size="sm" variant="outline" onClick={() => { setEditingStash(false) }}>Cancelar</Button>
-            </div>
-          </div>
+        {activeGames.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Adicione banners para ver o estoque por jogo</p>
         ) : (
-          <div className="flex gap-6">
-            <div className="flex items-center gap-2">
-              <span style={{ fontSize: 20 }}>💎</span>
-              <div>
-                <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                  <AnimatedNumber value={currentJade} formatter={formatInteger} />
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Stellar Jade</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span style={{ fontSize: 20 }}>🎫</span>
-              <div>
-                <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                  <AnimatedNumber value={currentPasses} />
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Special Pass</p>
-              </div>
-            </div>
-            <div
-              style={{ width: 1, background: 'var(--color-border)', alignSelf: 'stretch', margin: '2px 0' }}
-            />
-            <div className="flex items-center gap-2">
-              <span style={{ fontSize: 20 }}>🎯</span>
-              <div>
-                <p className="text-lg font-bold" style={{ color: '#a78bfa' }}>
-                  <AnimatedNumber value={totalPulls} />
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  Pulls disponíveis
-                  {leftoverJade > 0 && <span> (+{leftoverJade} jade sobrando)</span>}
-                </p>
-              </div>
-            </div>
-            <div
-              style={{ width: 1, background: 'var(--color-border)', alignSelf: 'stretch', margin: '2px 0' }}
-            />
-            <div className="flex items-center gap-2">
-              <span style={{ fontSize: 20 }}>{doubleGems ? '✨' : '💰'}</span>
-              <div>
-                <p className="text-sm font-medium" style={{ color: doubleGems ? '#f59e0b' : 'var(--color-muted)' }}>
-                  {doubleGems ? 'Double Gems ativo' : 'Double Gems indisponível'}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {doubleGems ? 'Top-up dá 2x gemas' : 'Top-up normal'}
-                </p>
-              </div>
-            </div>
+          <div className="flex flex-col gap-3">
+            {activeGames.map((game) => {
+              const gameStash = getGameStash(game)
+              const labels = getCurrencyLabels(game)
+              const currencyPerPull = getCurrencyPerPull(game)
+              const gameCurrency = gameStash?.premium_currency ?? 0
+              const gamePasses = gameStash?.passes ?? 0
+              const gameDouble = gameStash?.double_gems_available ?? true
+              const pullsFromCurrency = Math.floor(gameCurrency / currencyPerPull)
+              const gameTotalPulls = pullsFromCurrency + gamePasses
+              const leftover = gameCurrency % currencyPerPull
+              const emoji = GAME_EMOJIS.get(game) ?? '🎮'
+              const isEditing = editingStashGame === game
+
+              return (
+                <div
+                  key={game}
+                  className="rounded-xl p-3"
+                  style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                      {emoji} {game}
+                    </span>
+                    {!isEditing && (
+                      <button
+                        onClick={() => { openStashEdit(game) }}
+                        className="text-xs font-medium px-2 py-1 rounded-md"
+                        style={{
+                          background: 'rgba(139,92,246,0.1)',
+                          color: 'var(--color-purple)',
+                          cursor: 'pointer',
+                          border: 'none',
+                        }}
+                      >
+                        Atualizar
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.premium}</label>
+                        <input
+                          type="number"
+                          value={stashCurrency}
+                          onChange={(e) => { setStashCurrency(e.target.value) }}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.passes}</label>
+                        <input
+                          type="number"
+                          value={stashPasses}
+                          onChange={(e) => { setStashPasses(e.target.value) }}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Double Gems</label>
+                        <select
+                          value={stashDouble ? 'yes' : 'no'}
+                          onChange={(e) => { setStashDouble(e.target.value === 'yes') }}
+                        >
+                          <option value="yes">Disponível</option>
+                          <option value="no">Não disponível</option>
+                        </select>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <Button size="sm" onClick={() => { void handleSaveStash() }}>Salvar</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setEditingStashGame(null) }}>×</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-4 items-center">
+                      <div>
+                        <p className="text-base font-bold" style={{ color: 'var(--color-text)' }}>
+                          <AnimatedNumber value={gameCurrency} formatter={formatInteger} />
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.premium}</p>
+                      </div>
+                      <div>
+                        <p className="text-base font-bold" style={{ color: 'var(--color-text)' }}>
+                          <AnimatedNumber value={gamePasses} />
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.passes}</p>
+                      </div>
+                      <div style={{ width: 1, background: 'var(--color-border)', alignSelf: 'stretch', margin: '2px 0' }} />
+                      <div>
+                        <p className="text-base font-bold" style={{ color: '#a78bfa' }}>
+                          <AnimatedNumber value={gameTotalPulls} />
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          Pulls{leftover > 0 && <span> (+{leftover})</span>}
+                        </p>
+                      </div>
+                      <div style={{ width: 1, background: 'var(--color-border)', alignSelf: 'stretch', margin: '2px 0' }} />
+                      <div>
+                        <p className="text-xs" style={{ color: gameDouble ? '#f59e0b' : 'var(--color-muted)' }}>
+                          {gameDouble ? '✨ Double Gems' : '💰 Normal'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -1507,7 +1684,8 @@ export default function Gacha() {
                   const allocated = stashAllocation.get(b.id) ?? 0
                   const pullsToCash = Math.max(0, pullsNeeded - allocated)
                   const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
-                  const cashCost = calculateCashCost(currencyToCash, doubleGems, b.game)
+                  const gameDoubleGems = getGameStash(b.game)?.double_gems_available ?? true
+                  const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game)
                   const targetLabel = getTargetSummary(b.game, b.char_target, b.weapon_target)
                   const progress = Math.min(b.pulls + allocated, b.estimated_pulls)
 
@@ -1716,9 +1894,11 @@ export default function Gacha() {
                 onImagesChanged={() => { setRefreshKey((k) => k + 1) }}
                 onSetCharTarget={(id, t) => { void handleSetCharTarget(id, t) }}
                 onSetWeaponTarget={(id, t) => { void handleSetWeaponTarget(id, t) }}
+                onSetCharCurrent={(id, t) => { void handleSetCharCurrent(id, t) }}
+                onSetWeaponCurrent={(id, t) => { void handleSetWeaponCurrent(id, t) }}
                 onSetEstimatedPulls={(id, p) => { void handleSetEstimatedPulls(id, p) }}
                 allocatedPulls={stashAllocation.get(banner.id) ?? 0}
-                doubleGemsAvailable={doubleGems}
+                doubleGemsAvailable={getGameStash(banner.game)?.double_gems_available ?? true}
               />
             </div>
           ))}
