@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import CardSubscription, CreditCard, Debt, Loan, Transaction
+from models import CardSubscription, CreditCard, Debt, Loan, SalaryPlan, Transaction
 from schemas import CalendarEventOut
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
@@ -161,5 +161,58 @@ def get_calendar_events(
                 amount=sub.amount,
             )
         )
+
+    # Active salary plan payment dates (recurring monthly) — shift if holiday/weekend
+    salary_plans = db.scalars(
+        select(SalaryPlan).where(SalaryPlan.active.is_(True))
+    ).all()
+    for plan in salary_plans:
+        if not plan.split_enabled:
+            original_day = plan.split_first_day
+            shifted_day = _next_business_day(year, month, original_day, holiday_dates)
+            if shifted_day == -1:
+                continue
+            description = f"Salário — {plan.employer}"
+            if shifted_day != original_day:
+                description = f"Salário — {plan.employer} (adiado de {original_day})"
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="salary",
+                    description=description,
+                    amount=plan.current_salary,
+                )
+            )
+        else:
+            # First portion
+            original_first = plan.split_first_day
+            shifted_first = _next_business_day(year, month, original_first, holiday_dates)
+            if shifted_first != -1:
+                description_first = f"Salário 1ª parte — {plan.employer}"
+                if shifted_first != original_first:
+                    description_first = f"Salário 1ª parte — {plan.employer} (adiado de {original_first})"
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_first,
+                        type="salary",
+                        description=description_first,
+                        amount=plan.current_salary * plan.split_first_pct / 100,
+                    )
+                )
+            # Second portion
+            original_second = plan.split_second_day
+            shifted_second = _next_business_day(year, month, original_second, holiday_dates)
+            if shifted_second != -1:
+                description_second = f"Salário 2ª parte — {plan.employer}"
+                if shifted_second != original_second:
+                    description_second = f"Salário 2ª parte — {plan.employer} (adiado de {original_second})"
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_second,
+                        type="salary",
+                        description=description_second,
+                        amount=plan.current_salary * plan.split_second_pct / 100,
+                    )
+                )
 
     return sorted(events, key=lambda e: e.day)

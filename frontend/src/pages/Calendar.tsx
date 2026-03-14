@@ -14,6 +14,7 @@ const EVENT_COLORS: Record<CalendarEventType, string> = {
   expense: 'var(--color-red)',
   installment: 'var(--color-orange)',
   holiday: 'var(--color-purple)',
+  salary: 'var(--color-blue)',
 }
 
 const EVENT_LABELS: Record<CalendarEventType, string> = {
@@ -21,9 +22,10 @@ const EVENT_LABELS: Record<CalendarEventType, string> = {
   expense: 'Despesa',
   installment: 'Parcela',
   holiday: 'Feriado',
+  salary: 'Salário',
 }
 
-const LEGEND_TYPES: CalendarEventType[] = ['income', 'expense', 'installment', 'holiday']
+const LEGEND_TYPES: CalendarEventType[] = ['salary', 'income', 'expense', 'installment', 'holiday']
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -274,9 +276,14 @@ export default function Calendar() {
                       ) : (
                         <span
                           className="text-xs font-bold"
-                          style={{ color: ev.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
+                          style={{
+                            color:
+                              ev.type === 'salary' || ev.type === 'income'
+                                ? 'var(--color-green)'
+                                : 'var(--color-red)',
+                          }}
                         >
-                          {ev.type === 'income' ? '+' : '−'}
+                          {ev.type === 'salary' || ev.type === 'income' ? '+' : '−'}
                           {formatCurrency(ev.amount)}
                         </span>
                       )}
@@ -320,10 +327,18 @@ export default function Calendar() {
                       </span>
                     </div>
                     <Badge
-                      color={ev.type === 'income' ? 'green' : ev.type === 'installment' ? 'orange' : 'red'}
+                      color={
+                        ev.type === 'salary'
+                          ? 'blue'
+                          : ev.type === 'income'
+                            ? 'green'
+                            : ev.type === 'installment'
+                              ? 'orange'
+                              : 'red'
+                      }
                       size="xs"
                     >
-                      {ev.type === 'income' ? '+' : '−'}
+                      {ev.type === 'salary' || ev.type === 'income' ? '+' : '−'}
                       {formatCurrency(ev.amount)}
                     </Badge>
                   </div>

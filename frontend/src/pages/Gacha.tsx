@@ -1057,14 +1057,16 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                 </span>
               </div>
 
-              {/* Line 2: estimated pulls input + informational labels + cost indicator */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Line 2: estimated pulls input + char/weapon current→target selects */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {/* Estimated pulls input (saves on blur) */}
                 <span style={{ color: 'var(--color-muted)', fontSize: 11 }}>🏆</span>
                 <EstimatedPullsInput
                   value={banner.estimated_pulls}
                   onCommit={(val) => { onSetEstimatedPulls(banner.id, val) }}
                 />
+
+                <span style={{ color: 'var(--color-border)', fontSize: 10, margin: '0 2px' }}>|</span>
 
                 {/* Current + Target selects with auto-calculation */}
                 <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>
@@ -1122,7 +1124,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     <option key={t} value={t}>{getCharLabel(banner.game, t)}</option>
                   ))}
                 </select>
-                <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>|</span>
+                <span style={{ color: 'var(--color-border)', fontSize: 10, margin: '0 2px' }}>|</span>
                 <span style={{ color: 'var(--color-muted)', fontSize: 10 }}>
                   {getWeaponGroupLabel(banner.game)}:
                 </span>
@@ -1177,8 +1179,10 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     <option key={t} value={t}>{getWeaponLabel(banner.game, t)}</option>
                   ))}
                 </select>
+              </div>
 
-                {/* Cost indicator — based on estimated_pulls */}
+              {/* Line 3: cost indicator — based on estimated_pulls */}
+              <div style={{ display: 'flex', alignItems: 'center', minHeight: 20 }}>
                 {hasEstimate(banner) && (() => {
                   const pullsNeeded = Math.max(0, banner.estimated_pulls - banner.pulls)
                   const pullsToCash = Math.max(0, pullsNeeded - allocatedPulls)
@@ -1469,7 +1473,7 @@ export default function Gacha() {
   }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <div style={{ padding: '28px 32px', maxWidth: 1400 }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
