@@ -79,8 +79,8 @@ function calculateCashCost(currencyToBuy: number, doubleGems: boolean, game: str
     }
   }
   // If still remaining, buy smallest pack
-  if (remaining > 0) {
-    const smallest = tiers[0]
+  const smallest = tiers[0]
+  if (remaining > 0 && smallest) {
     const effective = doubleGems ? smallest.shards * 2 : smallest.shards
     while (remaining > 0) {
       cost += smallest.price

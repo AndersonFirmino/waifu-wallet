@@ -9,7 +9,7 @@ interface CurrencyInputProps {
 }
 
 function formatBRL(value: number): string {
-  const [intPart, decPart = '00'] = value.toFixed(2).split('.')
+  const [intPart = '0', decPart = '00'] = value.toFixed(2).split('.')
   const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   return `${formattedInt},${decPart}`
 }

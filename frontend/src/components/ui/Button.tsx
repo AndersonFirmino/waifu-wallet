@@ -9,6 +9,7 @@ interface ButtonProps {
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
   className?: string
+  title?: string
 }
 
 interface VariantStyle {
@@ -54,6 +55,7 @@ export default function Button({
   disabled = false,
   type = 'button',
   className = '',
+  title,
 }: ButtonProps) {
   const v = VARIANT_MAP[variant]
 
@@ -64,6 +66,7 @@ export default function Button({
       disabled={disabled}
       className={`inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${v.className} ${SIZE_MAP[size]} ${className}`}
       style={v.style}
+      title={title}
     >
       {children}
     </button>
