@@ -303,7 +303,7 @@ class SalaryScheduleMonth(BaseModel):
 
 class CalendarEventOut(BaseModel):
     day: int
-    type: str           # income | expense | installment
+    type: str           # income | expense | installment | holiday
     description: str
     amount: float
 

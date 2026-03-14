@@ -180,7 +180,7 @@ export interface CardSubscription {
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
 
-export type CalendarEventType = 'income' | 'expense' | 'installment'
+export type CalendarEventType = 'income' | 'expense' | 'installment' | 'holiday'
 
 export interface CalendarEvent {
   day: number

@@ -100,7 +100,7 @@ function asSubscriptionCurrency(val: unknown): SubscriptionCurrency {
 }
 
 function asCalendarEventType(val: unknown): CalendarEventType {
-  if (val === 'income' || val === 'expense' || val === 'installment') return val
+  if (val === 'income' || val === 'expense' || val === 'installment' || val === 'holiday') return val
   throw new Error(`Invalid CalendarEventType: ${String(val)}`)
 }
 

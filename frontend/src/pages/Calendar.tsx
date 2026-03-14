@@ -13,15 +13,17 @@ const EVENT_COLORS: Record<CalendarEventType, string> = {
   income: 'var(--color-green)',
   expense: 'var(--color-red)',
   installment: 'var(--color-orange)',
+  holiday: 'var(--color-purple)',
 }
 
 const EVENT_LABELS: Record<CalendarEventType, string> = {
   income: 'Receita',
   expense: 'Despesa',
   installment: 'Parcela',
+  holiday: 'Feriado',
 }
 
-const LEGEND_TYPES: CalendarEventType[] = ['income', 'expense', 'installment']
+const LEGEND_TYPES: CalendarEventType[] = ['income', 'expense', 'installment', 'holiday']
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,15 @@ export default function Calendar() {
     eventsByDay.set(event.day, [...current, event])
   }
 
+  // Build holiday lookup for tooltips
+  const holidaysByDay = new Map<number, string[]>()
+  for (const event of eventList) {
+    if (event.type === 'holiday') {
+      const current = holidaysByDay.get(event.day) ?? []
+      holidaysByDay.set(event.day, [...current, event.description])
+    }
+  }
+
   const prevMonth = () => {
     if (month === 0) {
       setMonth(11)
@@ -61,7 +72,7 @@ export default function Calendar() {
   const selectedEvents = selectedDay !== null ? (eventsByDay.get(selectedDay) ?? []) : []
 
   const upcomingEvents = eventList
-    .filter((e) => e.day >= todayDay)
+    .filter((e) => e.day >= todayDay && e.type !== 'holiday')
     .sort((a, b) => a.day - b.day)
     .slice(0, 8)
 
@@ -137,6 +148,7 @@ export default function Calendar() {
               const isToday = day === todayDay
               const isSelected = day === selectedDay
               const hasEvents = dayEvents.length > 0
+              const isHoliday = holidaysByDay.has(day)
 
               return (
                 <div
@@ -145,15 +157,18 @@ export default function Calendar() {
                     setSelectedDay(day === selectedDay ? null : day)
                   }}
                   className="rounded-xl flex flex-col items-center cursor-pointer transition-all"
+                  title={isHoliday ? `🎌 ${(holidaysByDay.get(day) ?? []).join(', ')}` : undefined}
                   style={{
                     padding: '8px 4px',
                     background: isSelected
                       ? 'var(--color-blue)'
                       : isToday
                         ? 'rgba(59,130,246,0.12)'
-                        : hasEvents
-                          ? 'rgba(255,255,255,0.02)'
-                          : 'transparent',
+                        : isHoliday
+                          ? 'rgba(139,92,246,0.10)'
+                          : hasEvents
+                            ? 'rgba(255,255,255,0.02)'
+                            : 'transparent',
                     border: isToday && !isSelected ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent',
                     transition: 'background 0.12s',
                   }}
@@ -164,9 +179,11 @@ export default function Calendar() {
                     if (!isSelected) {
                       e.currentTarget.style.background = isToday
                         ? 'rgba(59,130,246,0.12)'
-                        : hasEvents
-                          ? 'rgba(255,255,255,0.02)'
-                          : 'transparent'
+                        : isHoliday
+                          ? 'rgba(139,92,246,0.10)'
+                          : hasEvents
+                            ? 'rgba(255,255,255,0.02)'
+                            : 'transparent'
                     }
                   }}
                 >
@@ -238,13 +255,19 @@ export default function Calendar() {
                           {ev.description}
                         </span>
                       </div>
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: ev.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
-                      >
-                        {ev.type === 'income' ? '+' : '−'}
-                        {formatCurrency(ev.amount)}
-                      </span>
+                      {ev.type === 'holiday' ? (
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-purple)' }}>
+                          🎌 Feriado
+                        </span>
+                      ) : (
+                        <span
+                          className="text-xs font-bold"
+                          style={{ color: ev.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
+                        >
+                          {ev.type === 'income' ? '+' : '−'}
+                          {formatCurrency(ev.amount)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

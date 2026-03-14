@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import StatCard from '../components/ui/StatCard'
@@ -227,9 +227,27 @@ export default function CreditCards() {
   // Subscription form state
   const [showSubForm, setShowSubForm] = useState(false)
   const [subName, setSubName] = useState('')
-  const [subAmount, setSubAmount] = useState('')
+  const [subAmount, setSubAmount] = useState<number>(0)
   const [subCurrency, setSubCurrency] = useState<SubscriptionCurrency>('BRL')
+  const [usdRate, setUsdRate] = useState<number | null>(null)
   const [subBillingDay, setSubBillingDay] = useState('')
+
+  // Inline bill editing
+  const [editingBill, setEditingBill] = useState(false)
+  const [billInput, setBillInput] = useState(0)
+
+  useEffect(() => {
+    fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL')
+      .then(async (r) => {
+        const text = await r.text()
+        const match = (/"bid":"([\d.]+)"/).exec(text)
+        if (match?.[1] !== undefined) {
+          const bid = parseFloat(match[1])
+          if (!isNaN(bid)) setUsdRate(bid)
+        }
+      })
+      .catch(() => { /* exchange rate unavailable */ })
+  }, [])
 
   const cardList = serverData ?? []
 
@@ -330,21 +348,20 @@ export default function CreditCards() {
 
   function resetSubForm() {
     setSubName('')
-    setSubAmount('')
+    setSubAmount(0)
     setSubCurrency('BRL')
     setSubBillingDay('')
     setShowSubForm(false)
   }
 
   const handleAddSubscription = async (cardId: number) => {
-    const amount = parseFloat(subAmount)
     const billingDay = parseInt(subBillingDay, 10)
-    if (!subName || isNaN(amount) || amount <= 0 || isNaN(billingDay) || billingDay < 1 || billingDay > 31) return
+    if (!subName || subAmount <= 0 || isNaN(billingDay) || billingDay < 1 || billingDay > 31) return
 
     const r = await fetch(`/api/v1/credit-cards/${String(cardId)}/subscriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: subName, amount, currency: subCurrency, billing_day: billingDay, active: true }),
+      body: JSON.stringify({ name: subName, amount: subAmount, currency: subCurrency, billing_day: billingDay, active: true }),
     })
     if (!r.ok) return
     resetSubForm()
@@ -362,6 +379,29 @@ export default function CreditCards() {
     await fetch(`/api/v1/credit-cards/${String(cardId)}/subscriptions/${String(subId)}`, {
       method: 'DELETE',
     })
+  }
+
+  const handleSaveBill = async (cardId: number) => {
+    const card = cardList.find((c) => c.id === cardId)
+    if (card === undefined) return
+    await fetch(`/api/v1/credit-cards/${String(cardId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: card.name,
+        brand: card.brand,
+        last_four: card.last_four,
+        limit: card.limit,
+        used: card.used,
+        gradient_from: card.gradient_from,
+        gradient_to: card.gradient_to,
+        bill: billInput,
+        closing_day: card.closing_day,
+        due_day: card.due_day,
+        status: card.status,
+      }),
+    })
+    setEditingBill(false)
   }
 
   if (cardList.length === 0 && !showForm) {
@@ -578,9 +618,38 @@ export default function CreditCards() {
                     <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
                       Fatura atual
                     </p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-                      <AnimatedNumber value={selected.bill} formatter={formatCurrency} />
-                    </p>
+                    {editingBill ? (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <CurrencyInput
+                          value={billInput}
+                          onChange={(v) => { setBillInput(v) }}
+                          placeholder="R$ 0,00"
+                          style={{ width: 120, fontSize: 16, fontWeight: 700 }}
+                        />
+                        <button
+                          onClick={() => { void handleSaveBill(selected.id) }}
+                          style={{ background: 'var(--color-green)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 12 }}
+                        >
+                          OK
+                        </button>
+                        <button
+                          onClick={() => { setEditingBill(false) }}
+                          style={{ background: 'var(--color-surface2)', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 12 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: 'var(--color-text)', cursor: 'pointer' }}
+                        onClick={() => { setBillInput(selected.bill); setEditingBill(true) }}
+                        title="Clique para editar a fatura"
+                      >
+                        <AnimatedNumber value={selected.bill} formatter={formatCurrency} />
+                        <span style={{ fontSize: 10, color: 'var(--color-muted)', marginLeft: 4 }}>✏️</span>
+                      </p>
+                    )}
                   </div>
                   {/* Edit button */}
                   <Button
@@ -676,12 +745,10 @@ export default function CreditCards() {
                     onChange={(e) => { setSubName(e.target.value) }}
                     className="col-span-1"
                   />
-                  <input
-                    placeholder="Valor"
+                  <CurrencyInput
                     value={subAmount}
-                    onChange={(e) => { setSubAmount(e.target.value) }}
-                    type="number"
-                    step="0.01"
+                    onChange={(v) => { setSubAmount(v) }}
+                    placeholder="R$ 0,00"
                   />
                   <div className="flex gap-1">
                     <select
@@ -748,7 +815,17 @@ export default function CreditCards() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {sub.currency === 'USD' ? `US$ ${sub.amount.toFixed(2)}` : formatCurrency(sub.amount)}
+                          {sub.currency === 'USD'
+                            ? <>
+                                US$ {sub.amount.toFixed(2)}
+                                {usdRate !== null && (
+                                  <span className="text-xs ml-1" style={{ color: 'var(--color-muted)', fontWeight: 400 }}>
+                                    (~{formatCurrency(sub.amount * usdRate)})
+                                  </span>
+                                )}
+                              </>
+                            : formatCurrency(sub.amount)
+                          }
                         </span>
                         <button
                           onClick={() => { void handleDeleteSubscription(selected.id, sub.id) }}
@@ -770,12 +847,18 @@ export default function CreditCards() {
                       </span>
                       <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
                         <AnimatedNumber
-                          value={selected.subscriptions.filter((s) => s.active && s.currency === 'BRL').reduce((sum, s) => sum + s.amount, 0)}
+                          value={
+                            selected.subscriptions.filter((s) => s.active).reduce((sum, s) => {
+                              if (s.currency === 'USD' && usdRate !== null) return sum + s.amount * usdRate
+                              if (s.currency === 'BRL') return sum + s.amount
+                              return sum
+                            }, 0)
+                          }
                           formatter={formatCurrency}
                         />
-                        {selected.subscriptions.some((s) => s.active && s.currency === 'USD') && (
-                          <span className="ml-2" style={{ color: 'var(--color-muted)' }}>
-                            + US$ {selected.subscriptions.filter((s) => s.active && s.currency === 'USD').reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
+                        {selected.subscriptions.some((s) => s.active && s.currency === 'USD') && usdRate !== null && (
+                          <span className="text-xs ml-2" style={{ color: 'var(--color-muted)', fontWeight: 400 }}>
+                            (cotação: R$ {usdRate.toFixed(2)})
                           </span>
                         )}
                       </span>
