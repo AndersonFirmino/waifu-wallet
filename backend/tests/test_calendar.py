@@ -137,7 +137,9 @@ def test_calendar_includes_credit_card_bill(client: TestClient) -> None:
     with patch(_PATCH_TARGET, return_value=[]):
         client.post("/api/v1/credit-cards/", json=_CARD)
         data = client.get("/api/v1/calendar/2026/3").json()
-    bill_events = [e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]]
+    bill_events = [
+        e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]
+    ]
     assert len(bill_events) == 1
     assert bill_events[0]["day"] == 16
     assert bill_events[0]["type"] == "expense"
@@ -163,7 +165,12 @@ def test_calendar_includes_active_subscription(client: TestClient) -> None:
         card_id = res.json()["id"]
         client.post(
             f"/api/v1/credit-cards/{card_id}/subscriptions",
-            json={"name": "Netflix", "amount": 39.90, "billing_day": 10, "active": True},
+            json={
+                "name": "Netflix",
+                "amount": 39.90,
+                "billing_day": 10,
+                "active": True,
+            },
         )
         data = client.get("/api/v1/calendar/2026/3").json()
     sub_events = [e for e in data if "Netflix" in e["description"]]
@@ -181,7 +188,12 @@ def test_calendar_excludes_inactive_subscription(client: TestClient) -> None:
         card_id = res.json()["id"]
         client.post(
             f"/api/v1/credit-cards/{card_id}/subscriptions",
-            json={"name": "Spotify", "amount": 21.90, "billing_day": 5, "active": False},
+            json={
+                "name": "Spotify",
+                "amount": 21.90,
+                "billing_day": 5,
+                "active": False,
+            },
         )
         data = client.get("/api/v1/calendar/2026/3").json()
     sub_events = [e for e in data if "Spotify" in e["description"]]
@@ -189,6 +201,7 @@ def test_calendar_excludes_inactive_subscription(client: TestClient) -> None:
 
 
 # ─── New tests: holidays + shifting ───────────────────────────────────────────
+
 
 def test_calendar_includes_holidays(client: TestClient) -> None:
     calendar_router._holidays_cache.clear()
@@ -206,11 +219,15 @@ def test_calendar_shifts_bill_on_holiday(client: TestClient) -> None:
     # Card due_day=15. Mock March 16 (Monday) as a holiday so it shifts to Tuesday March 17.
     # March 15 is already Sunday so first it shifts to 16, then 16 is a holiday so shifts to 17.
     calendar_router._holidays_cache.clear()
-    mock_holidays = [{"date": "2026-03-16", "name": "Feriado Teste", "type": "national"}]
+    mock_holidays = [
+        {"date": "2026-03-16", "name": "Feriado Teste", "type": "national"}
+    ]
     with patch(_PATCH_TARGET, return_value=mock_holidays):
         client.post("/api/v1/credit-cards/", json=_CARD)
         data = client.get("/api/v1/calendar/2026/3").json()
-    bill_events = [e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]]
+    bill_events = [
+        e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]
+    ]
     assert len(bill_events) == 1
     # March 15 (Sun) -> 16 (Mon, holiday) -> 17 (Tue)
     assert bill_events[0]["day"] == 17
@@ -226,7 +243,9 @@ def test_calendar_shifts_bill_on_weekend(client: TestClient) -> None:
     with patch(_PATCH_TARGET, return_value=[]):
         client.post("/api/v1/credit-cards/", json=card_saturday)
         data = client.get("/api/v1/calendar/2026/3").json()
-    bill_events = [e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]]
+    bill_events = [
+        e for e in data if "Fatura" in e["description"] and "Nubank" in e["description"]
+    ]
     assert len(bill_events) == 1
     assert bill_events[0]["day"] == 9  # Saturday -> Sunday -> Monday
     assert "adiado de 7" in bill_events[0]["description"]
@@ -240,6 +259,8 @@ def test_calendar_transactions_not_shifted(client: TestClient) -> None:
     with patch(_PATCH_TARGET, return_value=mock_holidays):
         client.post("/api/v1/transactions/", json=tx_sunday)
         data = client.get("/api/v1/calendar/2026/3").json()
-    tx_events = [e for e in data if e["type"] == "expense" and e["description"] == "Aluguel"]
+    tx_events = [
+        e for e in data if e["type"] == "expense" and e["description"] == "Aluguel"
+    ]
     assert len(tx_events) == 1
     assert tx_events[0]["day"] == 15  # unchanged

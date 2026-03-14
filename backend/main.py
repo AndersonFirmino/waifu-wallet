@@ -4,7 +4,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
-from routers import calendar, credit_cards, debts, fixed_expenses, forecast, gacha, notes, salary_plans, savings, settings, summary, transactions, upload
+from routers import (
+    calendar,
+    credit_cards,
+    debts,
+    fixed_expenses,
+    forecast,
+    gacha,
+    notes,
+    salary_plans,
+    savings,
+    settings,
+    summary,
+    transactions,
+    upload,
+)
 
 app = FastAPI(
     title="MeuCaixa API",
@@ -23,8 +37,8 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 # ─── Migrations ──────────────────────────────────────────────────────────────
-from sqlalchemy import text, inspect
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text, inspect  # noqa: E402
+from sqlalchemy.exc import OperationalError  # noqa: E402
 
 
 def _run_migrations() -> None:
@@ -32,14 +46,20 @@ def _run_migrations() -> None:
         # Add char_current / weapon_current to gacha_banners
         for col in ("char_current", "weapon_current"):
             try:
-                conn.execute(text(f"ALTER TABLE gacha_banners ADD COLUMN {col} VARCHAR(5)"))
+                conn.execute(
+                    text(f"ALTER TABLE gacha_banners ADD COLUMN {col} VARCHAR(5)")
+                )
                 conn.commit()
             except OperationalError:
                 conn.rollback()
 
         # Add weapon_passes to gacha_stashes
         try:
-            conn.execute(text("ALTER TABLE gacha_stashes ADD COLUMN weapon_passes INTEGER DEFAULT 0"))
+            conn.execute(
+                text(
+                    "ALTER TABLE gacha_stashes ADD COLUMN weapon_passes INTEGER DEFAULT 0"
+                )
+            )
             conn.commit()
         except OperationalError:
             conn.rollback()
@@ -50,11 +70,22 @@ def _run_migrations() -> None:
         if "gacha_stash" in tables and "gacha_stashes" in tables:
             existing = conn.execute(text("SELECT COUNT(*) FROM gacha_stashes")).scalar()
             if existing == 0:
-                old = conn.execute(text("SELECT stellar_jade, special_passes, double_gems_available FROM gacha_stash LIMIT 1")).fetchone()
+                old = conn.execute(
+                    text(
+                        "SELECT stellar_jade, special_passes, double_gems_available FROM gacha_stash LIMIT 1"
+                    )
+                ).fetchone()
                 if old is not None:
                     conn.execute(
-                        text("INSERT INTO gacha_stashes (game, premium_currency, passes, double_gems_available) VALUES (:game, :currency, :passes, :double)"),
-                        {"game": "Honkai: Star Rail", "currency": old[0], "passes": old[1], "double": old[2]},
+                        text(
+                            "INSERT INTO gacha_stashes (game, premium_currency, passes, double_gems_available) VALUES (:game, :currency, :passes, :double)"
+                        ),
+                        {
+                            "game": "Honkai: Star Rail",
+                            "currency": old[0],
+                            "passes": old[1],
+                            "double": old[2],
+                        },
                     )
                     conn.commit()
 

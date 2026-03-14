@@ -1,3 +1,5 @@
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/AndersonFirmino/waifu-wallet?utm_source=oss&utm_medium=github&utm_campaign=AndersonFirmino%2Fwaifu-wallet&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+
 # 💵 Waifu Wallet
 
 > **A financial manager for people who LOVE gacha games and want to manage their spending the simple and easy way.**
@@ -29,7 +31,7 @@ Built by gacha players, for gacha players. Track your income, expenses, debts, c
 - **Savings** — savings accounts with goal tracking
 - **Salary Plans** — salary progression planning with split-payment support and 12-month projection
 - **Forecast** — balance projection for 1 / 3 / 6 months across base, optimistic, and pessimistic scenarios
-- **Financial Calendar** — monthly view with holidays (BrasilAPI), automatic payment shifting on holidays/weekends, subscription billing dates, and credit card due dates
+- **Financial Calendar** — monthly view with holidays (BrasilAPI), salary payment dates, automatic payment shifting on holidays/weekends, subscription billing dates, and credit card due dates
 - **Notes** — markdown notes (designed for an AI advisor to leave persistent observations)
 
 ---
@@ -38,7 +40,7 @@ Built by gacha players, for gacha players. Track your income, expenses, debts, c
 
 | Layer | Tech |
 |---|---|
-| Backend | Python 3.13+ · FastAPI · SQLAlchemy · SQLite |
+| Backend | Python 3.13+ · FastAPI · SQLAlchemy · SQLite · Ruff |
 | Frontend | React 19 · TypeScript · Vite · TailwindCSS |
 | Charts | Recharts |
 | Backend packages | [uv](https://github.com/astral-sh/uv) |
@@ -50,6 +52,9 @@ Built by gacha players, for gacha players. Track your income, expenses, debts, c
 
 ```
 waifu-wallet/
+├── .github/
+│   ├── workflows/ci.yml    # CI pipeline (lint, typecheck, test, build, pytest)
+│   └── dependabot.yml      # Automated dependency updates
 ├── setup.bat               # One-click setup (installs everything)
 ├── start.bat               # One-click start (backend + frontend + browser)
 ├── backend/
@@ -126,6 +131,84 @@ npm run build          # Production build
 cd backend
 uv run python seed.py
 ```
+
+---
+
+## Contributing
+
+We welcome contributions! Please follow the workflow below to keep things clean.
+
+### Branch Strategy
+
+We use a simplified Gitflow:
+
+- `master` — stable releases only, tagged with versions (e.g. `v0.2.0`)
+- `develop` — active development, all features merge here first
+- `feat/*` — feature branches (branch from `develop`)
+- `fix/*` — bug fix branches (branch from `develop`)
+
+### How to Contribute
+
+1. Fork the repo and clone it
+2. Create a feature branch from `develop`:
+   ```bash
+   git checkout develop
+   git checkout -b feat/my-feature
+   ```
+3. Make your changes
+4. Ensure all checks pass:
+   ```bash
+   # Frontend
+   cd frontend
+   npm run lint          # ESLint — zero errors
+   npm run typecheck     # TypeScript strict — zero errors
+   npm run test          # Vitest suite — all green
+   npm run build         # Production build — must succeed
+
+   # Backend
+   cd backend
+   uv run ruff check .   # Ruff linter — zero errors
+   uv run ruff format --check .  # Ruff formatter — must pass
+   uv run pytest         # pytest suite — all green
+   ```
+5. Commit using **Gitmoji + Conventional Commits**:
+   ```
+   ✨ feat: add new gacha game support
+   🐛 fix: calendar showing wrong salary date
+   ♻️ refactor: extract pull calculator to utility
+   🧪 test: add unit tests for budget analyzer
+   ```
+6. Push and open a PR against `develop`
+7. Wait for CI and AI reviewers (Gemini Code Assist + CodeRabbit) to approve
+
+### CI Pipeline
+
+Every PR triggers automated checks via GitHub Actions:
+
+| Check | Command | What it does |
+|-------|---------|-------------|
+| ESLint | `npm run lint` | Code style and quality |
+| TypeScript | `npm run typecheck` | Type safety (strict mode) |
+| Vitest | `npm run test` | Frontend unit tests |
+| Build | `npm run build` | Ensures production build works |
+| Ruff | `uv run ruff check .` | Python linting |
+| Ruff Format | `uv run ruff format --check .` | Python formatting |
+| pytest | `uv run pytest` | Backend tests |
+
+PRs cannot be merged until all checks pass.
+
+### Code Standards
+
+- **All code in English** — variable names, functions, classes, comments. Only UI labels in Portuguese (pt-BR).
+- **TypeScript**: strict mode, no `any`, no `as` type assertions, ESLint must pass
+- **Python**: type hints on all functions, no `# type: ignore`, Ruff must pass
+- **Tests required** — new features must include tests
+
+### AI Code Review
+
+Every PR is automatically reviewed by:
+- **Gemini Code Assist** — Google's AI reviewer
+- **CodeRabbit** — AI-powered code review with security and quality analysis
 
 ---
 

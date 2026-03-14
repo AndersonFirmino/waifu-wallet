@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 # ─── Transaction ──────────────────────────────────────────────────────────────
 
+
 class TransactionCreate(BaseModel):
     type: str
     description: str
@@ -22,6 +23,7 @@ class TransactionOut(TransactionCreate):
 
 # ─── Fixed Expense ────────────────────────────────────────────────────────────
 
+
 class FixedExpenseCreate(BaseModel):
     name: str
     amount: float
@@ -36,6 +38,7 @@ class FixedExpenseOut(FixedExpenseCreate):
 
 
 # ─── Debt ─────────────────────────────────────────────────────────────────────
+
 
 class DebtCreate(BaseModel):
     name: str
@@ -54,6 +57,7 @@ class DebtOut(DebtCreate):
 
 # ─── Loan ─────────────────────────────────────────────────────────────────────
 
+
 class LoanCreate(BaseModel):
     name: str
     total: float
@@ -70,6 +74,7 @@ class LoanOut(LoanCreate):
 
 
 # ─── Credit Card ──────────────────────────────────────────────────────────────
+
 
 class CardBillHistoryCreate(BaseModel):
     month: str
@@ -146,6 +151,7 @@ class CreditCardOut(CreditCardCreate):
 
 # ─── Note ─────────────────────────────────────────────────────────────────────
 
+
 class NoteCreate(BaseModel):
     date: str
     content: str
@@ -162,6 +168,7 @@ class NoteOut(NoteCreate):
 
 # ─── App Settings ────────────────────────────────────────────────────────────
 
+
 class AppSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -173,6 +180,7 @@ class AppSettingsUpdate(BaseModel):
 
 
 # ─── Gacha ────────────────────────────────────────────────────────────────────
+
 
 class GachaStashOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -248,6 +256,7 @@ class PullsUpdate(BaseModel):
 
 # ─── Savings Account ──────────────────────────────────────────────────────────
 
+
 class SavingsAccountCreate(BaseModel):
     name: str
     bank: str
@@ -267,6 +276,7 @@ class BalanceUpdate(BaseModel):
 
 
 # ─── Salary Plan ──────────────────────────────────────────────────────────────
+
 
 class SalaryPlanCreate(BaseModel):
     employer: str
@@ -296,21 +306,23 @@ class SalarySchedulePayment(BaseModel):
 
 
 class SalaryScheduleMonth(BaseModel):
-    month: str          # YYYY-MM
+    month: str  # YYYY-MM
     salary: float
     payments: list[SalarySchedulePayment]
 
 
 # ─── Calendar ─────────────────────────────────────────────────────────────────
 
+
 class CalendarEventOut(BaseModel):
     day: int
-    type: str           # income | expense | installment | holiday
+    type: str  # income | expense | installment | holiday
     description: str
     amount: float
 
 
 # ─── Forecast ─────────────────────────────────────────────────────────────────
+
 
 class ForecastPointOut(BaseModel):
     month: str
@@ -320,6 +332,7 @@ class ForecastPointOut(BaseModel):
 
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
+
 
 class MonthlyFinancesOut(BaseModel):
     income: float
@@ -354,7 +367,7 @@ class GachaOverviewOut(BaseModel):
 
 
 class AlertOut(BaseModel):
-    level: str          # urgent | warning | info
+    level: str  # urgent | warning | info
     message: str
 
 

@@ -42,7 +42,9 @@ def test_forecast_6m(client: TestClient) -> None:
 
 
 def test_forecast_invalid_period_defaults_to_3m(client: TestClient) -> None:
-    assert len(client.get("/api/v1/forecast/", params={"period": "invalid"}).json()) == 3
+    assert (
+        len(client.get("/api/v1/forecast/", params={"period": "invalid"}).json()) == 3
+    )
 
 
 def test_forecast_has_required_fields(client: TestClient) -> None:

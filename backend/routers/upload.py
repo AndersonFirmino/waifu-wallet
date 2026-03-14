@@ -7,7 +7,9 @@ from fastapi import APIRouter, HTTPException, UploadFile
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "public" / "gacha"
+UPLOAD_DIR = (
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "public" / "gacha"
+)
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 

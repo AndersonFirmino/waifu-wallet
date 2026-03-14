@@ -13,6 +13,7 @@ router = APIRouter(tags=["debts"])
 
 # ─── Debts ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/debts", response_model=list[DebtOut])
 def list_debts(db: Session = Depends(get_db)) -> list[Debt]:
     return list(db.scalars(select(Debt)).all())
@@ -53,6 +54,7 @@ def delete_debt(debt_id: int, db: Session = Depends(get_db)) -> None:
 
 
 # ─── Loans ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/loans", response_model=list[LoanOut])
 def list_loans(db: Session = Depends(get_db)) -> list[Loan]:

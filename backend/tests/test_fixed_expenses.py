@@ -31,7 +31,9 @@ def test_list_returns_created(client: TestClient) -> None:
 
 def test_update(client: TestClient) -> None:
     created = client.post("/api/v1/fixed-expenses/", json=_PAYLOAD).json()
-    res = client.put(f"/api/v1/fixed-expenses/{created['id']}", json={**_PAYLOAD, "amount": 1300.0})
+    res = client.put(
+        f"/api/v1/fixed-expenses/{created['id']}", json={**_PAYLOAD, "amount": 1300.0}
+    )
     assert res.status_code == 200
     assert res.json()["amount"] == 1300.0
 

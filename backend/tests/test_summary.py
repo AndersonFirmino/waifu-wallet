@@ -38,7 +38,11 @@ _CARD: dict[str, object] = {
     "status": "open",
 }
 
-_HIGH_CARD: dict[str, object] = {**_CARD, "name": "High Card", "used": 4600.0}  # 92% → urgent
+_HIGH_CARD: dict[str, object] = {
+    **_CARD,
+    "name": "High Card",
+    "used": 4600.0,
+}  # 92% → urgent
 
 _DEBT: dict[str, object] = {
     "name": "Normal Debt",
@@ -116,7 +120,9 @@ def test_summary_urgent_debt_alert(client: TestClient) -> None:
 def test_summary_no_urgent_alert_for_normal_debt(client: TestClient) -> None:
     client.post("/api/v1/debts/", json=_DEBT)
     alerts = client.get("/api/v1/summary/").json()["alerts"]
-    assert not any(a["level"] == "urgent" and "Normal Debt" in a["message"] for a in alerts)
+    assert not any(
+        a["level"] == "urgent" and "Normal Debt" in a["message"] for a in alerts
+    )
 
 
 def test_summary_high_card_usage_urgent_alert(client: TestClient) -> None:

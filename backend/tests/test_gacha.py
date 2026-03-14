@@ -39,7 +39,9 @@ def test_list_ordered_by_priority(client: TestClient) -> None:
 
 def test_update(client: TestClient) -> None:
     created = client.post("/api/v1/gacha/banners/", json=_PAYLOAD).json()
-    res = client.put(f"/api/v1/gacha/banners/{created['id']}", json={**_PAYLOAD, "cost": 200.0})
+    res = client.put(
+        f"/api/v1/gacha/banners/{created['id']}", json={**_PAYLOAD, "cost": 200.0}
+    )
     assert res.status_code == 200
     assert res.json()["cost"] == 200.0
 
@@ -50,13 +52,18 @@ def test_update_not_found(client: TestClient) -> None:
 
 def test_update_pulls(client: TestClient) -> None:
     created = client.post("/api/v1/gacha/banners/", json=_PAYLOAD).json()
-    res = client.patch(f"/api/v1/gacha/banners/{created['id']}/pulls", json={"pulls": 45})
+    res = client.patch(
+        f"/api/v1/gacha/banners/{created['id']}/pulls", json={"pulls": 45}
+    )
     assert res.status_code == 200
     assert res.json()["pulls"] == 45
 
 
 def test_update_pulls_not_found(client: TestClient) -> None:
-    assert client.patch("/api/v1/gacha/banners/999/pulls", json={"pulls": 10}).status_code == 404
+    assert (
+        client.patch("/api/v1/gacha/banners/999/pulls", json={"pulls": 10}).status_code
+        == 404
+    )
 
 
 def test_delete(client: TestClient) -> None:
@@ -70,6 +77,7 @@ def test_delete_not_found(client: TestClient) -> None:
 
 
 # ─── Multi-game stash ────────────────────────────────────────────────────────
+
 
 def test_list_stashes_empty(client: TestClient) -> None:
     assert client.get("/api/v1/gacha/stashes").json() == []
@@ -171,7 +179,11 @@ def test_create_banner_current_nullable(client: TestClient) -> None:
 
 def test_update_banner_current(client: TestClient) -> None:
     created = client.post("/api/v1/gacha/banners/", json=_PAYLOAD_WITH_CURRENT).json()
-    updated_payload = {**_PAYLOAD_WITH_CURRENT, "char_current": "E5", "weapon_current": "S3"}
+    updated_payload = {
+        **_PAYLOAD_WITH_CURRENT,
+        "char_current": "E5",
+        "weapon_current": "S3",
+    }
     res = client.put(f"/api/v1/gacha/banners/{created['id']}", json=updated_payload)
     assert res.status_code == 200
     assert res.json()["char_current"] == "E5"

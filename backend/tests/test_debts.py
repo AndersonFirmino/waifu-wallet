@@ -40,7 +40,9 @@ class TestDebts:
 
     def test_update(self, client: TestClient) -> None:
         created = client.post("/api/v1/debts/", json=_DEBT).json()
-        res = client.put(f"/api/v1/debts/{created['id']}", json={**_DEBT, "remaining": 2000.0})
+        res = client.put(
+            f"/api/v1/debts/{created['id']}", json={**_DEBT, "remaining": 2000.0}
+        )
         assert res.status_code == 200
         assert res.json()["remaining"] == 2000.0
 
@@ -73,7 +75,9 @@ class TestLoans:
 
     def test_update(self, client: TestClient) -> None:
         created = client.post("/api/v1/loans/", json=_LOAN).json()
-        res = client.put(f"/api/v1/loans/{created['id']}", json={**_LOAN, "remaining": 6000.0})
+        res = client.put(
+            f"/api/v1/loans/{created['id']}", json={**_LOAN, "remaining": 6000.0}
+        )
         assert res.status_code == 200
         assert res.json()["remaining"] == 6000.0
 
