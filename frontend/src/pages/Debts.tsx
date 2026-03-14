@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -113,6 +113,10 @@ export default function Debts() {
   // Delete confirmation
   const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState<number | null>(null)
 
+  // Saving + error state for debt form
+  const [savingDebt, setSavingDebt] = useState(false)
+  const [debtFormError, setDebtFormError] = useState<string | null>(null)
+
   // Loans CRUD state
   const [loanAdditions, setLoanAdditions] = useState<Loan[]>([])
   const [loanDeletedIds, setLoanDeletedIds] = useState<number[]>([])
@@ -125,6 +129,10 @@ export default function Debts() {
 
   // Loan delete confirmation
   const [confirmDeleteLoanId, setConfirmDeleteLoanId] = useState<number | null>(null)
+
+  // Saving + error state for loan form
+  const [savingLoan, setSavingLoan] = useState(false)
+  const [loanFormError, setLoanFormError] = useState<string | null>(null)
 
   const serverDebts = fetchedDebts ?? []
   const serverLoans = fetchedLoans ?? []
@@ -168,7 +176,18 @@ export default function Debts() {
     setShowDebtForm(false)
     setEditingDebtId(null)
     setDebtForm(EMPTY_DEBT_FORM)
+    setDebtFormError(null)
   }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') closeDebtForm()
+    }
+    if (showDebtForm) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [showDebtForm])
 
   function setDebtField<K extends keyof DebtFormState>(key: K, value: DebtFormState[K]) {
     setDebtForm((f) => ({ ...f, [key]: value }))
@@ -177,53 +196,58 @@ export default function Debts() {
   const handleSaveDebt = async () => {
     const rate = parseFloat(debtForm.rate)
 
-    if (!debtForm.name || debtForm.total <= 0 || debtForm.remaining < 0 || isNaN(rate) || !debtForm.due_date)
-      return
+    if (!debtForm.name) { setDebtFormError('Informe o nome da dívida.'); return }
+    if (debtForm.total <= 0) { setDebtFormError('O valor total deve ser maior que zero.'); return }
+    if (debtForm.remaining < 0) { setDebtFormError('O valor restante não pode ser negativo.'); return }
+    if (isNaN(rate)) { setDebtFormError('Informe uma taxa de juros válida.'); return }
+    if (!debtForm.due_date) { setDebtFormError('Informe a data de vencimento.'); return }
 
-    const body = {
-      name: debtForm.name,
-      total: debtForm.total,
-      remaining: debtForm.remaining,
-      rate,
-      due_date: debtForm.due_date,
-      installments: debtForm.installments,
-      urgent: debtForm.urgent,
+    setDebtFormError(null)
+    setSavingDebt(true)
+    try {
+      const body = {
+        name: debtForm.name,
+        total: debtForm.total,
+        remaining: debtForm.remaining,
+        rate,
+        due_date: debtForm.due_date,
+        installments: debtForm.installments,
+        urgent: debtForm.urgent,
+      }
+
+      if (editingDebtId !== null) {
+        const r = await fetch(`/api/v1/debts/${String(editingDebtId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setDebtFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const updated = decodeDebt(raw)
+        setDebtEditedMap((prev) => {
+          const next = new Map(prev)
+          next.set(updated.id, updated)
+          return next
+        })
+      } else {
+        const r = await fetch('/api/v1/debts/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setDebtFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const created = decodeDebt(raw)
+        setDebtAdditions((prev) => [...prev, created])
+      }
+
+      closeDebtForm()
+    } finally {
+      setSavingDebt(false)
     }
-
-    if (editingDebtId !== null) {
-      const r = await fetch(`/api/v1/debts/${String(editingDebtId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const updated = decodeDebt(raw)
-      setDebtEditedMap((prev) => {
-        const next = new Map(prev)
-        next.set(updated.id, updated)
-        return next
-      })
-    } else {
-      const r = await fetch('/api/v1/debts/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const created = decodeDebt(raw)
-      setDebtAdditions((prev) => [...prev, created])
-    }
-
-    closeDebtForm()
   }
 
   const handleDeleteDebt = async (id: number) => {
-    if (confirmDeleteDebtId !== id) {
-      setConfirmDeleteDebtId(id)
-      return
-    }
     await fetch(`/api/v1/debts/${String(id)}`, { method: 'DELETE' })
     setDebtAdditions((prev) => prev.filter((d) => d.id !== id))
     setDebtDeletedIds((prev) => [...prev, id])
@@ -248,7 +272,18 @@ export default function Debts() {
     setShowLoanForm(false)
     setEditingLoanId(null)
     setLoanForm(EMPTY_LOAN_FORM)
+    setLoanFormError(null)
   }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') closeLoanForm()
+    }
+    if (showLoanForm) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [showLoanForm])
 
   function setLoanField<K extends keyof LoanFormState>(key: K, value: LoanFormState[K]) {
     setLoanForm((f) => ({ ...f, [key]: value }))
@@ -257,60 +292,59 @@ export default function Debts() {
   const handleSaveLoan = async () => {
     const rate = parseFloat(loanForm.rate)
 
-    if (
-      !loanForm.name ||
-      loanForm.total <= 0 ||
-      loanForm.remaining < 0 ||
-      isNaN(rate) ||
-      loanForm.installment <= 0 ||
-      !loanForm.next_payment
-    )
-      return
+    if (!loanForm.name) { setLoanFormError('Informe o nome do empréstimo.'); return }
+    if (loanForm.total <= 0) { setLoanFormError('O valor total deve ser maior que zero.'); return }
+    if (loanForm.remaining < 0) { setLoanFormError('O valor restante não pode ser negativo.'); return }
+    if (isNaN(rate)) { setLoanFormError('Informe uma taxa de juros válida.'); return }
+    if (loanForm.installment <= 0) { setLoanFormError('O valor da parcela deve ser maior que zero.'); return }
+    if (!loanForm.next_payment) { setLoanFormError('Informe a data do próximo pagamento.'); return }
 
-    const body = {
-      name: loanForm.name,
-      total: loanForm.total,
-      remaining: loanForm.remaining,
-      rate,
-      installment: loanForm.installment,
-      next_payment: loanForm.next_payment,
-      installments: loanForm.installments,
+    setLoanFormError(null)
+    setSavingLoan(true)
+    try {
+      const body = {
+        name: loanForm.name,
+        total: loanForm.total,
+        remaining: loanForm.remaining,
+        rate,
+        installment: loanForm.installment,
+        next_payment: loanForm.next_payment,
+        installments: loanForm.installments,
+      }
+
+      if (editingLoanId !== null) {
+        const r = await fetch(`/api/v1/loans/${String(editingLoanId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setLoanFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const updated = decodeLoan(raw)
+        setLoanEditedMap((prev) => {
+          const next = new Map(prev)
+          next.set(updated.id, updated)
+          return next
+        })
+      } else {
+        const r = await fetch('/api/v1/loans/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setLoanFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const created = decodeLoan(raw)
+        setLoanAdditions((prev) => [...prev, created])
+      }
+
+      closeLoanForm()
+    } finally {
+      setSavingLoan(false)
     }
-
-    if (editingLoanId !== null) {
-      const r = await fetch(`/api/v1/loans/${String(editingLoanId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const updated = decodeLoan(raw)
-      setLoanEditedMap((prev) => {
-        const next = new Map(prev)
-        next.set(updated.id, updated)
-        return next
-      })
-    } else {
-      const r = await fetch('/api/v1/loans/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const created = decodeLoan(raw)
-      setLoanAdditions((prev) => [...prev, created])
-    }
-
-    closeLoanForm()
   }
 
   const handleDeleteLoan = async (id: number) => {
-    if (confirmDeleteLoanId !== id) {
-      setConfirmDeleteLoanId(id)
-      return
-    }
     await fetch(`/api/v1/loans/${String(id)}`, { method: 'DELETE' })
     setLoanAdditions((prev) => prev.filter((l) => l.id !== id))
     setLoanDeletedIds((prev) => [...prev, id])
@@ -432,6 +466,8 @@ export default function Debts() {
                 onSave={handleSaveDebt}
                 onCancel={closeDebtForm}
                 isEditing={editingDebtId !== null}
+                saving={savingDebt}
+                formError={debtFormError}
               />
             </Card>
           )}
@@ -492,22 +528,38 @@ export default function Debts() {
                         Editar
                       </Button>
                       {/* Delete with confirmation */}
-                      <button
-                        onClick={() => {
-                          void handleDeleteDebt(debt.id)
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{
-                          background:
-                            confirmDeleteDebtId === debt.id ? 'var(--color-red)' : 'rgba(239,68,68,0.1)',
-                          color: confirmDeleteDebtId === debt.id ? '#fff' : 'var(--color-red)',
-                          border: `1px solid ${confirmDeleteDebtId === debt.id ? 'var(--color-red)' : 'rgba(239,68,68,0.3)'}`,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {confirmDeleteDebtId === debt.id ? 'Confirmar?' : 'Excluir'}
-                      </button>
+                      {confirmDeleteDebtId === debt.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { void handleDeleteDebt(debt.id) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDeleteDebtId(null) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setConfirmDeleteDebtId(debt.id) }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            color: 'var(--color-red)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -528,7 +580,7 @@ export default function Debts() {
                         {urgency.label}
                       </Badge>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" disabled title="Em breve">
                       Registrar Pagamento
                     </Button>
                   </div>
@@ -570,6 +622,8 @@ export default function Debts() {
                 onSave={handleSaveLoan}
                 onCancel={closeLoanForm}
                 isEditing={editingLoanId !== null}
+                saving={savingLoan}
+                formError={loanFormError}
               />
             </Card>
           )}
@@ -621,22 +675,38 @@ export default function Debts() {
                         Editar
                       </Button>
                       {/* Delete with confirmation */}
-                      <button
-                        onClick={() => {
-                          void handleDeleteLoan(loan.id)
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{
-                          background:
-                            confirmDeleteLoanId === loan.id ? 'var(--color-red)' : 'rgba(239,68,68,0.1)',
-                          color: confirmDeleteLoanId === loan.id ? '#fff' : 'var(--color-red)',
-                          border: `1px solid ${confirmDeleteLoanId === loan.id ? 'var(--color-red)' : 'rgba(239,68,68,0.3)'}`,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {confirmDeleteLoanId === loan.id ? 'Confirmar?' : 'Excluir'}
-                      </button>
+                      {confirmDeleteLoanId === loan.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { void handleDeleteLoan(loan.id) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDeleteLoanId(null) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setConfirmDeleteLoanId(loan.id) }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            color: 'var(--color-red)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -660,7 +730,7 @@ export default function Debts() {
                         </Badge>
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" disabled title="Em breve">
                       Registrar Parcela
                     </Button>
                   </div>
@@ -682,9 +752,11 @@ interface DebtFormProps {
   onSave: () => Promise<void>
   onCancel: () => void
   isEditing: boolean
+  saving: boolean
+  formError: string | null
 }
 
-function DebtForm({ form, setField, onSave, onCancel, isEditing }: DebtFormProps) {
+function DebtForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: DebtFormProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -756,16 +828,24 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing }: DebtFormProps
         </label>
       </div>
 
-      <div className="flex gap-3 justify-end">
-        <Button variant="outline" onClick={onCancel}>
+      {formError !== null && (
+        <p className="text-xs mt-3 px-3 py-2 rounded-lg"
+          style={{ color: 'var(--color-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          ⚠ {formError}
+        </p>
+      )}
+
+      <div className="flex gap-3 justify-end mt-4">
+        <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button
           onClick={() => {
             void onSave()
           }}
+          disabled={saving}
         >
-          {isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
         </Button>
       </div>
     </div>
@@ -780,9 +860,11 @@ interface LoanFormProps {
   onSave: () => Promise<void>
   onCancel: () => void
   isEditing: boolean
+  saving: boolean
+  formError: string | null
 }
 
-function LoanForm({ form, setField, onSave, onCancel, isEditing }: LoanFormProps) {
+function LoanForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: LoanFormProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -837,16 +919,24 @@ function LoanForm({ form, setField, onSave, onCancel, isEditing }: LoanFormProps
         />
       </div>
 
-      <div className="flex gap-3 justify-end">
-        <Button variant="outline" onClick={onCancel}>
+      {formError !== null && (
+        <p className="text-xs mt-3 px-3 py-2 rounded-lg"
+          style={{ color: 'var(--color-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          ⚠ {formError}
+        </p>
+      )}
+
+      <div className="flex gap-3 justify-end mt-4">
+        <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button
           onClick={() => {
             void onSave()
           }}
+          disabled={saving}
         >
-          {isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
         </Button>
       </div>
     </div>

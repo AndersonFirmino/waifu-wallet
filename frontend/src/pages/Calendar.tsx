@@ -37,7 +37,7 @@ export default function Calendar() {
   const firstDay = getFirstDayOfMonth(year, month)
   const todayDay = today.getDate()
 
-  const { data: events } = useFetch(`/calendar/${String(year)}/${String(month + 1)}`, decodeCalendarEventList)
+  const { data: events, loading: eventsLoading } = useFetch(`/calendar/${String(year)}/${String(month + 1)}`, decodeCalendarEventList)
   const eventList: CalendarEvent[] = events ?? []
 
   const eventsByDay = new Map<number, CalendarEvent[]>()
@@ -169,7 +169,7 @@ export default function Calendar() {
                           : hasEvents
                             ? 'rgba(255,255,255,0.02)'
                             : 'transparent',
-                    border: isToday && !isSelected ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent',
+                    border: isToday && !isSelected ? '2px solid var(--color-blue)' : '1px solid transparent',
                     transition: 'background 0.12s',
                   }}
                   onMouseEnter={(e) => {
@@ -228,6 +228,18 @@ export default function Calendar() {
               </div>
             ))}
           </div>
+
+          {/* Loading / Empty month states */}
+          {eventsLoading && (
+            <p className="text-center py-4" style={{ color: 'var(--color-muted)', fontSize: 13 }}>
+              Carregando eventos...
+            </p>
+          )}
+          {!eventsLoading && eventList.length === 0 && (
+            <p className="text-center py-6" style={{ color: 'var(--color-muted)', fontSize: 13 }}>
+              Nenhum evento neste mês.
+            </p>
+          )}
         </Card>
 
         {/* Side Panel */}

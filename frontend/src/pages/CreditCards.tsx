@@ -224,6 +224,10 @@ export default function CreditCards() {
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
+  // Saving indicator
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
   // Subscription form state
   const [showSubForm, setShowSubForm] = useState(false)
   const [subName, setSubName] = useState('')
@@ -282,7 +286,18 @@ export default function CreditCards() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setFormError(null)
   }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') closeForm()
+    }
+    if (showForm) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [showForm])
 
   function setField<K extends keyof CardFormState>(key: K, value: CardFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -292,55 +307,52 @@ export default function CreditCards() {
     const closing_day = parseInt(form.closing_day, 10)
     const due_day = parseInt(form.due_day, 10)
 
-    if (
-      !form.name ||
-      !form.last_four ||
-      form.limit <= 0 ||
-      form.used < 0 ||
-      form.bill < 0 ||
-      isNaN(closing_day) ||
-      isNaN(due_day)
-    )
-      return
+    if (!form.name) { setFormError('Informe o nome do cartão.'); return }
+    if (!form.last_four) { setFormError('Informe os últimos 4 dígitos.'); return }
+    if (form.limit <= 0) { setFormError('O limite deve ser maior que zero.'); return }
+    if (form.used < 0 || form.bill < 0) { setFormError('Valores negativos não são permitidos.'); return }
+    if (isNaN(closing_day) || isNaN(due_day)) { setFormError('Informe dias de fechamento e vencimento válidos.'); return }
 
-    const body = {
-      name: form.name,
-      brand: form.brand,
-      last_four: form.last_four,
-      limit: form.limit,
-      used: form.used,
-      gradient_from: form.gradient_from,
-      gradient_to: form.gradient_to,
-      bill: form.bill,
-      closing_day,
-      due_day,
-      status: form.status,
+    setFormError(null)
+    setSaving(true)
+    try {
+      const body = {
+        name: form.name,
+        brand: form.brand,
+        last_four: form.last_four,
+        limit: form.limit,
+        used: form.used,
+        gradient_from: form.gradient_from,
+        gradient_to: form.gradient_to,
+        bill: form.bill,
+        closing_day,
+        due_day,
+        status: form.status,
+      }
+
+      if (editingId !== null) {
+        const r = await fetch(`/api/v1/credit-cards/${String(editingId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setFormError('Erro ao salvar. Tente novamente.'); return }
+      } else {
+        const r = await fetch('/api/v1/credit-cards/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setFormError('Erro ao salvar. Tente novamente.'); return }
+      }
+
+      closeForm()
+    } finally {
+      setSaving(false)
     }
-
-    if (editingId !== null) {
-      const r = await fetch(`/api/v1/credit-cards/${String(editingId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-    } else {
-      const r = await fetch('/api/v1/credit-cards/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-    }
-
-    closeForm()
   }
 
   const handleDelete = async (id: number) => {
-    if (confirmDeleteId !== id) {
-      setConfirmDeleteId(id)
-      return
-    }
     await fetch(`/api/v1/credit-cards/${String(id)}`, { method: 'DELETE' })
     setConfirmDeleteId(null)
     if (selectedId === id) setSelectedId(null)
@@ -459,6 +471,8 @@ export default function CreditCards() {
             onSave={handleSave}
             onCancel={closeForm}
             isEditing={editingId !== null}
+            saving={saving}
+            formError={formError}
           />
         </Card>
       )}
@@ -662,22 +676,38 @@ export default function CreditCards() {
                     Editar
                   </Button>
                   {/* Delete button with confirmation */}
-                  <button
-                    onClick={() => {
-                      void handleDelete(selected.id)
-                    }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    style={{
-                      background:
-                        confirmDeleteId === selected.id ? 'var(--color-red)' : 'rgba(239,68,68,0.1)',
-                      color: confirmDeleteId === selected.id ? '#fff' : 'var(--color-red)',
-                      border: `1px solid ${confirmDeleteId === selected.id ? 'var(--color-red)' : 'rgba(239,68,68,0.3)'}`,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {confirmDeleteId === selected.id ? 'Confirmar?' : 'Excluir'}
-                  </button>
+                  {confirmDeleteId === selected.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { void handleDelete(selected.id) }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => { setConfirmDeleteId(null) }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setConfirmDeleteId(selected.id) }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: 'rgba(239,68,68,0.1)',
+                        color: 'var(--color-red)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -914,9 +944,11 @@ interface CardFormProps {
   onSave: () => Promise<void>
   onCancel: () => void
   isEditing: boolean
+  saving: boolean
+  formError: string | null
 }
 
-function CardForm({ form, setField, onSave, onCancel, isEditing }: CardFormProps) {
+function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: CardFormProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -1047,16 +1079,24 @@ function CardForm({ form, setField, onSave, onCancel, isEditing }: CardFormProps
         />
       </div>
 
-      <div className="flex gap-3 justify-end">
-        <Button variant="outline" onClick={onCancel}>
+      {formError !== null && (
+        <p className="text-xs mt-3 px-3 py-2 rounded-lg"
+          style={{ color: 'var(--color-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          ⚠ {formError}
+        </p>
+      )}
+
+      <div className="flex gap-3 justify-end mt-4">
+        <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button
           onClick={() => {
             void onSave()
           }}
+          disabled={saving}
         >
-          {isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
         </Button>
       </div>
     </div>

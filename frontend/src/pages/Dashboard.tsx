@@ -257,13 +257,15 @@ export default function Dashboard() {
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
 
-  const { data: summary } = useFetch('/summary/', decodeSummary)
+  const { data: summary, loading: summaryLoading } = useFetch('/summary/', decodeSummary)
   const txUrl = `/transactions/?month=${String(month + 1)}&year=${String(year)}`
-  const { data: transactions } = useFetch(txUrl, decodeTransactionList)
+  const { data: transactions, loading: transactionsLoading } = useFetch(txUrl, decodeTransactionList)
   const { data: allTransactions } = useFetch('/transactions/', decodeTransactionList)
   const { data: allNotes } = useFetch('/notes/', decodeNoteList)
   const { data: salaryPlans } = useFetch('/salary-plans/', decodeSalaryPlanList)
   const { data: gachaBanners } = useFetch('/gacha/banners/', decodeGachaBannerList)
+
+  const isLoading = summaryLoading || transactionsLoading
 
   const income = summary?.monthly_finances.income ?? 0
   const expenses = summary?.monthly_finances.expenses ?? 0
@@ -376,6 +378,22 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Loading / Empty / Content */}
+      {isLoading ? (
+        <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>Carregando dados...</p>
+      ) : summary === null && (transactions === null || transactions.length === 0) ? (
+        <div className="text-center py-16">
+          <p style={{ fontSize: 48, marginBottom: 12 }}>💵</p>
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+            Bem-vindo ao Waifu Wallet!
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>
+            Comece adicionando suas transações, cartões e dívidas para ver seu panorama financeiro.
+          </p>
+        </div>
+      ) : (
+        <>
 
       {/* StatCards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
@@ -570,6 +588,8 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+        </>
+      )}
     </div>
 
     {/* Right sidebar — Advisor Notes */}

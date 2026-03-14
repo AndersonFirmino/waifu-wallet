@@ -21,6 +21,7 @@ const NAV: NavGroup[] = [
     group: 'Principal',
     items: [
       { path: '/', icon: '📊', label: 'Dashboard' },
+      { path: '/gacha', icon: '🎲', label: 'Gacha' },
       { path: '/transactions', icon: '💰', label: 'Transações' },
     ],
   },
@@ -39,7 +40,6 @@ const NAV: NavGroup[] = [
     group: 'Extras',
     items: [
       { path: '/forecast', icon: '🔮', label: 'Previsão' },
-      { path: '/gacha', icon: '🎲', label: 'Gacha' },
       { path: '/notes', icon: '📝', label: 'Notas' },
     ],
   },

@@ -334,34 +334,36 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
         />
       </div>
 
-      {/* Info row */}
-      <div
-        className="grid grid-cols-2 gap-3 pt-3"
-        style={{ borderTop: '1px solid var(--color-border)' }}
-      >
-        <div>
-          <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
-            Incremento
-          </p>
-          <p className="text-sm font-semibold" style={{ color: 'var(--color-blue)' }}>
-            +{formatCurrency(plan.increment)} a cada {String(plan.increment_interval_months)} meses
-          </p>
-        </div>
-        <div>
-          <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
-            {atCeiling ? 'Status' : 'Próximo incremento'}
-          </p>
-          {atCeiling ? (
-            <Badge color="yellow" size="xs">
-              Teto atingido
-            </Badge>
-          ) : (
-            <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-              {formatDate(plan.next_increment_date)}
+      {/* Info row — only shown when plan has progression */}
+      {plan.increment > 0 && (
+        <div
+          className="grid grid-cols-2 gap-3 pt-3"
+          style={{ borderTop: '1px solid var(--color-border)' }}
+        >
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
+              Incremento
             </p>
-          )}
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-blue)' }}>
+              +{formatCurrency(plan.increment)} a cada {String(plan.increment_interval_months)} meses
+            </p>
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
+              {atCeiling ? 'Status' : 'Próximo incremento'}
+            </p>
+            {atCeiling ? (
+              <Badge color="yellow" size="xs">
+                Teto atingido
+              </Badge>
+            ) : (
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                {formatDate(plan.next_increment_date)}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Schedule toggle */}
       {plan.active && (
@@ -396,12 +398,15 @@ interface PlanFormProps {
   editingId: number | null
   formError: string | null
   saving: boolean
+  initialShowProgression: boolean
   onChange: (patch: Partial<FormState>) => void
   onSubmit: () => void
   onCancel: () => void
 }
 
-function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCancel }: PlanFormProps) {
+function PlanForm({ form, editingId, formError, saving, initialShowProgression, onChange, onSubmit, onCancel }: PlanFormProps) {
+  const [showProgression, setShowProgression] = useState(initialShowProgression)
+
   return (
     <Card className="mb-6">
       <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
@@ -438,61 +443,108 @@ function PlanForm({ form, editingId, formError, saving, onChange, onSubmit, onCa
           />
         </div>
 
-        {/* Target salary */}
-        <div>
-          <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Salário alvo (R$) *
-          </label>
-          <CurrencyInput
-            value={form.target_salary}
-            onChange={(v) => {
-              onChange({ target_salary: v })
-            }}
-            placeholder="R$ 0,00"
-          />
+        {/* Target salary — only shown with progression */}
+        {showProgression && (
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+              Salário alvo (R$) *
+            </label>
+            <CurrencyInput
+              value={form.target_salary}
+              onChange={(v) => {
+                onChange({ target_salary: v })
+              }}
+              placeholder="R$ 0,00"
+            />
+          </div>
+        )}
+
+        {/* Progression toggle + increment fields */}
+        <div style={{ gridColumn: showProgression ? 'auto' : '2 / -1' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showProgression
+                setShowProgression(next)
+                if (!next) onChange({ increment: 0 })
+              }}
+              style={{
+                width: 36,
+                height: 20,
+                borderRadius: 10,
+                border: 'none',
+                cursor: 'pointer',
+                background: showProgression ? 'var(--color-green)' : 'var(--color-surface2)',
+                position: 'relative',
+                transition: 'background 0.2s',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  position: 'absolute',
+                  top: 2,
+                  left: showProgression ? 18 : 2,
+                  transition: 'left 0.2s',
+                }}
+              />
+            </button>
+            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+              Salário com progressão (incrementos periódicos)
+            </span>
+          </div>
         </div>
 
-        {/* Increment */}
-        <div>
-          <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Incremento (R$) *
-          </label>
-          <CurrencyInput
-            value={form.increment}
-            onChange={(v) => {
-              onChange({ increment: v })
-            }}
-            placeholder="R$ 0,00"
-          />
-        </div>
+        {showProgression && (
+          <>
+            {/* Increment */}
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                Incremento (R$) *
+              </label>
+              <CurrencyInput
+                value={form.increment}
+                onChange={(v) => {
+                  onChange({ increment: v })
+                }}
+                placeholder="R$ 0,00"
+              />
+            </div>
 
-        {/* Interval */}
-        <div>
-          <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Intervalo (meses) *
-          </label>
-          <input
-            placeholder="Ex: 12"
-            value={form.increment_interval_months}
-            onChange={(e) => {
-              onChange({ increment_interval_months: e.target.value })
-            }}
-          />
-        </div>
+            {/* Interval */}
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                Intervalo (meses) *
+              </label>
+              <input
+                placeholder="Ex: 12"
+                value={form.increment_interval_months}
+                onChange={(e) => {
+                  onChange({ increment_interval_months: e.target.value })
+                }}
+              />
+            </div>
 
-        {/* Next increment date */}
-        <div>
-          <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Data do próximo incremento *
-          </label>
-          <input
-            type="date"
-            value={form.next_increment_date}
-            onChange={(e) => {
-              onChange({ next_increment_date: e.target.value })
-            }}
-          />
-        </div>
+            {/* Next increment date */}
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                Data do próximo incremento *
+              </label>
+              <input
+                type="date"
+                value={form.next_increment_date}
+                onChange={(e) => {
+                  onChange({ next_increment_date: e.target.value })
+                }}
+              />
+            </div>
+          </>
+        )}
 
         {/* Active toggle */}
         <div className="flex items-center gap-3">
@@ -675,6 +727,7 @@ export default function SalaryPlans() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [initialShowProgression, setInitialShowProgression] = useState(false)
 
   // Merge server data with local mutations
   const serverIds = new Set((serverPlans ?? []).map((p) => p.id))
@@ -705,6 +758,7 @@ export default function SalaryPlans() {
     setEditingId(null)
     setForm(EMPTY_FORM)
     setFormError(null)
+    setInitialShowProgression(false)
     setShowForm(true)
   }
 
@@ -712,6 +766,7 @@ export default function SalaryPlans() {
     setEditingId(plan.id)
     setForm(planToForm(plan))
     setFormError(null)
+    setInitialShowProgression(plan.increment > 0)
     setShowForm(true)
   }
 
@@ -851,6 +906,7 @@ export default function SalaryPlans() {
           editingId={editingId}
           formError={formError}
           saving={saving}
+          initialShowProgression={initialShowProgression}
           onChange={patchForm}
           onSubmit={() => {
             void handleSubmit()

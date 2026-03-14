@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Card from '../components/ui/Card'
@@ -32,11 +32,45 @@ export default function Notes() {
   const [createDate, setCreateDate] = useState(todayString())
   const [createContent, setCreateContent] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   // ─── Edit state ──────────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  // ─── Delete confirmation ─────────────────────────────────────────────────
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  // Esc closes the create form
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        setShowCreateForm(false)
+        setCreateError(null)
+      }
+    }
+    if (showCreateForm) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [showCreateForm])
+
+  // Esc closes the inline edit form
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        setEditingId(null)
+        setEditDraft('')
+        setEditError(null)
+      }
+    }
+    if (editingId !== null) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [editingId])
 
   const serverIds = new Set((serverNotes ?? []).map((n) => n.id))
   const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
@@ -64,11 +98,16 @@ export default function Notes() {
     await fetch(`/api/v1/notes/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((n) => n.id !== id))
     setDeletedIds((prev) => [...prev, id])
+    setConfirmDeleteId(null)
     if (editingId === id) setEditingId(null)
   }
 
   const handleCreate = async () => {
-    if (!createContent.trim()) return
+    setCreateError(null)
+    if (!createContent.trim()) {
+      setCreateError('O conteúdo da nota não pode estar vazio.')
+      return
+    }
     setCreateLoading(true)
     try {
       const r = await fetch('/api/v1/notes/', {
@@ -76,7 +115,10 @@ export default function Notes() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: createDate, content: createContent }),
       })
-      if (!r.ok) throw new Error(`HTTP ${String(r.status)}`)
+      if (!r.ok) {
+        setCreateError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
       const raw: unknown = await r.json()
       const created = decodeNote(raw)
       setAdditions((prev) => [created, ...prev])
@@ -97,14 +139,21 @@ export default function Notes() {
   const handleEditStart = (note: Note) => {
     setEditingId(note.id)
     setEditDraft(note.content)
+    setEditError(null)
   }
 
   const handleEditCancel = () => {
     setEditingId(null)
     setEditDraft('')
+    setEditError(null)
   }
 
   const handleEditSave = async (id: number) => {
+    setEditError(null)
+    if (!editDraft.trim()) {
+      setEditError('O conteúdo da nota não pode estar vazio.')
+      return
+    }
     setEditLoading(true)
     try {
       const r = await fetch(`/api/v1/notes/${String(id)}`, {
@@ -112,7 +161,10 @@ export default function Notes() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editDraft }),
       })
-      if (!r.ok) throw new Error(`HTTP ${String(r.status)}`)
+      if (!r.ok) {
+        setEditError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
       setEditedContent((prev) => {
         const next = new Map(prev)
         next.set(id, editDraft)
@@ -152,6 +204,7 @@ export default function Notes() {
               setShowCreateForm((v) => !v)
               setCreateDate(todayString())
               setCreateContent('')
+              setCreateError(null)
             }}
             className="px-4 h-9 rounded-lg text-sm font-semibold flex items-center gap-2"
             style={{
@@ -232,9 +285,21 @@ export default function Notes() {
                 lineHeight: 1.6,
               }}
             />
+            {createError !== null && (
+              <p
+                className="text-xs px-3 py-2 rounded-lg"
+                style={{
+                  color: 'var(--color-red)',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                }}
+              >
+                ⚠ {createError}
+              </p>
+            )}
             <div className="flex gap-2 justify-end">
               <button
-                onClick={() => { setShowCreateForm(false) }}
+                onClick={() => { setShowCreateForm(false); setCreateError(null) }}
                 className="px-4 py-1.5 rounded-lg text-sm font-medium"
                 style={{
                   background: 'var(--color-surface)',
@@ -316,6 +381,18 @@ export default function Notes() {
                             lineHeight: 1.6,
                           }}
                         />
+                        {editError !== null && (
+                          <p
+                            className="text-xs px-3 py-2 rounded-lg"
+                            style={{
+                              color: 'var(--color-red)',
+                              background: 'rgba(239,68,68,0.08)',
+                              border: '1px solid rgba(239,68,68,0.2)',
+                            }}
+                          >
+                            ⚠ {editError}
+                          </p>
+                        )}
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={handleEditCancel}
@@ -365,20 +442,48 @@ export default function Notes() {
                       >
                         ✏
                       </button>
-                      <button
-                        onClick={() => {
-                          void handleDelete(note.id)
-                        }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                        style={{
-                          background: 'rgba(239,68,68,0.1)',
-                          color: 'var(--color-red)',
-                          border: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        🗑
-                      </button>
+                      {confirmDeleteId === note.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { void handleDelete(note.id) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{
+                              background: 'var(--color-red)',
+                              color: '#fff',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDeleteId(null) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{
+                              background: 'transparent',
+                              color: 'var(--color-muted)',
+                              border: '1px solid var(--color-border)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setConfirmDeleteId(note.id) }}
+                          title="Excluir"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            color: 'var(--color-red)',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          🗑
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

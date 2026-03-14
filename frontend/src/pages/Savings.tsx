@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -54,6 +54,8 @@ export default function Savings() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<AccountFormState>(EMPTY_FORM)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const serverAccounts = serverData ?? []
 
@@ -91,58 +93,73 @@ export default function Savings() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setFormError(null)
   }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') closeForm()
+    }
+    if (showForm) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [showForm])
 
   function setField<K extends keyof AccountFormState>(key: K, value: AccountFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
   const handleSave = async () => {
-    if (!form.name || !form.bank || form.balance < 0) return
+    if (!form.name) { setFormError('Informe o nome do cofrinho.'); return }
+    if (!form.bank) { setFormError('Informe o banco.'); return }
+    if (form.balance < 0) { setFormError('O saldo não pode ser negativo.'); return }
 
-    const body = {
-      name: form.name,
-      bank: form.bank,
-      balance: form.balance,
-      goal: form.goal,
-      emoji: form.emoji || '🐷',
-      active: form.active,
+    setFormError(null)
+    setSaving(true)
+    try {
+      const body = {
+        name: form.name,
+        bank: form.bank,
+        balance: form.balance,
+        goal: form.goal,
+        emoji: form.emoji || '🐷',
+        active: form.active,
+      }
+
+      if (editingId !== null) {
+        const r = await fetch(`/api/v1/savings/${String(editingId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const updated = decodeSavingsAccount(raw)
+        setEditedMap((prev) => {
+          const next = new Map(prev)
+          next.set(updated.id, updated)
+          return next
+        })
+      } else {
+        const r = await fetch('/api/v1/savings/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!r.ok) { setFormError('Erro ao salvar. Tente novamente.'); return }
+        const raw: unknown = await r.json()
+        const created = decodeSavingsAccount(raw)
+        setAdditions((prev) => [...prev, created])
+      }
+
+      closeForm()
+    } finally {
+      setSaving(false)
     }
-
-    if (editingId !== null) {
-      const r = await fetch(`/api/v1/savings/${String(editingId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const updated = decodeSavingsAccount(raw)
-      setEditedMap((prev) => {
-        const next = new Map(prev)
-        next.set(updated.id, updated)
-        return next
-      })
-    } else {
-      const r = await fetch('/api/v1/savings/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) return
-      const raw: unknown = await r.json()
-      const created = decodeSavingsAccount(raw)
-      setAdditions((prev) => [...prev, created])
-    }
-
-    closeForm()
   }
 
   const handleDelete = async (id: number) => {
-    if (confirmDeleteId !== id) {
-      setConfirmDeleteId(id)
-      return
-    }
     await fetch(`/api/v1/savings/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((a) => a.id !== id))
     setDeletedIds((prev) => [...prev, id])
@@ -221,6 +238,8 @@ export default function Savings() {
             onSave={handleSave}
             onCancel={closeForm}
             isEditing={editingId !== null}
+            saving={saving}
+            formError={formError}
           />
         </Card>
       )}
@@ -306,22 +325,38 @@ export default function Savings() {
                   >
                     Editar
                   </Button>
-                  <button
-                    onClick={() => {
-                      void handleDelete(account.id)
-                    }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    style={{
-                      background:
-                        confirmDeleteId === account.id ? 'var(--color-red)' : 'rgba(239,68,68,0.1)',
-                      color: confirmDeleteId === account.id ? '#fff' : 'var(--color-red)',
-                      border: `1px solid ${confirmDeleteId === account.id ? 'var(--color-red)' : 'rgba(239,68,68,0.3)'}`,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {confirmDeleteId === account.id ? 'Confirmar?' : 'Excluir'}
-                  </button>
+                  {confirmDeleteId === account.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { void handleDelete(account.id) }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => { setConfirmDeleteId(null) }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setConfirmDeleteId(account.id) }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: 'rgba(239,68,68,0.1)',
+                        color: 'var(--color-red)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -340,9 +375,11 @@ interface AccountFormProps {
   onSave: () => Promise<void>
   onCancel: () => void
   isEditing: boolean
+  saving: boolean
+  formError: string | null
 }
 
-function AccountForm({ form, setField, onSave, onCancel, isEditing }: AccountFormProps) {
+function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: AccountFormProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -407,16 +444,24 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing }: AccountFor
         </div>
       </div>
 
-      <div className="flex gap-3 justify-end">
-        <Button variant="outline" onClick={onCancel}>
+      {formError !== null && (
+        <p className="text-xs mt-3 px-3 py-2 rounded-lg"
+          style={{ color: 'var(--color-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          ⚠ {formError}
+        </p>
+      )}
+
+      <div className="flex gap-3 justify-end mt-4">
+        <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button
           onClick={() => {
             void onSave()
           }}
+          disabled={saving}
         >
-          {isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
         </Button>
       </div>
     </div>

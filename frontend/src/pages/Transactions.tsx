@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -68,6 +68,25 @@ export default function Transactions() {
     category: 'Alimentação',
     date: today,
   })
+  const [addSaving, setAddSaving] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  // Esc closes the inline edit form
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        setEditingId(null)
+        setEditError(null)
+      }
+    }
+    if (editingId !== null) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [editingId])
 
   const serverIds = new Set((serverData ?? []).map((t) => t.id))
   const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
@@ -87,7 +106,15 @@ export default function Transactions() {
   const balance = totalIncome - totalExpenses
 
   const handleAdd = async () => {
-    if (!form.description || form.amount <= 0) return
+    setAddError(null)
+    if (!form.description) {
+      setAddError('Preencha a descrição.')
+      return
+    }
+    if (form.amount <= 0) {
+      setAddError('Informe um valor maior que zero.')
+      return
+    }
     const body = {
       type: form.type,
       description: form.description,
@@ -96,26 +123,36 @@ export default function Transactions() {
       amount: form.amount,
       date: form.date,
     }
-    const r = await fetch('/api/v1/transactions/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!r.ok) return
-    const raw: unknown = await r.json()
-    const created = decodeTransaction(raw)
-    setAdditions((prev) => [created, ...prev])
-    setForm((f) => ({ ...f, amount: 0, description: '' }))
+    setAddSaving(true)
+    try {
+      const r = await fetch('/api/v1/transactions/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        setAddError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
+      const raw: unknown = await r.json()
+      const created = decodeTransaction(raw)
+      setAdditions((prev) => [created, ...prev])
+      setForm((f) => ({ ...f, amount: 0, description: '' }))
+    } finally {
+      setAddSaving(false)
+    }
   }
 
   const handleRemove = async (id: number) => {
     await fetch(`/api/v1/transactions/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((t) => t.id !== id))
     setDeletedIds((prev) => [...prev, id])
+    setConfirmDeleteId(null)
   }
 
   const handleStartEdit = (tx: Transaction) => {
     setEditingId(tx.id)
+    setEditError(null)
     setEditForm({
       type: tx.type,
       amount: tx.amount,
@@ -126,7 +163,15 @@ export default function Transactions() {
   }
 
   const handleSave = async (id: number) => {
-    if (!editForm.description || editForm.amount <= 0) return
+    setEditError(null)
+    if (!editForm.description) {
+      setEditError('Preencha a descrição.')
+      return
+    }
+    if (editForm.amount <= 0) {
+      setEditError('Informe um valor maior que zero.')
+      return
+    }
     const body = {
       type: editForm.type,
       description: editForm.description,
@@ -135,20 +180,29 @@ export default function Transactions() {
       amount: editForm.amount,
       date: editForm.date,
     }
-    const r = await fetch(`/api/v1/transactions/${String(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!r.ok) return
-    const raw: unknown = await r.json()
-    const updated = decodeTransaction(raw)
-    setEditedMap((prev) => new Map(prev).set(id, updated))
-    setEditingId(null)
+    setEditSaving(true)
+    try {
+      const r = await fetch(`/api/v1/transactions/${String(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        setEditError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
+      const raw: unknown = await r.json()
+      const updated = decodeTransaction(raw)
+      setEditedMap((prev) => new Map(prev).set(id, updated))
+      setEditingId(null)
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
+    setEditError(null)
   }
 
   return (
@@ -240,10 +294,23 @@ export default function Transactions() {
               void handleAdd()
             }}
             variant="primary"
+            disabled={addSaving}
           >
-            Adicionar
+            {addSaving ? 'Salvando...' : 'Adicionar'}
           </Button>
         </div>
+        {addError !== null && (
+          <p
+            className="text-xs mt-3 px-3 py-2 rounded-lg"
+            style={{
+              color: 'var(--color-red)',
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.2)',
+            }}
+          >
+            ⚠ {addError}
+          </p>
+        )}
       </Card>
 
       {/* Filters */}
@@ -288,9 +355,13 @@ export default function Transactions() {
 
       {/* List */}
       <Card>
-        {filtered.length === 0 ? (
+        {transactions.length === 0 ? (
+          <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
+            Nenhuma transação cadastrada. Preencha o formulário acima para começar.
+          </p>
+        ) : filtered.length === 0 ? (
           <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-            Nenhuma transação encontrada
+            Nenhuma transação encontrada para este filtro.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -367,18 +438,33 @@ export default function Transactions() {
                     }}
                     style={{ width: 140 }}
                   />
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        void handleSave(tx.id)
-                      }}
-                      variant="primary"
-                    >
-                      Salvar
-                    </Button>
-                    <Button onClick={handleCancelEdit} variant="ghost">
-                      Cancelar
-                    </Button>
+                  <div className="flex gap-2 flex-col" style={{ minWidth: '100%' }}>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          void handleSave(tx.id)
+                        }}
+                        variant="primary"
+                        disabled={editSaving}
+                      >
+                        {editSaving ? 'Salvando...' : 'Salvar'}
+                      </Button>
+                      <Button onClick={handleCancelEdit} variant="ghost">
+                        Cancelar
+                      </Button>
+                    </div>
+                    {editError !== null && (
+                      <p
+                        className="text-xs px-3 py-2 rounded-lg"
+                        style={{
+                          color: 'var(--color-red)',
+                          background: 'rgba(239,68,68,0.08)',
+                          border: '1px solid rgba(239,68,68,0.2)',
+                        }}
+                      >
+                        ⚠ {editError}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -440,20 +526,48 @@ export default function Transactions() {
                       >
                         ✏
                       </button>
-                      <button
-                        onClick={() => {
-                          void handleRemove(tx.id)
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
-                        style={{
-                          background: 'rgba(239,68,68,0.12)',
-                          color: 'var(--color-red)',
-                          border: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ✕
-                      </button>
+                      {confirmDeleteId === tx.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { void handleRemove(tx.id) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{
+                              background: 'var(--color-red)',
+                              color: '#fff',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDeleteId(null) }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{
+                              background: 'transparent',
+                              color: 'var(--color-muted)',
+                              border: '1px solid var(--color-border)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setConfirmDeleteId(tx.id) }}
+                          title="Excluir"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
+                          style={{
+                            background: 'rgba(239,68,68,0.12)',
+                            color: 'var(--color-red)',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
@@ -46,6 +46,25 @@ export default function FixedExpenses() {
     confidence: 100,
     estimate: 0,
   })
+  const [addSaving, setAddSaving] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  // Esc closes the inline edit form
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        setEditingId(null)
+        setEditError(null)
+      }
+    }
+    if (editingId !== null) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => { window.removeEventListener('keydown', handleKeyDown) }
+    }
+  }, [editingId])
 
   const serverIds = new Set((serverData ?? []).map((e) => e.id))
   const pendingAdditions = additions.filter((a) => !serverIds.has(a.id))
@@ -57,7 +76,15 @@ export default function FixedExpenses() {
   const variableItems = expenses.filter((e) => e.type === 'variable')
 
   const handleAdd = async () => {
-    if (!form.name || form.amount <= 0) return
+    setAddError(null)
+    if (!form.name) {
+      setAddError('Preencha o nome do gasto.')
+      return
+    }
+    if (form.amount <= 0) {
+      setAddError('Informe um valor maior que zero.')
+      return
+    }
     const body = {
       name: form.name,
       amount: form.amount,
@@ -65,26 +92,36 @@ export default function FixedExpenses() {
       confidence: form.type === 'fixed' ? 100 : 70,
       estimate: form.amount,
     }
-    const r = await fetch('/api/v1/fixed-expenses/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!r.ok) return
-    const raw: unknown = await r.json()
-    const created = decodeFixedExpense(raw)
-    setAdditions((prev) => [...prev, created])
-    setForm({ name: '', amount: 0, type: 'fixed' })
+    setAddSaving(true)
+    try {
+      const r = await fetch('/api/v1/fixed-expenses/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        setAddError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
+      const raw: unknown = await r.json()
+      const created = decodeFixedExpense(raw)
+      setAdditions((prev) => [...prev, created])
+      setForm({ name: '', amount: 0, type: 'fixed' })
+    } finally {
+      setAddSaving(false)
+    }
   }
 
   const handleRemove = async (id: number) => {
     await fetch(`/api/v1/fixed-expenses/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((e) => e.id !== id))
     setDeletedIds((prev) => [...prev, id])
+    setConfirmDeleteId(null)
   }
 
   const handleEditStart = (expense: FixedExpense) => {
     setEditingId(expense.id)
+    setEditError(null)
     setEditForm({
       name: expense.name,
       amount: expense.amount,
@@ -96,9 +133,19 @@ export default function FixedExpenses() {
 
   const handleEditCancel = () => {
     setEditingId(null)
+    setEditError(null)
   }
 
   const handleEditSave = async (id: number) => {
+    setEditError(null)
+    if (!editForm.name) {
+      setEditError('Preencha o nome do gasto.')
+      return
+    }
+    if (editForm.amount <= 0) {
+      setEditError('Informe um valor maior que zero.')
+      return
+    }
     const body = {
       name: editForm.name,
       amount: editForm.amount,
@@ -106,21 +153,29 @@ export default function FixedExpenses() {
       confidence: editForm.confidence,
       estimate: editForm.estimate,
     }
-    const r = await fetch(`/api/v1/fixed-expenses/${String(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!r.ok) return
-    const raw: unknown = await r.json()
-    const updated = decodeFixedExpense(raw)
-    setAdditions((prev) => {
-      const inAdditions = prev.some((e) => e.id === id)
-      if (inAdditions) return prev.map((e) => (e.id === id ? updated : e))
-      return [...prev, updated]
-    })
-    setDeletedIds((prev) => [...prev, id])
-    setEditingId(null)
+    setEditSaving(true)
+    try {
+      const r = await fetch(`/api/v1/fixed-expenses/${String(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        setEditError(`Erro ao salvar (HTTP ${String(r.status)}).`)
+        return
+      }
+      const raw: unknown = await r.json()
+      const updated = decodeFixedExpense(raw)
+      setAdditions((prev) => {
+        const inAdditions = prev.some((e) => e.id === id)
+        if (inAdditions) return prev.map((e) => (e.id === id ? updated : e))
+        return [...prev, updated]
+      })
+      setDeletedIds((prev) => [...prev, id])
+      setEditingId(null)
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   return (
@@ -209,11 +264,31 @@ export default function FixedExpenses() {
             onClick={() => {
               void handleAdd()
             }}
+            disabled={addSaving}
           >
-            Adicionar
+            {addSaving ? 'Salvando...' : 'Adicionar'}
           </Button>
         </div>
+        {addError !== null && (
+          <p
+            className="text-xs mt-3 px-3 py-2 rounded-lg"
+            style={{
+              color: 'var(--color-red)',
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.2)',
+            }}
+          >
+            ⚠ {addError}
+          </p>
+        )}
       </Card>
+
+      {/* Empty state — no expenses at all */}
+      {expenses.length === 0 && (
+        <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
+          Nenhum gasto recorrente cadastrado. Preencha o formulário acima para começar.
+        </p>
+      )}
 
       {/* Expense Groups */}
       {[
@@ -305,33 +380,49 @@ export default function FixedExpenses() {
                             />
                             %
                           </label>
-                          <div className="flex gap-2 ml-auto">
-                            <button
-                              onClick={() => {
-                                void handleEditSave(expense.id)
-                              }}
-                              className="px-4 py-1.5 rounded-lg text-sm font-medium"
-                              style={{
-                                background: 'var(--color-blue)',
-                                color: '#fff',
-                                border: 'none',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Salvar
-                            </button>
-                            <button
-                              onClick={handleEditCancel}
-                              className="px-4 py-1.5 rounded-lg text-sm font-medium"
-                              style={{
-                                background: 'transparent',
-                                color: 'var(--color-muted)',
-                                border: '1px solid var(--color-border)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Cancelar
-                            </button>
+                          <div className="flex gap-2 ml-auto flex-col items-end">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  void handleEditSave(expense.id)
+                                }}
+                                disabled={editSaving}
+                                className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                                style={{
+                                  background: 'var(--color-blue)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  cursor: editSaving ? 'not-allowed' : 'pointer',
+                                  opacity: editSaving ? 0.6 : 1,
+                                }}
+                              >
+                                {editSaving ? 'Salvando...' : 'Salvar'}
+                              </button>
+                              <button
+                                onClick={handleEditCancel}
+                                className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                                style={{
+                                  background: 'transparent',
+                                  color: 'var(--color-muted)',
+                                  border: '1px solid var(--color-border)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                            {editError !== null && (
+                              <p
+                                className="text-xs px-3 py-2 rounded-lg"
+                                style={{
+                                  color: 'var(--color-red)',
+                                  background: 'rgba(239,68,68,0.08)',
+                                  border: '1px solid rgba(239,68,68,0.2)',
+                                }}
+                              >
+                                ⚠ {editError}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -401,7 +492,7 @@ export default function FixedExpenses() {
                           </div>
                         </div>
                       </div>
-                      <div className="ml-4 flex gap-1" style={{ flexShrink: 0 }}>
+                      <div className="ml-4 flex gap-1 items-center" style={{ flexShrink: 0 }}>
                         <button
                           onClick={() => {
                             handleEditStart(expense)
@@ -416,20 +507,48 @@ export default function FixedExpenses() {
                         >
                           ✏
                         </button>
-                        <button
-                          onClick={() => {
-                            void handleRemove(expense.id)
-                          }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
-                          style={{
-                            background: 'rgba(239,68,68,0.1)',
-                            color: 'var(--color-red)',
-                            border: 'none',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ✕
-                        </button>
+                        {confirmDeleteId === expense.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { void handleRemove(expense.id) }}
+                              className="text-xs px-2 py-1 rounded-lg"
+                              style={{
+                                background: 'var(--color-red)',
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => { setConfirmDeleteId(null) }}
+                              className="text-xs px-2 py-1 rounded-lg"
+                              style={{
+                                background: 'transparent',
+                                color: 'var(--color-muted)',
+                                border: '1px solid var(--color-border)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setConfirmDeleteId(expense.id) }}
+                            title="Excluir"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
+                            style={{
+                              background: 'rgba(239,68,68,0.1)',
+                              color: 'var(--color-red)',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     </div>
                   </Card>

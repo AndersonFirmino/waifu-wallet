@@ -71,7 +71,7 @@ function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
 export default function Forecast() {
   const [period, setPeriod] = useState<ForecastPeriod>('6m')
 
-  const { data: forecastData } = useFetch(`/forecast/?period=${period}`, decodeForecastList)
+  const { data: forecastData, loading: forecastLoading } = useFetch(`/forecast/?period=${period}`, decodeForecastList)
   const { data: summary } = useFetch('/summary/', decodeSummary)
   const { data: debts } = useFetch('/debts', decodeDebtList)
   const { data: loans } = useFetch('/loans', decodeLoanList)
@@ -141,10 +141,11 @@ export default function Forecast() {
             onClick={() => {
               setPeriod(p)
             }}
-            className="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+            className="px-5 py-2 rounded-lg text-sm transition-all"
             style={{
               background: period === p ? 'var(--color-blue)' : 'transparent',
               color: period === p ? '#fff' : 'var(--color-muted)',
+              fontWeight: period === p ? 700 : 500,
               border: 'none',
               cursor: 'pointer',
             }}
@@ -167,6 +168,20 @@ export default function Forecast() {
           color="orange"
         />
       </div>
+
+      {/* Loading state */}
+      {forecastLoading && (
+        <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
+          Calculando previsão...
+        </p>
+      )}
+
+      {/* Empty state */}
+      {!forecastLoading && forecastData !== null && forecastData.length === 0 && (
+        <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
+          Sem dados suficientes para gerar previsão. Adicione transações para começar.
+        </p>
+      )}
 
       {/* Chart */}
       <Card className="mb-6">
