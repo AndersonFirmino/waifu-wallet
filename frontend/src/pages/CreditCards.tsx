@@ -242,6 +242,12 @@ export default function CreditCards() {
   const usedPct = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0
   const totalBills = cardList.reduce((s, c) => s + c.bill, 0)
 
+  // Subscription aggregates
+  const allActiveSubs = cardList.flatMap((c) => c.subscriptions.filter((s) => s.active))
+  const totalSubsBRL = allActiveSubs.filter((s) => s.currency === 'BRL').reduce((sum, s) => sum + s.amount, 0)
+  const totalSubsUSD = allActiveSubs.filter((s) => s.currency === 'USD').reduce((sum, s) => sum + s.amount, 0)
+  const cardsWithSubs = cardList.filter((c) => c.subscriptions.some((s) => s.active))
+
   function openAddForm() {
     setEditingId(null)
     setForm(EMPTY_FORM)
@@ -418,7 +424,7 @@ export default function CreditCards() {
       )}
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         <StatCard icon="💳" label="Limite Total" value={formatCurrency(totalLimit)} numericValue={totalLimit} numericFormatter={formatCurrency} color="blue" />
         <StatCard
           icon="🔥"
@@ -447,7 +453,93 @@ export default function CreditCards() {
           sub="a pagar este mês"
           color="orange"
         />
+        <StatCard
+          icon="🔄"
+          label="Assinaturas"
+          value={formatCurrency(totalSubsBRL)}
+          numericValue={totalSubsBRL}
+          numericFormatter={formatCurrency}
+          sub={totalSubsUSD > 0 ? `+ US$ ${totalSubsUSD.toFixed(2)}/mês` : `${String(allActiveSubs.length)} ativas`}
+          color="purple"
+        />
       </div>
+
+      {/* Subscriptions per card overview */}
+      {cardsWithSubs.length > 0 && (
+        <Card className="mb-6">
+          <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
+            Assinaturas por Cartão
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {cardsWithSubs.map((card) => {
+              const activeSubs = card.subscriptions.filter((s) => s.active)
+              const brlTotal = activeSubs.filter((s) => s.currency === 'BRL').reduce((sum, s) => sum + s.amount, 0)
+              const usdTotal = activeSubs.filter((s) => s.currency === 'USD').reduce((sum, s) => sum + s.amount, 0)
+
+              return (
+                <div
+                  key={card.id}
+                  className="flex items-center justify-between p-3 rounded-xl"
+                  style={{ background: 'var(--color-surface2)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="rounded-lg"
+                      style={{
+                        width: 32,
+                        height: 20,
+                        background: `linear-gradient(135deg, ${card.gradient_from}, ${card.gradient_to})`,
+                      }}
+                    />
+                    <div>
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                        {card.name}
+                      </span>
+                      <span className="text-xs ml-2" style={{ color: 'var(--color-muted)' }}>
+                        {activeSubs.length} assinatura{activeSubs.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      {brlTotal > 0 && (
+                        <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                          {formatCurrency(brlTotal)}
+                        </span>
+                      )}
+                      {usdTotal > 0 && (
+                        <span className="text-xs font-medium ml-2" style={{ color: 'var(--color-muted)' }}>
+                          {brlTotal > 0 ? '+ ' : ''}US$ {usdTotal.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        {activeSubs.map((s) => s.name).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Grand total row */}
+            <div className="flex justify-between items-center px-3 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+              <span className="text-xs font-semibold" style={{ color: 'var(--color-muted)' }}>
+                Total amarrado em {cardsWithSubs.length} cartão{cardsWithSubs.length !== 1 ? 'ões' : ''}
+              </span>
+              <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                {formatCurrency(totalSubsBRL)}
+                {totalSubsUSD > 0 && (
+                  <span className="ml-1" style={{ color: 'var(--color-muted)' }}>
+                    + US$ {totalSubsUSD.toFixed(2)}
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '320px 1fr' }}>
         {/* Left: Cards */}
