@@ -129,7 +129,7 @@ export interface Loan {
 
 // ─── Credit Cards ─────────────────────────────────────────────────────────────
 
-export type CardStatus = 'open' | 'closed' | 'paid' | 'pending'
+export type CardStatus = 'open' | 'closed' | 'paid' | 'pending' | 'blocked'
 export type CardBrand = 'Mastercard' | 'Visa' | 'Elo' | 'Amex'
 
 export interface CardBillHistory {

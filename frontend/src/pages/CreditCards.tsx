@@ -14,7 +14,7 @@ import { decodeCreditCardList } from '../lib/decode'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARD_BRANDS: CardBrand[] = ['Mastercard', 'Visa', 'Elo', 'Amex']
-const CARD_STATUSES: CardStatus[] = ['open', 'closed', 'paid', 'pending']
+const CARD_STATUSES: CardStatus[] = ['open', 'closed', 'paid', 'pending', 'blocked']
 
 function parseCardBrand(val: string): CardBrand {
   const found = CARD_BRANDS.find((b) => b === val)
@@ -33,6 +33,7 @@ const STATUS_LABELS: Record<CardStatus, string> = {
   closed: 'Fechada',
   paid: 'Paga',
   pending: 'Pendente',
+  blocked: 'Bloqueado',
 }
 
 // ─── Form state ───────────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ interface CreditCardVisualProps {
 
 function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
   const usedPct = Math.round((card.used / card.limit) * 100)
+  const isBlocked = card.status === 'blocked'
 
   return (
     <div onClick={onSelect} style={{ cursor: 'pointer' }}>
@@ -98,11 +100,15 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
       <div
         className="rounded-2xl p-5 mb-3 relative overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${card.gradient_from}, ${card.gradient_to})`,
+          background: isBlocked
+            ? 'linear-gradient(135deg, #374151, #1f2937)'
+            : `linear-gradient(135deg, ${card.gradient_from}, ${card.gradient_to})`,
           outline: selected ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
-          transition: 'outline 0.15s, transform 0.15s',
+          transition: 'outline 0.15s, transform 0.15s, background 0.5s, filter 0.5s',
           transform: selected ? 'scale(1.02)' : 'scale(1)',
-          boxShadow: selected ? `0 8px 32px ${card.gradient_from}55` : 'none',
+          boxShadow: selected && !isBlocked ? `0 8px 32px ${card.gradient_from}55` : 'none',
+          filter: isBlocked ? 'saturate(0.3)' : 'none',
+          opacity: isBlocked ? 0.75 : 1,
         }}
       >
         {/* Pattern overlay */}
@@ -131,7 +137,7 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
 
         <div className="relative">
           <div className="flex justify-between items-start mb-6">
-            <p className="text-xl font-bold text-white">💵 {card.name}</p>
+            <p className="text-xl font-bold text-white">{isBlocked ? '🔒' : '💵'} {card.name}</p>
             <span className="text-white font-bold text-sm opacity-90">{card.brand}</span>
           </div>
           <p className="text-white font-mono tracking-widest text-base mb-5 opacity-85">
@@ -181,6 +187,12 @@ function statusBadge(status: CardStatus) {
     return (
       <Badge color="orange" size="xs">
         Pendente
+      </Badge>
+    )
+  if (status === 'blocked')
+    return (
+      <Badge color="red" size="xs">
+        🔒 Bloqueado
       </Badge>
     )
   return (

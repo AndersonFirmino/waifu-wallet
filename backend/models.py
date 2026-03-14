@@ -71,7 +71,7 @@ class CreditCard(Base):
     bill: Mapped[float] = mapped_column(Float)
     closing_day: Mapped[int] = mapped_column(Integer)
     due_day: Mapped[int] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20))     # open | closed | paid
+    status: Mapped[str] = mapped_column(String(20))     # open | closed | paid | pending | blocked
 
     history: Mapped[list[CardBillHistory]] = relationship(
         back_populates="card", cascade="all, delete-orphan"

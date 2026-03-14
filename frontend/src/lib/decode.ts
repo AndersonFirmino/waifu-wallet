@@ -78,7 +78,7 @@ function asFixedExpenseKind(val: unknown): FixedExpenseKind {
 }
 
 function asCardStatus(val: unknown): CardStatus {
-  if (val === 'open' || val === 'closed' || val === 'paid' || val === 'pending') return val
+  if (val === 'open' || val === 'closed' || val === 'paid' || val === 'pending' || val === 'blocked') return val
   throw new Error(`Invalid CardStatus: ${String(val)}`)
 }
 

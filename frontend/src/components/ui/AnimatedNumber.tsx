@@ -7,12 +7,20 @@ interface AnimatedNumberProps {
 }
 
 export default function AnimatedNumber({ value, duration = 600, formatter }: AnimatedNumberProps) {
+  const isMount = useRef(true)
   const [displayed, setDisplayed] = useState(value)
   const prevRef = useRef(value)
   const rafRef = useRef(0)
 
   useEffect(() => {
-    const from = prevRef.current
+    let from: number
+    if (isMount.current) {
+      from = 0
+      isMount.current = false
+    } else {
+      from = prevRef.current
+    }
+
     const to = value
     prevRef.current = value
 
