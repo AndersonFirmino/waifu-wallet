@@ -1,22 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { type FetchState, type PostState } from '../types'
 
-export function useFetch<T>(url: string, decode: (raw: unknown) => T): FetchState<T> {
+const DEFAULT_POLL_INTERVAL = 3000
+
+export function useFetch<T>(
+  url: string,
+  decode: (raw: unknown) => T,
+  pollInterval: number = DEFAULT_POLL_INTERVAL,
+): FetchState<T> {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const isFirstFetch = useRef(true)
+
+  const stableDecode = useCallback(decode, [decode])
 
   useEffect(() => {
     let cancelled = false
+    isFirstFetch.current = true
 
     const doFetch = async (): Promise<void> => {
-      setLoading(true)
+      const isFirst = isFirstFetch.current
+      if (isFirst) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
+
       try {
         const r = await fetch('/api/v1' + url)
         if (!r.ok) throw new Error(`HTTP ${String(r.status)}`)
         const raw: unknown = await r.json()
         if (!cancelled) {
-          setData(decode(raw))
+          setData(stableDecode(raw))
           setError(null)
         }
       } catch (e: unknown) {
@@ -24,18 +42,30 @@ export function useFetch<T>(url: string, decode: (raw: unknown) => T): FetchStat
           setError(e instanceof Error ? e : new Error(String(e)))
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          if (isFirst) {
+            setLoading(false)
+          } else {
+            setRefreshing(false)
+          }
+          isFirstFetch.current = false
+        }
       }
     }
 
     void doFetch()
 
+    const intervalId = pollInterval > 0
+      ? window.setInterval(() => { void doFetch() }, pollInterval)
+      : undefined
+
     return () => {
       cancelled = true
+      if (intervalId !== undefined) window.clearInterval(intervalId)
     }
-  }, [url, decode])
+  }, [url, stableDecode, pollInterval])
 
-  return { data, loading, error }
+  return { data, loading, error, refreshing }
 }
 
 export function usePost<TBody, TResponse>(

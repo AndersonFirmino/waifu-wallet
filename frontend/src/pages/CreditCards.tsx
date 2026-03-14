@@ -9,7 +9,7 @@ import ProgressBar from '../components/ui/ProgressBar'
 import { formatCurrency } from '../utils/currency'
 import { type CreditCard, type CardStatus, type CardBrand } from '../types'
 import { useFetch } from '../hooks/useApi'
-import { decodeCreditCard, decodeCreditCardList } from '../lib/decode'
+import { decodeCreditCardList } from '../lib/decode'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,9 +194,6 @@ function statusBadge(status: CardStatus) {
 
 export default function CreditCards() {
   const { data: serverData } = useFetch('/credit-cards/', decodeCreditCardList)
-  const [additions, setAdditions] = useState<CreditCard[]>([])
-  const [deletedIds, setDeletedIds] = useState<number[]>([])
-  const [editedCards, setEditedCards] = useState<Map<number, CreditCard>>(new Map())
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   // Form state
@@ -207,12 +204,7 @@ export default function CreditCards() {
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
-  const cardList = [
-    ...additions.map((c) => editedCards.get(c.id) ?? c),
-    ...(serverData ?? [])
-      .filter((c) => !deletedIds.includes(c.id) && !additions.some((a) => a.id === c.id))
-      .map((c) => editedCards.get(c.id) ?? c),
-  ]
+  const cardList = serverData ?? []
 
   const effectiveId = selectedId ?? cardList[0]?.id ?? null
   const selected = cardList.find((c) => c.id === effectiveId) ?? cardList[0]
@@ -281,13 +273,6 @@ export default function CreditCards() {
         body: JSON.stringify(body),
       })
       if (!r.ok) return
-      const raw: unknown = await r.json()
-      const updated = decodeCreditCard(raw)
-      setEditedCards((prev) => {
-        const next = new Map(prev)
-        next.set(updated.id, updated)
-        return next
-      })
     } else {
       const r = await fetch('/api/v1/credit-cards/', {
         method: 'POST',
@@ -295,9 +280,6 @@ export default function CreditCards() {
         body: JSON.stringify(body),
       })
       if (!r.ok) return
-      const raw: unknown = await r.json()
-      const created = decodeCreditCard(raw)
-      setAdditions((prev) => [...prev, created])
     }
 
     closeForm()
@@ -309,8 +291,6 @@ export default function CreditCards() {
       return
     }
     await fetch(`/api/v1/credit-cards/${String(id)}`, { method: 'DELETE' })
-    setAdditions((prev) => prev.filter((c) => c.id !== id))
-    setDeletedIds((prev) => [...prev, id])
     setConfirmDeleteId(null)
     if (selectedId === id) setSelectedId(null)
   }

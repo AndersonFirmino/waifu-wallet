@@ -57,16 +57,17 @@ describe('useFetch', () => {
 
   it('starts with loading=true, data=null, error=null', () => {
     setupFetch(makeMockResponse(42))
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     expect(result.current.loading).toBe(true)
     expect(result.current.data).toBeNull()
     expect(result.current.error).toBeNull()
+    expect(result.current.refreshing).toBe(false)
   })
 
   it('sets data and loading=false on successful fetch', async () => {
     setupFetch(makeMockResponse(99))
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
@@ -89,7 +90,7 @@ describe('useFetch', () => {
 
   it('prefixes the url with /api/v1', async () => {
     const mockFn = setupFetch(makeMockResponse('ok'))
-    const { result } = renderHook(() => useFetch('/transactions', decodeString))
+    const { result } = renderHook(() => useFetch('/transactions', decodeString, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
@@ -98,7 +99,7 @@ describe('useFetch', () => {
 
   it('sets error and loading=false on non-ok response (HTTP 400)', async () => {
     setupFetch(makeMockResponse(null, false))
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
@@ -110,7 +111,7 @@ describe('useFetch', () => {
   it('sets error on network failure', async () => {
     const mockFn = vi.fn().mockRejectedValue(new Error('Network error'))
     vi.stubGlobal('fetch', mockFn)
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
@@ -121,7 +122,7 @@ describe('useFetch', () => {
 
   it('sets error when decode throws (invalid data shape)', async () => {
     setupFetch(makeMockResponse('not-a-number'))
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
@@ -131,7 +132,7 @@ describe('useFetch', () => {
   it('wraps non-Error rejections in Error', async () => {
     const mockFn = vi.fn().mockRejectedValue('plain string rejection')
     vi.stubGlobal('fetch', mockFn)
-    const { result } = renderHook(() => useFetch('/test', decodeNumber))
+    const { result } = renderHook(() => useFetch('/test', decodeNumber, 0))
 
     await waitFor(() => { expect(result.current.loading).toBe(false); })
 
