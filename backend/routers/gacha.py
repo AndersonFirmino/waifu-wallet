@@ -5,11 +5,48 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import GachaBanner, GachaBannerImage
-from schemas import GachaBannerCreate, GachaBannerImageCreate, GachaBannerImageOut, GachaBannerOut, PullsUpdate
+from models import GachaBanner, GachaBannerImage, GachaStash
+from schemas import (
+    GachaBannerCreate,
+    GachaBannerImageCreate,
+    GachaBannerImageOut,
+    GachaBannerOut,
+    GachaStashOut,
+    GachaStashUpdate,
+    PullsUpdate,
+)
 
 router = APIRouter(prefix="/gacha", tags=["gacha"])
 
+
+# ─── Stash (singleton) ───────────────────────────────────────────────────────
+
+def _get_or_create_stash(db: Session) -> GachaStash:
+    stash = db.scalars(select(GachaStash)).first()
+    if stash is None:
+        stash = GachaStash(stellar_jade=0, special_passes=0, double_gems_available=True)
+        db.add(stash)
+        db.commit()
+        db.refresh(stash)
+    return stash
+
+
+@router.get("/stash", response_model=GachaStashOut)
+def get_stash(db: Session = Depends(get_db)) -> GachaStash:
+    return _get_or_create_stash(db)
+
+
+@router.patch("/stash", response_model=GachaStashOut)
+def update_stash(body: GachaStashUpdate, db: Session = Depends(get_db)) -> GachaStash:
+    stash = _get_or_create_stash(db)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(stash, field, value)
+    db.commit()
+    db.refresh(stash)
+    return stash
+
+
+# ─── Banners ──────────────────────────────────────────────────────────────────
 
 @router.get("/banners", response_model=list[GachaBannerOut])
 def list_banners(db: Session = Depends(get_db)) -> list[GachaBanner]:

@@ -16,6 +16,8 @@ import type {
   GachaBanner,
   GachaBannerImage,
   GachaPriority,
+  GachaStash,
+  GachaTarget,
   CalendarEvent,
   CalendarEventType,
   ForecastPoint,
@@ -107,6 +109,12 @@ function asAlertLevel(val: unknown): AlertLevel {
 function asGachaPriority(val: unknown): GachaPriority {
   if (val === 1 || val === 2 || val === 3 || val === 4 || val === 5) return val
   throw new Error(`Invalid GachaPriority: ${String(val)}`)
+}
+
+function asGachaTarget(val: unknown): GachaTarget | null {
+  if (val === null || val === undefined) return null
+  if (val === 'E0' || val === 'E1' || val === 'E2' || val === 'E6S1') return val
+  throw new Error(`Invalid GachaTarget: ${typeof val === 'string' ? val : typeof val}`)
 }
 
 // ─── Decoders ─────────────────────────────────────────────────────────────────
@@ -274,8 +282,19 @@ export function decodeGachaBanner(raw: unknown): GachaBanner {
     end_date: str(raw.end_date, 'end_date'),
     priority: asGachaPriority(raw.priority),
     pulls: num(raw.pulls, 'pulls'),
+    target: asGachaTarget(raw.target),
     image_url: nullableStr(raw.image_url, 'image_url'),
     images: Array.isArray(raw.images) ? arr(raw.images, 'images').map(decodeGachaBannerImage) : [],
+  }
+}
+
+export function decodeGachaStash(raw: unknown): GachaStash {
+  assertRecord(raw)
+  return {
+    id: num(raw.id, 'id'),
+    stellar_jade: num(raw.stellar_jade, 'stellar_jade'),
+    special_passes: num(raw.special_passes, 'special_passes'),
+    double_gems_available: bool(raw.double_gems_available, 'double_gems_available'),
   }
 }
 

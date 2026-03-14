@@ -162,6 +162,20 @@ class NoteOut(NoteCreate):
 
 # ─── Gacha ────────────────────────────────────────────────────────────────────
 
+class GachaStashOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    stellar_jade: int
+    special_passes: int
+    double_gems_available: bool
+
+
+class GachaStashUpdate(BaseModel):
+    stellar_jade: int | None = None
+    special_passes: int | None = None
+    double_gems_available: bool | None = None
+
+
 class GachaBannerCreate(BaseModel):
     game: str
     banner: str
@@ -170,6 +184,7 @@ class GachaBannerCreate(BaseModel):
     end_date: str
     priority: int
     pulls: int = 0
+    target: str | None = None
     image_url: str | None = None
 
 
@@ -187,6 +202,7 @@ class GachaBannerImageOut(GachaBannerImageCreate):
 class GachaBannerOut(GachaBannerCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    target: str | None = None
     images: list[GachaBannerImageOut] = []
 
 

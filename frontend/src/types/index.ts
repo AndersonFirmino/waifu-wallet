@@ -211,6 +211,8 @@ export interface GachaBannerImage {
   sort_order: number
 }
 
+export type GachaTarget = 'E0' | 'E1' | 'E2' | 'E6S1'
+
 export interface GachaBanner {
   id: number
   game: string
@@ -220,8 +222,16 @@ export interface GachaBanner {
   end_date: string
   priority: GachaPriority
   pulls: number
+  target: GachaTarget | null
   image_url: string | null
   images: GachaBannerImage[]
+}
+
+export interface GachaStash {
+  id: number
+  stellar_jade: number
+  special_passes: number
+  double_gems_available: boolean
 }
 
 // ─── Salary Plan ──────────────────────────────────────────────────────────────
