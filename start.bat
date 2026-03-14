@@ -1,17 +1,28 @@
 @echo off
 title Waifu Wallet
 
-:: ─── Check if setup was run ──────────────────
-if not exist "backend\.venv" (
-  echo  Primeira vez? Rode setup.bat antes!
+:: ─── Auto-setup if needed ────────────────────
+if not exist "backend\.venv" goto :run_setup
+if not exist "frontend\node_modules" goto :run_setup
+goto :start_app
+
+:run_setup
+echo.
+echo  Primeira execucao detectada!
+echo  Instalando dependencias automaticamente...
+echo.
+call "%~dp0setup.bat"
+if %errorlevel% neq 0 (
+  echo.
+  echo  [ERRO] Setup falhou. Verifique os erros acima.
   pause
   exit /b 1
 )
-if not exist "frontend\node_modules" (
-  echo  Primeira vez? Rode setup.bat antes!
-  pause
-  exit /b 1
-)
+echo.
+echo  Setup concluido! Iniciando Waifu Wallet...
+echo.
+
+:start_app
 
 echo.
 echo  Waifu Wallet iniciando...
