@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface NavItem {
   path: string
@@ -46,6 +47,9 @@ const NAV: NavGroup[] = [
 ]
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+
   return (
     <aside
       style={{
@@ -153,19 +157,45 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
-        <div
+      <div
+        style={{
+          borderTop: '1px solid var(--color-border)',
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={toggleTheme}
+          title={isDark ? 'Modo Claro' : 'Modo Escuro'}
           style={{
-            padding: '14px 20px',
-            borderTop: '1px solid var(--color-border)',
-            fontSize: 11,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
             color: 'var(--color-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: collapsed ? 0 : 10,
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            width: '100%',
+            padding: collapsed ? '12px 0' : '12px 20px',
+            fontSize: 14,
           }}
         >
-          <p style={{ margin: 0 }}>Waifu Wallet beta</p>
-          <p style={{ margin: 0, opacity: 0.6 }}>Março 2026</p>
-        </div>
-      )}
+          <span style={{ fontSize: 18, flexShrink: 0 }}>{isDark ? '☀️' : '🌙'}</span>
+          {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{isDark ? 'Modo Claro' : 'Modo Escuro'}</span>}
+        </button>
+        {!collapsed && (
+          <div
+            style={{
+              padding: '0 20px 14px',
+              fontSize: 11,
+              color: 'var(--color-muted)',
+            }}
+          >
+            <p style={{ margin: 0 }}>Waifu Wallet beta</p>
+            <p style={{ margin: 0, opacity: 0.6 }}>Março 2026</p>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }
