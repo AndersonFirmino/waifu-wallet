@@ -51,6 +51,25 @@ body {
   background: var(--color-muted);
 }
 
+[data-theme='light'] {
+  --color-bg: #f8f9fc;
+  --color-surface: #ffffff;
+  --color-surface2: #f0f1f5;
+  --color-border: #e2e4ea;
+  --color-text: #1a1b2e;
+  --color-muted: #6b7280;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: #f0f1f5;
+}
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

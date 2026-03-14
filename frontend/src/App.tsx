@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from './hooks/useTheme'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
@@ -14,22 +15,24 @@ import Savings from './pages/Savings'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="fixed-expenses" element={<FixedExpenses />} />
-          <Route path="debts" element={<Debts />} />
-          <Route path="credit-cards" element={<CreditCards />} />
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="forecast" element={<Forecast />} />
-          <Route path="gacha" element={<Gacha />} />
-          <Route path="notes" element={<Notes />} />
-          <Route path="salary" element={<SalaryPlans />} />
-          <Route path="savings" element={<Savings />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="fixed-expenses" element={<FixedExpenses />} />
+            <Route path="debts" element={<Debts />} />
+            <Route path="credit-cards" element={<CreditCards />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="forecast" element={<Forecast />} />
+            <Route path="gacha" element={<Gacha />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="salary" element={<SalaryPlans />} />
+            <Route path="savings" element={<Savings />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
