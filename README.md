@@ -6,12 +6,24 @@ Track your income, expenses, debts, and savings — all so you can confidently k
 
 ---
 
+## Easy Setup (Windows, no dev knowledge needed)
+
+1. **Download** — click the green **Code** button on GitHub → **Download ZIP**
+2. **Extract** — right-click the ZIP → **Extract All**
+3. **Setup** — double-click `setup.bat` (installs Python, Node.js and dependencies automatically)
+4. If it says "close and reopen" → close the window, double-click `setup.bat` again
+5. **Done!** From now on, just double-click `start.bat` to launch
+
+> Requires Windows 10 1709+ (has `winget` built-in). If `winget` is missing, update "App Installer" from the Microsoft Store.
+
+---
+
 ## Features
 
 - **Dashboard** — balance overview, payday countdown, AI advisor notes, financial timeline roadmap
-- **Gacha Tracker** — banner management with image carousel, live countdown (D/H/M/S), budget safety analysis (safe / caution / danger)
+- **Gacha Tracker** — banner management with image carousel, live countdown (D/H/M/S), pull calculator with stash allocation by priority
 - **Transactions** — income and expense log
-- **Credit Cards** — multi-card management with bill tracking and limit visualization
+- **Credit Cards** — multi-card management with bill tracking, subscriptions, and limit visualization
 - **Fixed Expenses** — recurring monthly costs with EMA-based forecast
 - **Debts & Loans** — installment tracking with urgency alerts and progress bars
 - **Savings** — savings accounts with goal tracking
@@ -26,8 +38,8 @@ Track your income, expenses, debts, and savings — all so you can confidently k
 
 | Layer | Tech |
 |---|---|
-| Backend | Python 3.14 + FastAPI + SQLAlchemy + SQLite |
-| Frontend | React 19 + TypeScript + Vite + TailwindCSS |
+| Backend | Python 3.13+ · FastAPI · SQLAlchemy · SQLite |
+| Frontend | React 19 · TypeScript · Vite · TailwindCSS |
 | Charts | Recharts |
 | Backend packages | [uv](https://github.com/astral-sh/uv) |
 | Frontend packages | npm |
@@ -38,49 +50,44 @@ Track your income, expenses, debts, and savings — all so you can confidently k
 
 ```
 waifu-wallet/
+├── setup.bat               # One-click setup (installs everything)
+├── start.bat               # One-click start (backend + frontend + browser)
 ├── backend/
-│   ├── routers/          # One file per feature module
-│   ├── models.py         # SQLAlchemy ORM models
-│   ├── schemas.py        # Pydantic request/response schemas
-│   ├── database.py       # SQLite engine + session setup
-│   ├── main.py           # FastAPI app, CORS, router registration
-│   ├── seed.py           # Optional seed script for sample data
-│   ├── tests/            # pytest test suite
-│   └── pyproject.toml    # Dependencies (managed by uv)
+│   ├── routers/            # One file per feature module
+│   ├── models.py           # SQLAlchemy ORM models
+│   ├── schemas.py          # Pydantic request/response schemas
+│   ├── database.py         # SQLite engine + session setup
+│   ├── main.py             # FastAPI app, CORS, router registration
+│   ├── seed.py             # Optional seed script for sample data
+│   ├── tests/              # pytest test suite
+│   └── pyproject.toml      # Dependencies (managed by uv)
 └── frontend/
     ├── src/
-    │   ├── pages/        # One file per route/screen
-    │   ├── components/   # Shared UI components
-    │   ├── hooks/        # useFetch and other hooks
-    │   ├── lib/          # Typed API response decoders
-    │   ├── utils/        # Currency and date formatters
-    │   └── types/        # TypeScript domain types
+    │   ├── pages/          # One file per route/screen
+    │   ├── components/     # Shared UI components
+    │   ├── hooks/          # useFetch and other hooks
+    │   ├── lib/            # Typed API response decoders
+    │   ├── utils/          # Currency and date formatters
+    │   └── types/          # TypeScript domain types
     ├── public/
-    │   └── gacha/        # Uploaded banner images (local only, gitignored)
+    │   └── gacha/          # Uploaded banner images (local only, gitignored)
     └── package.json
 ```
 
 ---
 
-## Getting Started
+## Developer Setup
+
+If you prefer manual setup over the `.bat` scripts:
 
 ### Requirements
 
-- Python 3.14+
-- [uv](https://github.com/astral-sh/uv) — `pip install uv` or `winget install astral-sh.uv`
+- Python 3.13+
+- [uv](https://github.com/astral-sh/uv) — `winget install astral-sh.uv`
 - Node.js 20+
 - npm
 
----
-
-### 1. Clone
-
-```bash
-git clone https://github.com/AndersonFirmino/waifu-wallet.git
-cd waifu-wallet
-```
-
-### 2. Backend
+### Backend
 
 ```bash
 cd backend
@@ -88,19 +95,9 @@ uv sync
 uv run uvicorn main:app --reload
 ```
 
-API runs on `http://localhost:8000`.
-Interactive docs at `http://localhost:8000/docs`.
+API: `http://localhost:8000` · Docs: `http://localhost:8000/docs`
 
-The SQLite database (`meucaixa.db`) is created automatically on first run. It is gitignored — your data stays local.
-
-#### Run backend tests
-
-```bash
-cd backend
-uv run pytest
-```
-
-### 3. Frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -108,21 +105,22 @@ npm install
 npm run dev
 ```
 
-App runs on `http://localhost:5173`.
-All `/api/v1/` requests are proxied to the backend via Vite config.
+App: `http://localhost:5173` — API requests are proxied to backend via Vite config.
 
-#### Other frontend commands
+### Other commands
 
 ```bash
+# Backend tests
+cd backend && uv run pytest
+
+# Frontend
 npm run typecheck      # TypeScript strict check
-npm run lint           # ESLint check
-npm run lint:fix       # Auto-fix lint issues
+npm run lint           # ESLint
 npm run test           # Vitest suite
-npm run test:coverage  # Coverage report
 npm run build          # Production build
 ```
 
-### 4. (Optional) Seed sample data
+### Seed sample data (optional)
 
 ```bash
 cd backend
