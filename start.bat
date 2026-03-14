@@ -1,28 +1,50 @@
 @echo off
 title Waifu Wallet
 
-:: ─── Auto-setup if needed ────────────────────
-if not exist "backend\.venv" goto :run_setup
-if not exist "frontend\node_modules" goto :run_setup
-goto :start_app
-
-:run_setup
-echo.
-echo  Primeira execucao detectada!
-echo  Instalando dependencias automaticamente...
-echo.
-call "%~dp0setup.bat"
+:: ─── Check tools ─────────────────────────────
+where python >nul 2>&1
 if %errorlevel% neq 0 (
-  echo.
-  echo  [ERRO] Setup falhou. Verifique os erros acima.
+  echo  Python nao encontrado. Rode setup.bat primeiro!
   pause
   exit /b 1
 )
-echo.
-echo  Setup concluido! Iniciando Waifu Wallet...
-echo.
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+  echo  Node.js nao encontrado. Rode setup.bat primeiro!
+  pause
+  exit /b 1
+)
+where uv >nul 2>&1
+if %errorlevel% neq 0 (
+  echo  uv nao encontrado. Rode setup.bat primeiro!
+  pause
+  exit /b 1
+)
 
-:start_app
+:: ─── Auto-install dependencies if needed ─────
+if not exist "backend\.venv" (
+  echo  Instalando dependencias do backend...
+  cd /d "%~dp0backend"
+  call uv sync
+  cd /d "%~dp0"
+  if not exist "backend\.venv" (
+    echo  [ERRO] Falha ao instalar dependencias do backend.
+    pause
+    exit /b 1
+  )
+)
+
+if not exist "frontend\node_modules" (
+  echo  Instalando dependencias do frontend...
+  cd /d "%~dp0frontend"
+  call npm install
+  cd /d "%~dp0"
+  if not exist "frontend\node_modules" (
+    echo  [ERRO] Falha ao instalar dependencias do frontend.
+    pause
+    exit /b 1
+  )
+)
 
 echo.
 echo  Waifu Wallet iniciando...
