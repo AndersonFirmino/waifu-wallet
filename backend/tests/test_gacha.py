@@ -82,6 +82,7 @@ def test_get_game_stash_auto_create(client: TestClient) -> None:
     assert body["game"] == "Genshin Impact"
     assert body["premium_currency"] == 0
     assert body["passes"] == 0
+    assert body["weapon_passes"] == 0
 
 
 def test_update_game_stash(client: TestClient) -> None:
@@ -94,6 +95,30 @@ def test_update_game_stash(client: TestClient) -> None:
     assert res.status_code == 200
     assert res.json()["premium_currency"] == 12800
     assert res.json()["passes"] == 5
+
+
+def test_update_game_stash_weapon_passes(client: TestClient) -> None:
+    client.get("/api/v1/gacha/stash/game", params={"game": "Wuthering Waves"})
+    res = client.patch(
+        "/api/v1/gacha/stash/game",
+        params={"game": "Wuthering Waves"},
+        json={"weapon_passes": 12},
+    )
+    assert res.status_code == 200
+    assert res.json()["weapon_passes"] == 12
+    assert res.json()["passes"] == 0
+
+
+def test_stash_list_includes_weapon_passes(client: TestClient) -> None:
+    client.get("/api/v1/gacha/stash/game", params={"game": "Wuthering Waves"})
+    client.patch(
+        "/api/v1/gacha/stash/game",
+        params={"game": "Wuthering Waves"},
+        json={"weapon_passes": 7},
+    )
+    data = client.get("/api/v1/gacha/stashes").json()
+    wuwa = next(s for s in data if s["game"] == "Wuthering Waves")
+    assert wuwa["weapon_passes"] == 7
 
 
 def test_stash_isolation(client: TestClient) -> None:

@@ -328,6 +328,7 @@ export function decodeGachaStashMulti(raw: unknown): GachaStashMulti {
     game: str(raw.game, 'game'),
     premium_currency: num(raw.premium_currency, 'premium_currency'),
     passes: num(raw.passes, 'passes'),
+    weapon_passes: num(raw.weapon_passes, 'weapon_passes'),
     double_gems_available: bool(raw.double_gems_available, 'double_gems_available'),
   }
 }

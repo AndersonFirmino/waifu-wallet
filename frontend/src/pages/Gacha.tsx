@@ -1223,6 +1223,7 @@ export default function Gacha() {
   const [editingStashGame, setEditingStashGame] = useState<string | null>(null)
   const [stashCurrency, setStashCurrency] = useState('')
   const [stashPasses, setStashPasses] = useState('')
+  const [stashWeaponPasses, setStashWeaponPasses] = useState('')
   const [stashDouble, setStashDouble] = useState(true)
   const [editingManualBalance, setEditingManualBalance] = useState(false)
   const [manualBalanceInput, setManualBalanceInput] = useState('')
@@ -1333,7 +1334,7 @@ export default function Gacha() {
       const gameStash = getGameStash(game)
       const currencyPerPull = getCurrencyPerPull(game)
       const pullsFromCurrency = Math.floor((gameStash?.premium_currency ?? 0) / currencyPerPull)
-      const gamePulls = pullsFromCurrency + (gameStash?.passes ?? 0)
+      const gamePulls = pullsFromCurrency + (gameStash?.passes ?? 0) + (gameStash?.weapon_passes ?? 0)
       let remainingPool = gamePulls
       gameBanners
         .sort((a, b) => a.priority - b.priority)
@@ -1369,6 +1370,7 @@ export default function Gacha() {
     const gameStash = getGameStash(game)
     setStashCurrency(String(gameStash?.premium_currency ?? 0))
     setStashPasses(String(gameStash?.passes ?? 0))
+    setStashWeaponPasses(String(gameStash?.weapon_passes ?? 0))
     setStashDouble(gameStash?.double_gems_available ?? true)
     setEditingStashGame(game)
   }
@@ -1377,11 +1379,12 @@ export default function Gacha() {
     if (editingStashGame === null) return
     const currency = parseInt(stashCurrency, 10)
     const passes = parseInt(stashPasses, 10)
+    const weaponPasses = parseInt(stashWeaponPasses, 10)
     if (isNaN(currency) || isNaN(passes)) return
     await fetch(`/api/v1/gacha/stash/game?game=${encodeURIComponent(editingStashGame)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ premium_currency: currency, passes, double_gems_available: stashDouble }),
+      body: JSON.stringify({ premium_currency: currency, passes, weapon_passes: weaponPasses, double_gems_available: stashDouble }),
     })
     setEditingStashGame(null)
     setRefreshKey((k) => k + 1)
@@ -1564,9 +1567,10 @@ export default function Gacha() {
               const currencyPerPull = getCurrencyPerPull(game)
               const gameCurrency = gameStash?.premium_currency ?? 0
               const gamePasses = gameStash?.passes ?? 0
+              const gameWeaponPasses = gameStash?.weapon_passes ?? 0
               const gameDouble = gameStash?.double_gems_available ?? true
               const pullsFromCurrency = Math.floor(gameCurrency / currencyPerPull)
-              const gameTotalPulls = pullsFromCurrency + gamePasses
+              const gameTotalPulls = pullsFromCurrency + gamePasses + gameWeaponPasses
               const leftover = gameCurrency % currencyPerPull
               const emoji = GAME_EMOJIS.get(game) ?? '🎮'
               const isEditing = editingStashGame === game
@@ -1598,7 +1602,7 @@ export default function Gacha() {
                   </div>
 
                   {isEditing ? (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
                         <label className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.premium}</label>
                         <input
@@ -1606,6 +1610,7 @@ export default function Gacha() {
                           value={stashCurrency}
                           onChange={(e) => { setStashCurrency(e.target.value) }}
                           placeholder="0"
+                          style={{ width: 130 }}
                         />
                       </div>
                       <div className="flex flex-col gap-1">
@@ -1615,19 +1620,33 @@ export default function Gacha() {
                           value={stashPasses}
                           onChange={(e) => { setStashPasses(e.target.value) }}
                           placeholder="0"
+                          style={{ width: 130 }}
                         />
                       </div>
+                      {labels.weaponPasses !== undefined && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.weaponPasses}</label>
+                          <input
+                            type="number"
+                            value={stashWeaponPasses}
+                            onChange={(e) => { setStashWeaponPasses(e.target.value) }}
+                            placeholder="0"
+                            style={{ width: 130 }}
+                          />
+                        </div>
+                      )}
                       <div className="flex flex-col gap-1">
                         <label className="text-xs" style={{ color: 'var(--color-muted)' }}>Double Gems</label>
                         <select
                           value={stashDouble ? 'yes' : 'no'}
                           onChange={(e) => { setStashDouble(e.target.value === 'yes') }}
+                          style={{ width: 160 }}
                         >
                           <option value="yes">Disponível</option>
                           <option value="no">Não disponível</option>
                         </select>
                       </div>
-                      <div className="flex items-end gap-2">
+                      <div className="flex items-end gap-2" style={{ marginLeft: 'auto' }}>
                         <Button size="sm" onClick={() => { void handleSaveStash() }}>Salvar</Button>
                         <Button size="sm" variant="outline" onClick={() => { setEditingStashGame(null) }}>×</Button>
                       </div>
@@ -1646,6 +1665,14 @@ export default function Gacha() {
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.passes}</p>
                       </div>
+                      {labels.weaponPasses !== undefined && (
+                        <div>
+                          <p className="text-base font-bold" style={{ color: 'var(--color-text)' }}>
+                            <AnimatedNumber value={gameWeaponPasses} />
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.weaponPasses}</p>
+                        </div>
+                      )}
                       <div style={{ width: 1, background: 'var(--color-border)', alignSelf: 'stretch', margin: '2px 0' }} />
                       <div>
                         <p className="text-base font-bold" style={{ color: '#a78bfa' }}>

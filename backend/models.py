@@ -218,4 +218,5 @@ class GachaStashMulti(Base):
     game: Mapped[str] = mapped_column(String(100), unique=True)
     premium_currency: Mapped[int] = mapped_column(Integer, default=0)
     passes: Mapped[int] = mapped_column(Integer, default=0)
+    weapon_passes: Mapped[int] = mapped_column(Integer, default=0)
     double_gems_available: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -37,6 +37,13 @@ def _run_migrations() -> None:
             except OperationalError:
                 conn.rollback()
 
+        # Add weapon_passes to gacha_stashes
+        try:
+            conn.execute(text("ALTER TABLE gacha_stashes ADD COLUMN weapon_passes INTEGER DEFAULT 0"))
+            conn.commit()
+        except OperationalError:
+            conn.rollback()
+
         # Migrate old gacha_stash → gacha_stashes
         inspector = inspect(engine)
         tables = inspector.get_table_names()

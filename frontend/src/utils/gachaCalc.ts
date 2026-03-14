@@ -23,6 +23,7 @@ const DEFAULT_PITY: PityConfig = { char: 90, weapon: 80 }
 interface CurrencyLabels {
   premium: string
   passes: string
+  weaponPasses?: string
 }
 
 const CURRENCY_LABELS: Record<string, CurrencyLabels> = {
@@ -30,7 +31,7 @@ const CURRENCY_LABELS: Record<string, CurrencyLabels> = {
   'Genshin Impact': { premium: 'Primogems', passes: 'Intertwined Fate' },
   'Zenless Zone Zero': { premium: 'Polychrome', passes: 'Encrypted Master Tape' },
   'Honkai Impact 3rd': { premium: 'Crystals', passes: 'Supply Card' },
-  'Wuthering Waves': { premium: 'Astrite', passes: 'Radiant Tide' },
+  'Wuthering Waves': { premium: 'Astrite', passes: 'Radiant Tide', weaponPasses: 'Forging Tide' },
   'Blue Archive': { premium: 'Pyroxene', passes: 'Recruitment Ticket' },
 }
 

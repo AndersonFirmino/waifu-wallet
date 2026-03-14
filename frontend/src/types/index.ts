@@ -245,6 +245,7 @@ export interface GachaStashMulti {
   game: string
   premium_currency: number
   passes: number
+  weapon_passes: number
   double_gems_available: boolean
 }
 

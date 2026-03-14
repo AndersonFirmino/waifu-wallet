@@ -185,6 +185,12 @@ Per-game stash tracking, pull calculators, and currency labels are all automatic
 
 ---
 
+## Special Thanks
+
+- **Aridusan** — beta tester, feedback, and tons of improvement suggestions that shaped the tool into what it is today. 🙏
+
+---
+
 ## License
 
 [MIT](LICENSE) — do whatever you want with it.

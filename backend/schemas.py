@@ -194,12 +194,14 @@ class GachaStashMultiOut(BaseModel):
     game: str
     premium_currency: int
     passes: int
+    weapon_passes: int
     double_gems_available: bool
 
 
 class GachaStashMultiUpdate(BaseModel):
     premium_currency: int | None = None
     passes: int | None = None
+    weapon_passes: int | None = None
     double_gems_available: bool | None = None
 
 
