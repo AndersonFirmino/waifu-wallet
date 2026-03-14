@@ -1,15 +1,15 @@
 @echo off
 setlocal enabledelayedexpansion
-title MeuCaixa - Setup
+title Waifu Wallet - Setup
 
 echo.
 echo  ========================================
-echo       MeuCaixa - Setup Automatico
+echo       Waifu Wallet - Setup Automatico
 echo  ========================================
 echo.
 echo  Este setup vai verificar e instalar
 echo  as ferramentas necessarias para rodar
-echo  o MeuCaixa no seu computador:
+echo  o Waifu Wallet no seu computador:
 echo.
 echo    - Python 3.13 (linguagem do backend)
 echo    - Node.js LTS  (linguagem do frontend)
@@ -156,7 +156,7 @@ echo  ========================================
 echo.
 echo   Setup completo! Tudo pronto.
 echo.
-echo   Para abrir o MeuCaixa:
+echo   Para abrir o Waifu Wallet:
 echo     Duplo clique no start.bat
 echo.
 echo   (o navegador vai abrir sozinho)

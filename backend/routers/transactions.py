@@ -36,6 +36,22 @@ def create_transaction(
     return tx
 
 
+@router.put("/{tx_id}", response_model=TransactionOut)
+def update_transaction(
+    tx_id: int,
+    body: TransactionCreate,
+    db: Session = Depends(get_db),
+) -> Transaction:
+    tx = db.get(Transaction, tx_id)
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    for field, value in body.model_dump().items():
+        setattr(tx, field, value)
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
 @router.delete("/{tx_id}", status_code=204)
 def delete_transaction(tx_id: int, db: Session = Depends(get_db)) -> None:
     tx = db.get(Transaction, tx_id)

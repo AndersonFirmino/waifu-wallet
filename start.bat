@@ -1,5 +1,5 @@
 @echo off
-title MeuCaixa
+title Waifu Wallet
 
 :: ─── Check if setup was run ──────────────────
 if not exist "backend\.venv" (
@@ -14,16 +14,16 @@ if not exist "frontend\node_modules" (
 )
 
 echo.
-echo  MeuCaixa iniciando...
+echo  Waifu Wallet iniciando...
 echo.
 
 :: ─── Start backend ───────────────────────────
-start "MeuCaixa Backend" cmd /c "cd /d "%~dp0backend" && uv run uvicorn main:app --reload"
+start "Waifu Wallet Backend" cmd /c "cd /d "%~dp0backend" && uv run uvicorn main:app --reload"
 
 timeout /t 2 /nobreak >nul
 
 :: ─── Start frontend ──────────────────────────
-start "MeuCaixa Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev"
+start "Waifu Wallet Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev"
 
 timeout /t 3 /nobreak >nul
 

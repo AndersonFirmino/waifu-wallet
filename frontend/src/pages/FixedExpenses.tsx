@@ -16,6 +16,14 @@ interface FormState {
   type: FixedExpenseKind
 }
 
+interface EditFormState {
+  name: string
+  amount: number
+  type: FixedExpenseKind
+  confidence: number
+  estimate: number
+}
+
 const EXPENSE_KINDS: FixedExpenseKind[] = ['fixed', 'variable']
 
 const KIND_LABELS: Record<FixedExpenseKind, string> = {
@@ -30,6 +38,14 @@ export default function FixedExpenses() {
   const [additions, setAdditions] = useState<FixedExpense[]>([])
   const [deletedIds, setDeletedIds] = useState<number[]>([])
   const [form, setForm] = useState<FormState>({ name: '', amount: 0, type: 'fixed' })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState<EditFormState>({
+    name: '',
+    amount: 0,
+    type: 'fixed',
+    confidence: 100,
+    estimate: 0,
+  })
 
   const expenses = [...additions, ...(serverData ?? []).filter((e) => !deletedIds.includes(e.id))]
 
@@ -63,6 +79,46 @@ export default function FixedExpenses() {
     await fetch(`/api/v1/fixed-expenses/${String(id)}`, { method: 'DELETE' })
     setAdditions((prev) => prev.filter((e) => e.id !== id))
     setDeletedIds((prev) => [...prev, id])
+  }
+
+  const handleEditStart = (expense: FixedExpense) => {
+    setEditingId(expense.id)
+    setEditForm({
+      name: expense.name,
+      amount: expense.amount,
+      type: expense.type,
+      confidence: expense.confidence,
+      estimate: expense.estimate,
+    })
+  }
+
+  const handleEditCancel = () => {
+    setEditingId(null)
+  }
+
+  const handleEditSave = async (id: number) => {
+    const body = {
+      name: editForm.name,
+      amount: editForm.amount,
+      type: editForm.type,
+      confidence: editForm.confidence,
+      estimate: editForm.estimate,
+    }
+    const r = await fetch(`/api/v1/fixed-expenses/${String(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) return
+    const raw: unknown = await r.json()
+    const updated = decodeFixedExpense(raw)
+    setAdditions((prev) => {
+      const inAdditions = prev.some((e) => e.id === id)
+      if (inAdditions) return prev.map((e) => (e.id === id ? updated : e))
+      return [...prev, updated]
+    })
+    setDeletedIds((prev) => [...prev, id])
+    setEditingId(null)
   }
 
   return (
@@ -179,6 +235,108 @@ export default function FixedExpenses() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {group.data.map((expense) => {
+                const isEditing = editingId === expense.id
+                if (isEditing) {
+                  return (
+                    <Card key={expense.id}>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex gap-3 flex-wrap items-center">
+                          <input
+                            placeholder="Nome"
+                            value={editForm.name}
+                            onChange={(e) => {
+                              setEditForm((f) => ({ ...f, name: e.target.value }))
+                            }}
+                            style={{ flex: 1, minWidth: 160 }}
+                          />
+                          <CurrencyInput
+                            value={editForm.amount}
+                            onChange={(v) => {
+                              setEditForm((f) => ({ ...f, amount: v }))
+                            }}
+                            placeholder="R$ 0,00"
+                            style={{ width: 140 }}
+                          />
+                          <CurrencyInput
+                            value={editForm.estimate}
+                            onChange={(v) => {
+                              setEditForm((f) => ({ ...f, estimate: v }))
+                            }}
+                            placeholder="Previsão"
+                            style={{ width: 140 }}
+                          />
+                          <div
+                            className="flex rounded-lg overflow-hidden border"
+                            style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
+                          >
+                            {EXPENSE_KINDS.map((t) => (
+                              <button
+                                key={t}
+                                onClick={() => {
+                                  setEditForm((f) => ({ ...f, type: t }))
+                                }}
+                                className="px-4 py-2 text-sm font-medium transition-colors"
+                                style={{
+                                  background: editForm.type === t ? 'var(--color-blue)' : 'transparent',
+                                  color: editForm.type === t ? '#fff' : 'var(--color-muted)',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {KIND_LABELS[t]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-muted)' }}>
+                            Confiança:
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={editForm.confidence}
+                              onChange={(e) => {
+                                setEditForm((f) => ({ ...f, confidence: Number(e.target.value) }))
+                              }}
+                              style={{ width: 64 }}
+                            />
+                            %
+                          </label>
+                          <div className="flex gap-2 ml-auto">
+                            <button
+                              onClick={() => {
+                                void handleEditSave(expense.id)
+                              }}
+                              className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                              style={{
+                                background: 'var(--color-blue)',
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={handleEditCancel}
+                              className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                              style={{
+                                background: 'transparent',
+                                color: 'var(--color-muted)',
+                                border: '1px solid var(--color-border)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                }
+
                 const diff = expense.estimate - expense.amount
                 return (
                   <Card key={expense.id} hover>
@@ -241,21 +399,36 @@ export default function FixedExpenses() {
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          void handleRemove(expense.id)
-                        }}
-                        className="ml-4 w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
-                        style={{
-                          background: 'rgba(239,68,68,0.1)',
-                          color: 'var(--color-red)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                        }}
-                      >
-                        ✕
-                      </button>
+                      <div className="ml-4 flex gap-1" style={{ flexShrink: 0 }}>
+                        <button
+                          onClick={() => {
+                            handleEditStart(expense)
+                          }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
+                          style={{
+                            background: 'rgba(59,130,246,0.1)',
+                            color: 'var(--color-blue)',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✏
+                        </button>
+                        <button
+                          onClick={() => {
+                            void handleRemove(expense.id)
+                          }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            color: 'var(--color-red)',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </Card>
                 )
