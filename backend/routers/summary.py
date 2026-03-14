@@ -7,7 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import CreditCard, Debt, FixedExpense, GachaBanner, Loan, SavingsAccount, Transaction
+from models import (
+    CreditCard,
+    Debt,
+    FixedExpense,
+    GachaBanner,
+    Loan,
+    SavingsAccount,
+    Transaction,
+)
 from schemas import (
     AlertOut,
     CardOverviewOut,
@@ -23,8 +31,18 @@ from schemas import (
 router = APIRouter(prefix="/summary", tags=["summary"])
 
 _MONTH_NAMES = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
@@ -34,9 +52,11 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
     month_prefix = f"{today.year:04d}-{today.month:02d}-"
 
     # ── Monthly finances ──────────────────────────────────────────────────────
-    current_txs = list(db.scalars(
-        select(Transaction).where(Transaction.date.like(f"{month_prefix}%"))
-    ).all())
+    current_txs = list(
+        db.scalars(
+            select(Transaction).where(Transaction.date.like(f"{month_prefix}%"))
+        ).all()
+    )
     income = sum(t.amount for t in current_txs if t.type == "income")
     expenses = sum(t.amount for t in current_txs if t.type == "expense")
 
@@ -64,7 +84,9 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
     estimated = sum(e.estimate for e in fixed)
 
     # ── Savings ───────────────────────────────────────────────────────────────
-    savings_accounts = list(db.scalars(select(SavingsAccount).where(SavingsAccount.active.is_(True))).all())
+    savings_accounts = list(
+        db.scalars(select(SavingsAccount).where(SavingsAccount.active.is_(True))).all()
+    )
     savings_out = [SavingsAccountOut.model_validate(a) for a in savings_accounts]
 
     # ── Gacha ─────────────────────────────────────────────────────────────────
@@ -80,14 +102,24 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
             alerts.append(AlertOut(level="urgent", message=f"Divida urgente: {d.name}"))
         days_left = (date.fromisoformat(d.due_date) - today).days
         if 0 <= days_left <= 7:
-            alerts.append(AlertOut(level="warning", message=f"{d.name} vence em {days_left} dias"))
+            alerts.append(
+                AlertOut(level="warning", message=f"{d.name} vence em {days_left} dias")
+            )
 
     for c in cards:
         pct = c.used / c.limit * 100 if c.limit > 0 else 0.0
         if pct >= 90:
-            alerts.append(AlertOut(level="urgent", message=f"Cartao {c.name} com {pct:.0f}% do limite"))
+            alerts.append(
+                AlertOut(
+                    level="urgent", message=f"Cartao {c.name} com {pct:.0f}% do limite"
+                )
+            )
         elif pct >= 75:
-            alerts.append(AlertOut(level="warning", message=f"Cartao {c.name} com {pct:.0f}% do limite"))
+            alerts.append(
+                AlertOut(
+                    level="warning", message=f"Cartao {c.name} com {pct:.0f}% do limite"
+                )
+            )
 
     if income - expenses < 0:
         alerts.append(AlertOut(level="warning", message="Saldo negativo no mes atual"))
@@ -95,15 +127,23 @@ def get_summary(db: Session = Depends(get_db)) -> SummaryOut:
     return SummaryOut(
         queried_at=today.isoformat(),
         current_month=f"{_MONTH_NAMES[today.month - 1]} {today.year}",
-        monthly_finances=MonthlyFinancesOut(income=income, expenses=expenses, balance=income - expenses),
+        monthly_finances=MonthlyFinancesOut(
+            income=income, expenses=expenses, balance=income - expenses
+        ),
         wealth=WealthSummaryOut(
             total_debt=sum(d.remaining for d in debts),
-            total_loans=sum(l.remaining for l in loans),
+            total_loans=sum(loan.remaining for loan in loans),
             total_card_bills=sum(c.bill for c in cards),
         ),
         cards=card_overviews,
-        fixed_costs=FixedCostsOverviewOut(confirmed_total=confirmed, estimated_total=estimated),
-        gacha=GachaOverviewOut(active_banners=len(active), total_cost=sum(b.cost for b in active), next_due_date=next_due),
+        fixed_costs=FixedCostsOverviewOut(
+            confirmed_total=confirmed, estimated_total=estimated
+        ),
+        gacha=GachaOverviewOut(
+            active_banners=len(active),
+            total_cost=sum(b.cost for b in active),
+            next_due_date=next_due,
+        ),
         savings=SavingsSummaryOut(
             total_savings=sum(a.balance for a in savings_accounts),
             accounts=savings_out,

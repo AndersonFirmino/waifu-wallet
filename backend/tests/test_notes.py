@@ -26,7 +26,9 @@ def test_list_ordered_by_date_desc(client: TestClient) -> None:
 
 def test_update(client: TestClient) -> None:
     created = client.post("/api/v1/notes/", json=_PAYLOAD).json()
-    res = client.patch(f"/api/v1/notes/{created['id']}", json={"content": "Updated content"})
+    res = client.patch(
+        f"/api/v1/notes/{created['id']}", json={"content": "Updated content"}
+    )
     assert res.status_code == 200
     assert res.json()["content"] == "Updated content"
 

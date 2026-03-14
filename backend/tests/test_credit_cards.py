@@ -17,7 +17,11 @@ _CARD: dict[str, object] = {
 }
 
 _HISTORY: dict[str, object] = {"month": "2026-03", "amount": 800.0, "status": "open"}
-_ITEM: dict[str, object] = {"description": "Netflix", "amount": 45.9, "date": "2026-03-01"}
+_ITEM: dict[str, object] = {
+    "description": "Netflix",
+    "amount": 45.9,
+    "date": "2026-03-01",
+}
 
 
 def test_list_empty(client: TestClient) -> None:
@@ -40,7 +44,9 @@ def test_list_returns_created(client: TestClient) -> None:
 
 def test_update(client: TestClient) -> None:
     created = client.post("/api/v1/credit-cards/", json=_CARD).json()
-    res = client.put(f"/api/v1/credit-cards/{created['id']}", json={**_CARD, "used": 3000.0})
+    res = client.put(
+        f"/api/v1/credit-cards/{created['id']}", json={**_CARD, "used": 3000.0}
+    )
     assert res.status_code == 200
     assert res.json()["used"] == 3000.0
 
@@ -61,6 +67,7 @@ def test_delete_not_found(client: TestClient) -> None:
 
 # ─── Bill history ─────────────────────────────────────────────────────────────
 
+
 def test_add_history(client: TestClient) -> None:
     card = client.post("/api/v1/credit-cards/", json=_CARD).json()
     res = client.post(f"/api/v1/credit-cards/{card['id']}/history", json=_HISTORY)
@@ -71,23 +78,41 @@ def test_add_history(client: TestClient) -> None:
 
 
 def test_add_history_card_not_found(client: TestClient) -> None:
-    assert client.post("/api/v1/credit-cards/999/history", json=_HISTORY).status_code == 404
+    assert (
+        client.post("/api/v1/credit-cards/999/history", json=_HISTORY).status_code
+        == 404
+    )
 
 
 def test_delete_history(client: TestClient) -> None:
     card = client.post("/api/v1/credit-cards/", json=_CARD).json()
-    hist = client.post(f"/api/v1/credit-cards/{card['id']}/history", json=_HISTORY).json()
-    assert client.delete(f"/api/v1/credit-cards/{card['id']}/history/{hist['id']}").status_code == 204
+    hist = client.post(
+        f"/api/v1/credit-cards/{card['id']}/history", json=_HISTORY
+    ).json()
+    assert (
+        client.delete(
+            f"/api/v1/credit-cards/{card['id']}/history/{hist['id']}"
+        ).status_code
+        == 204
+    )
 
 
 def test_delete_history_wrong_card(client: TestClient) -> None:
     card1 = client.post("/api/v1/credit-cards/", json=_CARD).json()
     card2 = client.post("/api/v1/credit-cards/", json=_CARD).json()
-    hist = client.post(f"/api/v1/credit-cards/{card1['id']}/history", json=_HISTORY).json()
-    assert client.delete(f"/api/v1/credit-cards/{card2['id']}/history/{hist['id']}").status_code == 404
+    hist = client.post(
+        f"/api/v1/credit-cards/{card1['id']}/history", json=_HISTORY
+    ).json()
+    assert (
+        client.delete(
+            f"/api/v1/credit-cards/{card2['id']}/history/{hist['id']}"
+        ).status_code
+        == 404
+    )
 
 
 # ─── Bill items ───────────────────────────────────────────────────────────────
+
 
 def test_add_item(client: TestClient) -> None:
     card = client.post("/api/v1/credit-cards/", json=_CARD).json()
@@ -105,11 +130,21 @@ def test_add_item_card_not_found(client: TestClient) -> None:
 def test_delete_item(client: TestClient) -> None:
     card = client.post("/api/v1/credit-cards/", json=_CARD).json()
     item = client.post(f"/api/v1/credit-cards/{card['id']}/items", json=_ITEM).json()
-    assert client.delete(f"/api/v1/credit-cards/{card['id']}/items/{item['id']}").status_code == 204
+    assert (
+        client.delete(
+            f"/api/v1/credit-cards/{card['id']}/items/{item['id']}"
+        ).status_code
+        == 204
+    )
 
 
 def test_delete_item_wrong_card(client: TestClient) -> None:
     card1 = client.post("/api/v1/credit-cards/", json=_CARD).json()
     card2 = client.post("/api/v1/credit-cards/", json=_CARD).json()
     item = client.post(f"/api/v1/credit-cards/{card1['id']}/items", json=_ITEM).json()
-    assert client.delete(f"/api/v1/credit-cards/{card2['id']}/items/{item['id']}").status_code == 404
+    assert (
+        client.delete(
+            f"/api/v1/credit-cards/{card2['id']}/items/{item['id']}"
+        ).status_code
+        == 404
+    )

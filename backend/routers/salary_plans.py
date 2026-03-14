@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -8,12 +8,18 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import SalaryPlan
-from schemas import SalaryPlanCreate, SalaryPlanOut, SalaryScheduleMonth, SalarySchedulePayment
+from schemas import (
+    SalaryPlanCreate,
+    SalaryPlanOut,
+    SalaryScheduleMonth,
+    SalarySchedulePayment,
+)
 
 router = APIRouter(prefix="/salary-plans", tags=["salary-plans"])
 
 
 # ─── CRUD ─────────────────────────────────────────────────────────────────────
+
 
 @router.get("/", response_model=list[SalaryPlanOut])
 def list_salary_plans(db: Session = Depends(get_db)) -> list[SalaryPlan]:
@@ -21,7 +27,9 @@ def list_salary_plans(db: Session = Depends(get_db)) -> list[SalaryPlan]:
 
 
 @router.post("/", response_model=SalaryPlanOut, status_code=201)
-def create_salary_plan(body: SalaryPlanCreate, db: Session = Depends(get_db)) -> SalaryPlan:
+def create_salary_plan(
+    body: SalaryPlanCreate, db: Session = Depends(get_db)
+) -> SalaryPlan:
     plan = SalaryPlan(**body.model_dump())
     db.add(plan)
     db.commit()
@@ -56,6 +64,7 @@ def delete_salary_plan(plan_id: int, db: Session = Depends(get_db)) -> None:
 
 # ─── Schedule projection ──────────────────────────────────────────────────────
 
+
 def _add_months(d: date, months: int) -> date:
     """Advance a date by N calendar months, clamping to end-of-month."""
     month = d.month - 1 + months
@@ -63,6 +72,7 @@ def _add_months(d: date, months: int) -> date:
     month = month % 12 + 1
     # Clamp to valid day in the resulting month
     import calendar
+
     last_day = calendar.monthrange(year, month)[1]
     day = min(d.day, last_day)
     return date(year, month, day)
@@ -102,7 +112,10 @@ def get_salary_schedule(
 
         # Apply increment if this month >= next_increment month and cap not reached
         next_inc_month_start = date(next_increment.year, next_increment.month, 1)
-        if cursor_month_start >= next_inc_month_start and current_salary < target_salary:
+        if (
+            cursor_month_start >= next_inc_month_start
+            and current_salary < target_salary
+        ):
             current_salary = min(current_salary + increment, target_salary)
             next_increment = _add_months(next_increment, interval)
 
@@ -110,7 +123,9 @@ def get_salary_schedule(
         # If split_start_date is set, the split only takes effect from that month onward.
         split_active = plan.split_enabled
         if split_active and plan.split_start_date is not None:
-            split_start_month = date(plan.split_start_date.year, plan.split_start_date.month, 1)
+            split_start_month = date(
+                plan.split_start_date.year, plan.split_start_date.month, 1
+            )
             split_active = cursor_month_start >= split_start_month
 
         # Build payments
@@ -118,28 +133,36 @@ def get_salary_schedule(
         if split_active:
             first_amount = round(current_salary * plan.split_first_pct / 100, 2)
             second_amount = round(current_salary * plan.split_second_pct / 100, 2)
-            payments.append(SalarySchedulePayment(
-                day=plan.split_first_day,
-                amount=first_amount,
-                label=f"{plan.employer} ({plan.split_first_pct}%)",
-            ))
-            payments.append(SalarySchedulePayment(
-                day=plan.split_second_day,
-                amount=second_amount,
-                label=f"{plan.employer} ({plan.split_second_pct}%)",
-            ))
+            payments.append(
+                SalarySchedulePayment(
+                    day=plan.split_first_day,
+                    amount=first_amount,
+                    label=f"{plan.employer} ({plan.split_first_pct}%)",
+                )
+            )
+            payments.append(
+                SalarySchedulePayment(
+                    day=plan.split_second_day,
+                    amount=second_amount,
+                    label=f"{plan.employer} ({plan.split_second_pct}%)",
+                )
+            )
         else:
-            payments.append(SalarySchedulePayment(
-                day=plan.split_first_day,
-                amount=round(current_salary, 2),
-                label=plan.employer,
-            ))
+            payments.append(
+                SalarySchedulePayment(
+                    day=plan.split_first_day,
+                    amount=round(current_salary, 2),
+                    label=plan.employer,
+                )
+            )
 
-        schedule.append(SalaryScheduleMonth(
-            month=_month_label(cursor),
-            salary=round(current_salary, 2),
-            payments=payments,
-        ))
+        schedule.append(
+            SalaryScheduleMonth(
+                month=_month_label(cursor),
+                salary=round(current_salary, 2),
+                payments=payments,
+            )
+        )
 
         cursor = _add_months(cursor, 1)
 

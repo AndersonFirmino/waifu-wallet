@@ -23,6 +23,7 @@ router = APIRouter(prefix="/gacha", tags=["gacha"])
 
 # ─── Stash (singleton) ───────────────────────────────────────────────────────
 
+
 def _get_or_create_stash(db: Session) -> GachaStash:
     stash = db.scalars(select(GachaStash)).first()
     if stash is None:
@@ -50,10 +51,15 @@ def update_stash(body: GachaStashUpdate, db: Session = Depends(get_db)) -> Gacha
 
 # ─── Multi-game stash ────────────────────────────────────────────────────────
 
+
 def _get_or_create_game_stash(db: Session, game: str) -> GachaStashMulti:
-    stash = db.scalars(select(GachaStashMulti).where(GachaStashMulti.game == game)).first()
+    stash = db.scalars(
+        select(GachaStashMulti).where(GachaStashMulti.game == game)
+    ).first()
     if stash is None:
-        stash = GachaStashMulti(game=game, premium_currency=0, passes=0, double_gems_available=True)
+        stash = GachaStashMulti(
+            game=game, premium_currency=0, passes=0, double_gems_available=True
+        )
         db.add(stash)
         db.commit()
         db.refresh(stash)
@@ -62,7 +68,9 @@ def _get_or_create_game_stash(db: Session, game: str) -> GachaStashMulti:
 
 @router.get("/stashes", response_model=list[GachaStashMultiOut])
 def list_stashes(db: Session = Depends(get_db)) -> list[GachaStashMulti]:
-    return list(db.scalars(select(GachaStashMulti).order_by(GachaStashMulti.game)).all())
+    return list(
+        db.scalars(select(GachaStashMulti).order_by(GachaStashMulti.game)).all()
+    )
 
 
 @router.get("/stash/game", response_model=GachaStashMultiOut)
@@ -71,7 +79,9 @@ def get_game_stash(game: str, db: Session = Depends(get_db)) -> GachaStashMulti:
 
 
 @router.patch("/stash/game", response_model=GachaStashMultiOut)
-def update_game_stash(game: str, body: GachaStashMultiUpdate, db: Session = Depends(get_db)) -> GachaStashMulti:
+def update_game_stash(
+    game: str, body: GachaStashMultiUpdate, db: Session = Depends(get_db)
+) -> GachaStashMulti:
     stash = _get_or_create_game_stash(db, game)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(stash, field, value)
@@ -82,6 +92,7 @@ def update_game_stash(game: str, body: GachaStashMultiUpdate, db: Session = Depe
 
 # ─── Banners ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/banners", response_model=list[GachaBannerOut])
 def list_banners(db: Session = Depends(get_db)) -> list[GachaBanner]:
     return list(
@@ -89,12 +100,16 @@ def list_banners(db: Session = Depends(get_db)) -> list[GachaBanner]:
             select(GachaBanner)
             .options(joinedload(GachaBanner.images))
             .order_by(GachaBanner.priority)
-        ).unique().all()
+        )
+        .unique()
+        .all()
     )
 
 
 @router.post("/banners", response_model=GachaBannerOut, status_code=201)
-def create_banner(body: GachaBannerCreate, db: Session = Depends(get_db)) -> GachaBanner:
+def create_banner(
+    body: GachaBannerCreate, db: Session = Depends(get_db)
+) -> GachaBanner:
     banner = GachaBanner(**body.model_dump())
     db.add(banner)
     db.commit()
@@ -158,7 +173,9 @@ def delete_banner(banner_id: int, db: Session = Depends(get_db)) -> None:
     db.commit()
 
 
-@router.post("/banners/{banner_id}/images", response_model=GachaBannerImageOut, status_code=201)
+@router.post(
+    "/banners/{banner_id}/images", response_model=GachaBannerImageOut, status_code=201
+)
 def add_banner_image(
     banner_id: int,
     body: GachaBannerImageCreate,

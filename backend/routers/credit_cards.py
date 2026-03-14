@@ -65,6 +65,7 @@ def delete_credit_card(card_id: int, db: Session = Depends(get_db)) -> None:
 
 # ─── Bill history ─────────────────────────────────────────────────────────────
 
+
 @router.post("/{card_id}/history", response_model=CardBillHistoryOut, status_code=201)
 def add_history(
     card_id: int,
@@ -94,6 +95,7 @@ def delete_history(
 
 
 # ─── Bill items ───────────────────────────────────────────────────────────────
+
 
 @router.post("/{card_id}/items", response_model=CardBillItemOut, status_code=201)
 def add_item(
@@ -125,7 +127,10 @@ def delete_item(
 
 # ─── Subscriptions ────────────────────────────────────────────────────────────
 
-@router.post("/{card_id}/subscriptions", response_model=CardSubscriptionOut, status_code=201)
+
+@router.post(
+    "/{card_id}/subscriptions", response_model=CardSubscriptionOut, status_code=201
+)
 def add_subscription(
     card_id: int,
     body: CardSubscriptionCreate,

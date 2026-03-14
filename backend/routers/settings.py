@@ -27,7 +27,9 @@ def get_settings(db: Session = Depends(get_db)) -> AppSettings:
 
 
 @router.patch("/", response_model=AppSettingsOut)
-def update_settings(body: AppSettingsUpdate, db: Session = Depends(get_db)) -> AppSettings:
+def update_settings(
+    body: AppSettingsUpdate, db: Session = Depends(get_db)
+) -> AppSettings:
     settings = _get_or_create_settings(db)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(settings, field, value)

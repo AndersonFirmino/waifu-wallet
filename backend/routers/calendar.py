@@ -41,7 +41,9 @@ def _build_holiday_set(year: int, holidays_raw: list[dict[str, str]]) -> set[dat
     return result
 
 
-def _next_business_day(year: int, month: int, day: int, holiday_dates: set[date]) -> int:
+def _next_business_day(
+    year: int, month: int, day: int, holiday_dates: set[date]
+) -> int:
     """If the given day is a weekend or holiday, return the next business day's day number.
 
     Returns -1 if the shifted date falls into the next month (caller should skip the event).
@@ -92,7 +94,11 @@ def get_calendar_events(
     ).all()
     for tx in txs:
         day = int(tx.date.split("-")[2])
-        events.append(CalendarEventOut(day=day, type=tx.type, description=tx.description, amount=tx.amount))
+        events.append(
+            CalendarEventOut(
+                day=day, type=tx.type, description=tx.description, amount=tx.amount
+            )
+        )
 
     # Debt due dates in the month — shift if holiday/weekend
     debts = db.scalars(select(Debt).where(Debt.due_date.like(f"{prefix}%"))).all()
@@ -104,12 +110,17 @@ def get_calendar_events(
         description = debt.name
         if shifted_day != original_day:
             description = f"{debt.name} (adiado de {original_day})"
-        events.append(CalendarEventOut(day=shifted_day, type="installment", description=description, amount=debt.remaining))
+        events.append(
+            CalendarEventOut(
+                day=shifted_day,
+                type="installment",
+                description=description,
+                amount=debt.remaining,
+            )
+        )
 
     # Loan next payments in the month — shift if holiday/weekend
-    loans = db.scalars(
-        select(Loan).where(Loan.next_payment.like(f"{prefix}%"))
-    ).all()
+    loans = db.scalars(select(Loan).where(Loan.next_payment.like(f"{prefix}%"))).all()
     for loan in loans:
         original_day = int(loan.next_payment.split("-")[2])
         shifted_day = _next_business_day(year, month, original_day, holiday_dates)
@@ -118,7 +129,14 @@ def get_calendar_events(
         description = loan.name
         if shifted_day != original_day:
             description = f"{loan.name} (adiado de {original_day})"
-        events.append(CalendarEventOut(day=shifted_day, type="installment", description=description, amount=loan.installment))
+        events.append(
+            CalendarEventOut(
+                day=shifted_day,
+                type="installment",
+                description=description,
+                amount=loan.installment,
+            )
+        )
 
     # Credit card bill due dates (recurring monthly) — shift if holiday/weekend
     cards = db.scalars(select(CreditCard)).all()
@@ -186,7 +204,9 @@ def get_calendar_events(
         else:
             # First portion
             original_first = plan.split_first_day
-            shifted_first = _next_business_day(year, month, original_first, holiday_dates)
+            shifted_first = _next_business_day(
+                year, month, original_first, holiday_dates
+            )
             if shifted_first != -1:
                 description_first = f"Salário 1ª parte — {plan.employer}"
                 if shifted_first != original_first:
@@ -201,7 +221,9 @@ def get_calendar_events(
                 )
             # Second portion
             original_second = plan.split_second_day
-            shifted_second = _next_business_day(year, month, original_second, holiday_dates)
+            shifted_second = _next_business_day(
+                year, month, original_second, holiday_dates
+            )
             if shifted_second != -1:
                 description_second = f"Salário 2ª parte — {plan.employer}"
                 if shifted_second != original_second:

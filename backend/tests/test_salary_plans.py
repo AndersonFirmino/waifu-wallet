@@ -133,8 +133,8 @@ def test_schedule_with_increments(client: TestClient) -> None:
     assert len(data) == 6
 
     salaries = [entry["salary"] for entry in data]
-    assert salaries[0] == 8000.0   # month 1: increment applied
-    assert salaries[1] == 8000.0   # month 2: no increment yet
+    assert salaries[0] == 8000.0  # month 1: increment applied
+    assert salaries[1] == 8000.0  # month 2: no increment yet
     assert salaries[2] == 10000.0  # month 3: increment applied
     assert salaries[3] == 10000.0  # month 4: no increment yet
     assert salaries[4] == 12000.0  # month 5: increment applied, hits target
@@ -184,7 +184,7 @@ def test_schedule_caps_at_target(client: TestClient) -> None:
         **_PAYLOAD,
         "current_salary": 9500.0,
         "target_salary": 10000.0,
-        "increment": 1000.0,        # would push to 10500, must clamp to 10000
+        "increment": 1000.0,  # would push to 10500, must clamp to 10000
         "increment_interval_months": 1,
         "next_increment_date": "2000-01-01",
     }

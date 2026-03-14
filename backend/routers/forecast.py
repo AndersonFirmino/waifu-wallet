@@ -12,8 +12,20 @@ from schemas import ForecastPointOut
 
 router = APIRouter(prefix="/forecast", tags=["forecast"])
 
-_MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+_MONTH_LABELS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+]
 
 _PERIOD_MAP: dict[str, int] = {"1m": 1, "3m": 3, "6m": 6}
 
@@ -51,11 +63,13 @@ def get_forecast(
         m = (today.month - 1 + i) % 12 + 1
         y = today.year + (today.month - 1 + i) // 12
         label = f"{_MONTH_LABELS[m - 1]}/{str(y)[2:]}"
-        points.append(ForecastPointOut(
-            month=label,
-            optimistic=round(avg_income * 1.10 - avg_expense * 0.90, 2),
-            base=round(avg_income - avg_expense, 2),
-            pessimistic=round(avg_income * 0.90 - avg_expense * 1.10, 2),
-        ))
+        points.append(
+            ForecastPointOut(
+                month=label,
+                optimistic=round(avg_income * 1.10 - avg_expense * 0.90, 2),
+                base=round(avg_income - avg_expense, 2),
+                pessimistic=round(avg_income * 0.90 - avg_expense * 1.10, 2),
+            )
+        )
 
     return points

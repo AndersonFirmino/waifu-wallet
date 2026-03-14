@@ -12,12 +12,12 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    type: Mapped[str] = mapped_column(String(10))       # income | expense
+    type: Mapped[str] = mapped_column(String(10))  # income | expense
     description: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(100))
     emoji: Mapped[str] = mapped_column(String(10))
     amount: Mapped[float] = mapped_column(Float)
-    date: Mapped[str] = mapped_column(String(10))       # YYYY-MM-DD
+    date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
 
 
 class FixedExpense(Base):
@@ -26,8 +26,8 @@ class FixedExpense(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200))
     amount: Mapped[float] = mapped_column(Float)
-    type: Mapped[str] = mapped_column(String(20))       # fixed | variable
-    confidence: Mapped[int] = mapped_column(Integer)    # 0-100 %
+    type: Mapped[str] = mapped_column(String(20))  # fixed | variable
+    confidence: Mapped[int] = mapped_column(Integer)  # 0-100 %
     estimate: Mapped[float] = mapped_column(Float)
 
 
@@ -38,8 +38,8 @@ class Debt(Base):
     name: Mapped[str] = mapped_column(String(200))
     total: Mapped[float] = mapped_column(Float)
     remaining: Mapped[float] = mapped_column(Float)
-    rate: Mapped[float] = mapped_column(Float)          # % per month
-    due_date: Mapped[str] = mapped_column(String(10))   # YYYY-MM-DD
+    rate: Mapped[float] = mapped_column(Float)  # % per month
+    due_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
     installments: Mapped[str] = mapped_column(String(50))  # e.g. "3/12"
     urgent: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -62,7 +62,7 @@ class CreditCard(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200))
-    brand: Mapped[str] = mapped_column(String(20))      # Mastercard | Visa | Elo | Amex
+    brand: Mapped[str] = mapped_column(String(20))  # Mastercard | Visa | Elo | Amex
     last_four: Mapped[str] = mapped_column(String(4))
     limit: Mapped[float] = mapped_column(Float)
     used: Mapped[float] = mapped_column(Float)
@@ -71,7 +71,9 @@ class CreditCard(Base):
     bill: Mapped[float] = mapped_column(Float)
     closing_day: Mapped[int] = mapped_column(Integer)
     due_day: Mapped[int] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20))     # open | closed | paid | pending | blocked
+    status: Mapped[str] = mapped_column(
+        String(20)
+    )  # open | closed | paid | pending | blocked
 
     history: Mapped[list[CardBillHistory]] = relationship(
         back_populates="card", cascade="all, delete-orphan"
@@ -89,7 +91,7 @@ class CardBillHistory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     card_id: Mapped[int] = mapped_column(ForeignKey("credit_cards.id"))
-    month: Mapped[str] = mapped_column(String(7))       # YYYY-MM
+    month: Mapped[str] = mapped_column(String(7))  # YYYY-MM
     amount: Mapped[float] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(20))
 
@@ -126,7 +128,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    date: Mapped[str] = mapped_column(String(10))       # YYYY-MM-DD
+    date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
     content: Mapped[str] = mapped_column(String(2000))
 
 
@@ -147,18 +149,30 @@ class GachaBanner(Base):
     banner: Mapped[str] = mapped_column(String(200))
     cost: Mapped[float] = mapped_column(Float)
     start_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
-    end_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
-    priority: Mapped[int] = mapped_column(Integer)       # 1-5
+    end_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    priority: Mapped[int] = mapped_column(Integer)  # 1-5
     pulls: Mapped[int] = mapped_column(Integer, default=0)
     estimated_pulls: Mapped[int] = mapped_column(Integer, default=0)
-    char_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)    # E0-E6
-    weapon_target: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)  # S1-S5
-    char_current: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
-    weapon_current: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
-    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    char_target: Mapped[str | None] = mapped_column(
+        String(5), nullable=True, default=None
+    )  # E0-E6
+    weapon_target: Mapped[str | None] = mapped_column(
+        String(5), nullable=True, default=None
+    )  # S1-S5
+    char_current: Mapped[str | None] = mapped_column(
+        String(5), nullable=True, default=None
+    )
+    weapon_current: Mapped[str | None] = mapped_column(
+        String(5), nullable=True, default=None
+    )
+    image_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, default=None
+    )
 
     images: Mapped[list[GachaBannerImage]] = relationship(
-        back_populates="banner", cascade="all, delete-orphan", order_by="GachaBannerImage.sort_order"
+        back_populates="banner",
+        cascade="all, delete-orphan",
+        order_by="GachaBannerImage.sort_order",
     )
 
 
@@ -194,9 +208,11 @@ class SalaryPlan(Base):
     target_salary: Mapped[float] = mapped_column(Float)
     increment: Mapped[float] = mapped_column(Float)
     increment_interval_months: Mapped[int] = mapped_column(Integer)
-    next_increment_date: Mapped[str] = mapped_column(String(10))    # YYYY-MM-DD
+    next_increment_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
     split_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    split_start_date: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
+    split_start_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, default=None
+    )
     split_first_pct: Mapped[int] = mapped_column(Integer, default=100)
     split_first_day: Mapped[int] = mapped_column(Integer, default=5)
     split_second_pct: Mapped[int] = mapped_column(Integer, default=0)
