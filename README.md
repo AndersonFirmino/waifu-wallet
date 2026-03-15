@@ -10,7 +10,7 @@ Multi-game stash tracking, pull calculators, constellation and refinement target
 
 ---
 
-## Easy Setup (Windows, no dev knowledge needed)
+## Easy Setup
 
 1. **Download** — click the green **Code** button on GitHub → **Download ZIP**
 2. **Extract** — right-click the ZIP → **Extract All**
