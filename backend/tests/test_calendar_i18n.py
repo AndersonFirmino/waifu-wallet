@@ -141,7 +141,9 @@ def test_calendar_events_transaction_no_key(client: TestClient) -> None:
 def test_holiday_has_description_key(client: TestClient) -> None:
     """Holiday events should have description_key and pass name as param."""
     calendar_router._holidays_cache.clear()
-    mock_holidays = [{"date": "2026-03-08", "name": "Dia da Mulher", "type": "national"}]
+    mock_holidays = [
+        {"date": "2026-03-08", "name": "Dia da Mulher", "type": "national"}
+    ]
 
     with patch(_PATCH_TARGET, return_value=mock_holidays):
         response = client.get("/api/v1/calendar/2026/3")
@@ -164,7 +166,12 @@ def test_debt_normal_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    installments = [e for e in events if e.get("type") == "installment" and "Cartao Parcelado" in e.get("description", "")]
+    installments = [
+        e
+        for e in events
+        if e.get("type") == "installment"
+        and "Cartao Parcelado" in e.get("description", "")
+    ]
     assert len(installments) == 1
     assert installments[0]["description_key"] == "calendar_event.debt"
     assert installments[0]["description_params"] == {"name": "Cartao Parcelado"}
@@ -179,11 +186,19 @@ def test_debt_postponed_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    installments = [e for e in events if e.get("type") == "installment" and "Cartao Atrasado" in e.get("description", "")]
+    installments = [
+        e
+        for e in events
+        if e.get("type") == "installment"
+        and "Cartao Atrasado" in e.get("description", "")
+    ]
     assert len(installments) == 1
     assert installments[0]["day"] == 16
     assert installments[0]["description_key"] == "calendar_event.debt_postponed"
-    assert installments[0]["description_params"] == {"name": "Cartao Atrasado", "original_day": "15"}
+    assert installments[0]["description_params"] == {
+        "name": "Cartao Atrasado",
+        "original_day": "15",
+    }
 
 
 def test_loan_normal_has_description_key(client: TestClient) -> None:
@@ -195,7 +210,13 @@ def test_loan_normal_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    installments = [e for e in events if e.get("type") == "installment" and "Emprestimo" in e.get("description", "") and "Atrasado" not in e.get("description", "")]
+    installments = [
+        e
+        for e in events
+        if e.get("type") == "installment"
+        and "Emprestimo" in e.get("description", "")
+        and "Atrasado" not in e.get("description", "")
+    ]
     assert len(installments) == 1
     assert installments[0]["description_key"] == "calendar_event.loan"
     assert installments[0]["description_params"] == {"name": "Emprestimo"}
@@ -210,11 +231,19 @@ def test_loan_postponed_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    installments = [e for e in events if e.get("type") == "installment" and "Emprestimo Atrasado" in e.get("description", "")]
+    installments = [
+        e
+        for e in events
+        if e.get("type") == "installment"
+        and "Emprestimo Atrasado" in e.get("description", "")
+    ]
     assert len(installments) == 1
     assert installments[0]["day"] == 16
     assert installments[0]["description_key"] == "calendar_event.loan_postponed"
-    assert installments[0]["description_params"] == {"name": "Emprestimo Atrasado", "original_day": "15"}
+    assert installments[0]["description_params"] == {
+        "name": "Emprestimo Atrasado",
+        "original_day": "15",
+    }
 
 
 def test_card_bill_normal_has_description_key(client: TestClient) -> None:
@@ -227,7 +256,11 @@ def test_card_bill_normal_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    bill_events = [e for e in events if "Fatura" in e.get("description", "") and "Nubank" in e.get("description", "")]
+    bill_events = [
+        e
+        for e in events
+        if "Fatura" in e.get("description", "") and "Nubank" in e.get("description", "")
+    ]
     assert len(bill_events) == 1
     assert bill_events[0]["description_key"] == "calendar_event.card_bill"
     assert bill_events[0]["description_params"] == {"name": "Nubank"}
@@ -243,11 +276,18 @@ def test_card_bill_postponed_has_description_key(client: TestClient) -> None:
         response = client.get("/api/v1/calendar/2026/3")
 
     events = response.json()
-    bill_events = [e for e in events if "Fatura" in e.get("description", "") and "Nubank" in e.get("description", "")]
+    bill_events = [
+        e
+        for e in events
+        if "Fatura" in e.get("description", "") and "Nubank" in e.get("description", "")
+    ]
     assert len(bill_events) == 1
     assert bill_events[0]["day"] == 16
     assert bill_events[0]["description_key"] == "calendar_event.card_bill_postponed"
-    assert bill_events[0]["description_params"] == {"name": "Nubank", "original_day": "15"}
+    assert bill_events[0]["description_params"] == {
+        "name": "Nubank",
+        "original_day": "15",
+    }
 
 
 def test_subscription_normal_has_description_key(client: TestClient) -> None:
@@ -289,7 +329,11 @@ def test_subscription_postponed_has_description_key(client: TestClient) -> None:
     assert len(sub_events) == 1
     assert sub_events[0]["day"] == 16
     assert sub_events[0]["description_key"] == "calendar_event.subscription_postponed"
-    assert sub_events[0]["description_params"] == {"name": "Spotify", "card": "Nubank", "original_day": "15"}
+    assert sub_events[0]["description_params"] == {
+        "name": "Spotify",
+        "card": "Nubank",
+        "original_day": "15",
+    }
 
 
 def test_salary_postponed_has_description_key(client: TestClient) -> None:
@@ -307,7 +351,10 @@ def test_salary_postponed_has_description_key(client: TestClient) -> None:
     shifted = [e for e in salary_events if e.get("day") == 16]
     assert len(shifted) == 1
     assert shifted[0]["description_key"] == "calendar_event.salary_postponed"
-    assert shifted[0]["description_params"] == {"employer": "Acme Corp", "original_day": "15"}
+    assert shifted[0]["description_params"] == {
+        "employer": "Acme Corp",
+        "original_day": "15",
+    }
 
 
 def test_salary_split_has_description_keys(client: TestClient) -> None:
@@ -326,8 +373,16 @@ def test_salary_split_has_description_keys(client: TestClient) -> None:
     assert "calendar_event.salary_first" in keys
     assert "calendar_event.salary_second" in keys
 
-    first = next(e for e in salary_events if e["description_key"] == "calendar_event.salary_first")
-    second = next(e for e in salary_events if e["description_key"] == "calendar_event.salary_second")
+    first = next(
+        e
+        for e in salary_events
+        if e["description_key"] == "calendar_event.salary_first"
+    )
+    second = next(
+        e
+        for e in salary_events
+        if e["description_key"] == "calendar_event.salary_second"
+    )
 
     assert first["description_params"] == {"employer": "Split Corp"}
     assert second["description_params"] == {"employer": "Split Corp"}

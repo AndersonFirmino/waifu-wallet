@@ -90,10 +90,14 @@ def _run_migrations() -> None:
                     conn.commit()
 
         # Add language / currency to app_settings (i18n support)
-        for col, col_type, default in (
+        # Column names and types are static constants (not user input),
+        # so f-string is safe here. SQLite ALTER TABLE does not support
+        # bind parameters for DEFAULT values.
+        _I18N_COLUMNS: tuple[tuple[str, str, str], ...] = (
             ("language", "VARCHAR(10)", "'pt-BR'"),
             ("currency", "VARCHAR(3)", "'BRL'"),
-        ):
+        )
+        for col, col_type, default in _I18N_COLUMNS:
             try:
                 conn.execute(
                     text(

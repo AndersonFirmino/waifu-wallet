@@ -41,8 +41,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
             setCurrency(data.currency)
           }
         }
-      } catch {
-        // silently fall back to defaults
+      } catch (err: unknown) {
+        console.error('Failed to fetch locale settings:', err)
       }
     }
     void fetchSettings()
@@ -50,25 +50,37 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const changeLanguage = useCallback(
     (lang: string): void => {
+      const prev = language
       setLanguage(lang)
       void i18n.changeLanguage(lang)
-      void fetch('/api/v1/settings/', {
+      fetch('/api/v1/settings/', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: lang }),
+      }).catch((err: unknown) => {
+        console.error('Failed to persist language:', err)
+        setLanguage(prev)
+        void i18n.changeLanguage(prev)
       })
     },
-    [i18n],
+    [i18n, language],
   )
 
-  const changeCurrency = useCallback((cur: string): void => {
-    setCurrency(cur)
-    void fetch('/api/v1/settings/', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currency: cur }),
-    })
-  }, [])
+  const changeCurrency = useCallback(
+    (cur: string): void => {
+      const prev = currency
+      setCurrency(cur)
+      fetch('/api/v1/settings/', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currency: cur }),
+      }).catch((err: unknown) => {
+        console.error('Failed to persist currency:', err)
+        setCurrency(prev)
+      })
+    },
+    [currency],
+  )
 
   return (
     <LocaleContext.Provider value={{ language, currency, changeLanguage, changeCurrency }}>
