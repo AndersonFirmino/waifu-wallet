@@ -107,6 +107,7 @@ const GAME_CHAR_LABELS: Record<string, Record<CharTarget, string>> = {
   'Genshin Impact': { E0: 'C0', E1: 'C1', E2: 'C2', E3: 'C3', E4: 'C4', E5: 'C5', E6: 'C6' },
   'Zenless Zone Zero': { E0: 'M0', E1: 'M1', E2: 'M2', E3: 'M3', E4: 'M4', E5: 'M5', E6: 'M6' },
   'Honkai Impact 3rd': { E0: 'S', E1: 'SS', E2: 'SSS', E3: 'SSS', E4: 'SSS', E5: 'SSS', E6: 'SSS' },
+  'Wuthering Waves': { E0: 'S0', E1: 'S1', E2: 'S2', E3: 'S3', E4: 'S4', E5: 'S5', E6: 'S6' },
 }
 
 const DEFAULT_CHAR_LABELS: Record<CharTarget, string> = {
@@ -119,6 +120,7 @@ const GAME_WEAPON_LABELS: Record<string, Record<WeaponTarget, string>> = {
   'Genshin Impact': { S1: 'R1', S2: 'R2', S3: 'R3', S4: 'R4', S5: 'R5' },
   'Zenless Zone Zero': { S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5' },
   'Honkai Impact 3rd': { S1: 'S1', S2: 'S2', S3: 'S3', S4: 'S4', S5: 'S5' },
+  'Wuthering Waves': { S1: 'R1', S2: 'R2', S3: 'R3', S4: 'R4', S5: 'R5' },
 }
 
 const DEFAULT_WEAPON_LABELS: Record<WeaponTarget, string> = {
@@ -167,6 +169,7 @@ function getCharGroupLabel(game: string): string {
   if (game === 'Honkai: Star Rail') return 'Eidolon'
   if (game === 'Zenless Zone Zero') return 'Mindscape'
   if (game === 'Honkai Impact 3rd') return 'Rank'
+  if (game === 'Wuthering Waves') return 'Sequence'
   return 'Personagem'
 }
 
@@ -175,6 +178,7 @@ function getWeaponGroupLabel(game: string): string {
   if (game === 'Honkai: Star Rail') return 'Cone de Luz'
   if (game === 'Zenless Zone Zero') return 'W-Engine'
   if (game === 'Honkai Impact 3rd') return 'Arma Signature'
+  if (game === 'Wuthering Waves') return 'Weapon (Refinement)'
   return 'Arma / LC'
 }
 
