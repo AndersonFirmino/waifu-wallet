@@ -4,6 +4,7 @@ import { useLocale } from '../hooks/useLocale'
 const LANGUAGES = [
   { code: 'pt-BR', name: 'Português (Brasil)' },
   { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
 ] as const
 
 const CURRENCIES = [
