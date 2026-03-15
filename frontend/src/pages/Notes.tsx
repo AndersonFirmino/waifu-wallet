@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Card from '../components/ui/Card'
@@ -6,6 +7,7 @@ import { formatMonth } from '../utils/date'
 import { type Note } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeNoteList, decodeNote } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,6 +22,9 @@ function todayString(): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Notes() {
+  const { t } = useTranslation()
+  const { language } = useLocale()
+
   const { data: serverNotes } = useFetch('/notes/', decodeNoteList)
   const [additions, setAdditions] = useState<Note[]>([])
   const [deletedIds, setDeletedIds] = useState<number[]>([])
@@ -186,13 +191,15 @@ export default function Notes() {
     })
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
 
+  const formattedMonth = formatMonth(year, month, language)
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 800 }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-            📝 Notas Financeiras
+            📝 {t('notes.title')}
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Registre pensamentos e observações sobre suas finanças
@@ -214,7 +221,7 @@ export default function Notes() {
               cursor: 'pointer',
             }}
           >
-            + Nova Nota
+            + {t('notes.new_note')}
           </button>
           <button
             onClick={prevMonth}
@@ -232,7 +239,7 @@ export default function Notes() {
             className="font-semibold text-sm"
             style={{ color: 'var(--color-text)', minWidth: 150, textAlign: 'center' }}
           >
-            {formatMonth(year, month)}
+            {formattedMonth}
           </span>
           <button
             onClick={nextMonth}
@@ -273,7 +280,7 @@ export default function Notes() {
             <textarea
               value={createContent}
               onChange={(e) => { setCreateContent(e.target.value) }}
-              placeholder="Conteúdo da nota (suporta Markdown)..."
+              placeholder={t('notes.placeholder')}
               rows={6}
               className="rounded-md px-3 py-2 text-sm resize-y"
               style={{
@@ -308,7 +315,7 @@ export default function Notes() {
                   cursor: 'pointer',
                 }}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => { void handleCreate() }}
@@ -322,7 +329,7 @@ export default function Notes() {
                   opacity: createLoading || !createContent.trim() ? 0.6 : 1,
                 }}
               >
-                {createLoading ? 'Salvando...' : 'Salvar'}
+                {createLoading ? t('transactions.saving') : t('common.save')}
               </button>
             </div>
           </div>
@@ -334,7 +341,7 @@ export default function Notes() {
         <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed var(--color-border)' }}>
           <p className="text-4xl mb-3">📭</p>
           <p className="font-medium" style={{ color: 'var(--color-muted)' }}>
-            Nenhuma nota em {formatMonth(year, month)}
+            {t('notes.no_notes', { month: formattedMonth })}
           </p>
           <p className="text-sm mt-1" style={{ color: 'var(--color-border)' }}>
             O conselheiro financeiro ainda não registrou nenhuma nota este mês
@@ -404,7 +411,7 @@ export default function Notes() {
                               cursor: 'pointer',
                             }}
                           >
-                            Cancelar
+                            {t('common.cancel')}
                           </button>
                           <button
                             onClick={() => { void handleEditSave(note.id) }}
@@ -418,7 +425,7 @@ export default function Notes() {
                               opacity: editLoading ? 0.6 : 1,
                             }}
                           >
-                            {editLoading ? 'Salvando...' : 'Salvar'}
+                            {editLoading ? t('transactions.saving') : t('common.save')}
                           </button>
                         </div>
                       </div>
@@ -454,7 +461,7 @@ export default function Notes() {
                               cursor: 'pointer',
                             }}
                           >
-                            Confirmar
+                            {t('common.confirm')}
                           </button>
                           <button
                             onClick={() => { setConfirmDeleteId(null) }}
@@ -466,13 +473,13 @@ export default function Notes() {
                               cursor: 'pointer',
                             }}
                           >
-                            Cancelar
+                            {t('common.cancel')}
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => { setConfirmDeleteId(note.id) }}
-                          title="Excluir"
+                          title={t('common.delete')}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
                           style={{
                             background: 'rgba(239,68,68,0.1)',

@@ -225,6 +225,8 @@ class AppSettings(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     manual_balance: Mapped[float] = mapped_column(Float, default=0.0)
+    language: Mapped[str] = mapped_column(String(10), default="pt-BR")
+    currency: Mapped[str] = mapped_column(String(3), default="BRL")
 
 
 class GachaStashMulti(Base):

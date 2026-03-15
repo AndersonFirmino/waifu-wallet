@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '../components/ui/Card'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import StatCard from '../components/ui/StatCard'
@@ -8,6 +9,7 @@ import Button from '../components/ui/Button'
 import ProgressBar from '../components/ui/ProgressBar'
 import { formatCurrency } from '../utils/currency'
 import { type CreditCard, type CardStatus, type CardBrand, type SubscriptionCurrency } from '../types'
+import { useLocale } from '../hooks/useLocale'
 
 const SUBSCRIPTION_CURRENCIES: SubscriptionCurrency[] = ['BRL', 'USD']
 
@@ -34,14 +36,6 @@ function parseCardStatus(val: string): CardStatus {
   const found = CARD_STATUSES.find((s) => s === val)
   if (found === undefined) throw new Error(`Invalid CardStatus: ${val}`)
   return found
-}
-
-const STATUS_LABELS: Record<CardStatus, string> = {
-  open: 'Aberta',
-  closed: 'Fechada',
-  paid: 'Paga',
-  pending: 'Pendente',
-  blocked: 'Bloqueado',
 }
 
 // ─── Form state ───────────────────────────────────────────────────────────────
@@ -99,6 +93,8 @@ interface CreditCardVisualProps {
 }
 
 function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const usedPct = Math.round((card.used / card.limit) * 100)
   const isBlocked = card.status === 'blocked'
 
@@ -153,12 +149,12 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
           </p>
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-xs text-white opacity-60 mb-1">Limite disponível</p>
-              <p className="text-white font-bold"><AnimatedNumber value={card.limit - card.used} formatter={formatCurrency} /></p>
+              <p className="text-xs text-white opacity-60 mb-1">{t('credit_cards.limit_available')}</p>
+              <p className="text-white font-bold"><AnimatedNumber value={card.limit - card.used} formatter={(v) => formatCurrency(v, currency, language)} /></p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-white opacity-60 mb-1">Limite total</p>
-              <p className="text-white font-semibold"><AnimatedNumber value={card.limit} formatter={formatCurrency} /></p>
+              <p className="text-xs text-white opacity-60 mb-1">{t('credit_cards.limit')}</p>
+              <p className="text-white font-semibold"><AnimatedNumber value={card.limit} formatter={(v) => formatCurrency(v, currency, language)} /></p>
             </div>
           </div>
         </div>
@@ -167,9 +163,9 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
       {/* Limit Bar */}
       <div className="px-1">
         <div className="flex justify-between text-xs mb-1">
-          <span style={{ color: 'var(--color-muted)' }}>Uso do limite</span>
+          <span style={{ color: 'var(--color-muted)' }}>{t('credit_cards.limit_usage')}</span>
           <span style={{ color: usedPct > 70 ? 'var(--color-red)' : 'var(--color-green)' }}>
-            <AnimatedNumber value={card.used} formatter={formatCurrency} /> ({usedPct}%)
+            <AnimatedNumber value={card.used} formatter={(v) => formatCurrency(v, currency, language)} /> ({usedPct}%)
           </span>
         </div>
         <ProgressBar value={card.used} max={card.limit} color="auto" showPercent={false} height={6} />
@@ -178,34 +174,34 @@ function CreditCardVisual({ card, selected, onSelect }: CreditCardVisualProps) {
   )
 }
 
-function statusBadge(status: CardStatus) {
+function statusBadge(status: CardStatus, t: (key: string) => string) {
   if (status === 'paid')
     return (
       <Badge color="green" size="xs">
-        Paga ✓
+        {t('credit_cards.status_paid')}
       </Badge>
     )
   if (status === 'closed')
     return (
       <Badge color="yellow" size="xs">
-        Fechada
+        {t('credit_cards.status_closed')}
       </Badge>
     )
   if (status === 'pending')
     return (
       <Badge color="orange" size="xs">
-        Pendente
+        {t('credit_cards.status_pending')}
       </Badge>
     )
   if (status === 'blocked')
     return (
       <Badge color="red" size="xs">
-        🔒 Bloqueado
+        {t('credit_cards.status_blocked')}
       </Badge>
     )
   return (
     <Badge color="blue" size="xs">
-      Aberta
+      {t('credit_cards.status_open_plain')}
     </Badge>
   )
 }
@@ -213,6 +209,17 @@ function statusBadge(status: CardStatus) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreditCards() {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
+
+  const STATUS_LABELS: Record<CardStatus, string> = {
+    open: t('credit_cards.status_open'),
+    closed: t('credit_cards.status_closed'),
+    paid: t('credit_cards.status_paid'),
+    pending: t('credit_cards.status_pending'),
+    blocked: t('credit_cards.status_blocked'),
+  }
+
   const { data: serverData } = useFetch('/credit-cards/', decodeCreditCardList)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
@@ -269,6 +276,8 @@ export default function CreditCards() {
   const totalSubsBRL = allActiveSubs.filter((s) => s.currency === 'BRL').reduce((sum, s) => sum + s.amount, 0)
   const totalSubsUSD = allActiveSubs.filter((s) => s.currency === 'USD').reduce((sum, s) => sum + s.amount, 0)
   const cardsWithSubs = cardList.filter((c) => c.subscriptions.some((s) => s.active))
+
+  const currencyFormatter = (v: number) => formatCurrency(v, currency, language)
 
   function openAddForm() {
     setEditingId(null)
@@ -422,13 +431,13 @@ export default function CreditCards() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-              Cartões de Crédito
+              {t('credit_cards.title')}
             </h1>
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Nenhum cartão cadastrado
+              {t('credit_cards.no_cards')}
             </p>
           </div>
-          <Button onClick={openAddForm}>+ Adicionar Cartão</Button>
+          <Button onClick={openAddForm}>{t('credit_cards.add_card')}</Button>
         </div>
       </div>
     )
@@ -439,7 +448,7 @@ export default function CreditCards() {
       {/* Header */}
       <div className="flex items-start justify-between mb-1">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-          Cartões de Crédito
+          {t('credit_cards.title')}
         </h1>
         <Button
           onClick={() => {
@@ -451,7 +460,7 @@ export default function CreditCards() {
           }}
           variant={showForm ? 'outline' : 'primary'}
         >
-          {showForm ? 'Cancelar' : '+ Adicionar Cartão'}
+          {showForm ? t('credit_cards.cancel_form') : t('credit_cards.add_card')}
         </Button>
       </div>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -463,7 +472,7 @@ export default function CreditCards() {
       {showForm && (
         <Card className="mb-6">
           <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            {editingId !== null ? 'Editar Cartão' : 'Novo Cartão'}
+            {editingId !== null ? t('credit_cards.edit_card') : t('credit_cards.new_card')}
           </h3>
           <CardForm
             form={form}
@@ -473,46 +482,47 @@ export default function CreditCards() {
             isEditing={editingId !== null}
             saving={saving}
             formError={formError}
+            statusLabels={STATUS_LABELS}
           />
         </Card>
       )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-5 gap-4 mb-6">
-        <StatCard icon="💳" label="Limite Total" value={formatCurrency(totalLimit)} numericValue={totalLimit} numericFormatter={formatCurrency} color="blue" />
+        <StatCard icon="💳" label={t('credit_cards.limit_total')} value={formatCurrency(totalLimit, currency, language)} numericValue={totalLimit} numericFormatter={currencyFormatter} color="blue" />
         <StatCard
           icon="🔥"
-          label="Total Usado"
-          value={formatCurrency(totalUsed)}
+          label={t('credit_cards.total_used')}
+          value={formatCurrency(totalUsed, currency, language)}
           numericValue={totalUsed}
-          numericFormatter={formatCurrency}
+          numericFormatter={currencyFormatter}
           sub={`${String(usedPct)}% do limite`}
           color="red"
         />
         <StatCard
           icon="✅"
-          label="Disponível"
-          value={formatCurrency(totalAvailable)}
+          label={t('credit_cards.available')}
+          value={formatCurrency(totalAvailable, currency, language)}
           numericValue={totalAvailable}
-          numericFormatter={formatCurrency}
+          numericFormatter={currencyFormatter}
           sub={`${String(100 - usedPct)}% livre`}
           color={totalAvailable > 0 ? 'green' : 'red'}
         />
         <StatCard
           icon="📄"
-          label="Faturas Pendentes"
-          value={formatCurrency(totalBills)}
+          label={t('credit_cards.pending_bills')}
+          value={formatCurrency(totalBills, currency, language)}
           numericValue={totalBills}
-          numericFormatter={formatCurrency}
+          numericFormatter={currencyFormatter}
           sub="a pagar este mês"
           color="orange"
         />
         <StatCard
           icon="🔄"
-          label="Assinaturas"
-          value={formatCurrency(totalSubsBRL)}
+          label={t('credit_cards.subscriptions_total')}
+          value={formatCurrency(totalSubsBRL, currency, language)}
           numericValue={totalSubsBRL}
-          numericFormatter={formatCurrency}
+          numericFormatter={currencyFormatter}
           sub={totalSubsUSD > 0 ? `+ US$ ${totalSubsUSD.toFixed(2)}/mês` : `${String(allActiveSubs.length)} ativas`}
           color="purple"
         />
@@ -522,7 +532,7 @@ export default function CreditCards() {
       {cardsWithSubs.length > 0 && (
         <Card className="mb-6">
           <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-            Assinaturas por Cartão
+            {t('credit_cards.subscriptions_per_card')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {cardsWithSubs.map((card) => {
@@ -558,7 +568,7 @@ export default function CreditCards() {
                     <div className="text-right">
                       {brlTotal > 0 && (
                         <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                          {formatCurrency(brlTotal)}
+                          {formatCurrency(brlTotal, currency, language)}
                         </span>
                       )}
                       {usdTotal > 0 && (
@@ -580,10 +590,12 @@ export default function CreditCards() {
             {/* Grand total row */}
             <div className="flex justify-between items-center px-3 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
               <span className="text-xs font-semibold" style={{ color: 'var(--color-muted)' }}>
-                Total amarrado em {cardsWithSubs.length} cartão{cardsWithSubs.length !== 1 ? 'ões' : ''}
+                {cardsWithSubs.length === 1
+                  ? t('credit_cards.total_tied', { count: cardsWithSubs.length })
+                  : t('credit_cards.total_tied_plural', { count: cardsWithSubs.length })}
               </span>
               <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                {formatCurrency(totalSubsBRL)}
+                {formatCurrency(totalSubsBRL, currency, language)}
                 {totalSubsUSD > 0 && (
                   <span className="ml-1" style={{ color: 'var(--color-muted)' }}>
                     + US$ {totalSubsUSD.toFixed(2)}
@@ -621,16 +633,16 @@ export default function CreditCards() {
                     {selected.name}
                   </h3>
                   <div className="flex items-center gap-3">
-                    {statusBadge(selected.status)}
+                    {statusBadge(selected.status, t)}
                     <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                      Fecha dia {selected.closing_day} · Vence dia {selected.due_day}
+                      {t('credit_cards.closing_due', { closing: selected.closing_day, due: selected.due_day })}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-right mr-2">
                     <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                      Fatura atual
+                      {t('credit_cards.current_bill')}
                     </p>
                     {editingBill ? (
                       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -660,7 +672,7 @@ export default function CreditCards() {
                         onClick={() => { setBillInput(selected.bill); setEditingBill(true) }}
                         title="Clique para editar a fatura"
                       >
-                        <AnimatedNumber value={selected.bill} formatter={formatCurrency} />
+                        <AnimatedNumber value={selected.bill} formatter={(v) => formatCurrency(v, currency, language)} />
                         <span style={{ fontSize: 10, color: 'var(--color-muted)', marginLeft: 4 }}>✏️</span>
                       </p>
                     )}
@@ -673,7 +685,7 @@ export default function CreditCards() {
                       openEditForm(selected)
                     }}
                   >
-                    Editar
+                    {t('credit_cards.edit')}
                   </Button>
                   {/* Delete button with confirmation */}
                   {confirmDeleteId === selected.id ? (
@@ -683,14 +695,14 @@ export default function CreditCards() {
                         className="text-xs px-2 py-1 rounded-lg"
                         style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
                       >
-                        Confirmar
+                        {t('credit_cards.confirm')}
                       </button>
                       <button
                         onClick={() => { setConfirmDeleteId(null) }}
                         className="text-xs px-2 py-1 rounded-lg"
                         style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
                       >
-                        Cancelar
+                        {t('credit_cards.cancel_btn')}
                       </button>
                     </div>
                   ) : (
@@ -705,7 +717,7 @@ export default function CreditCards() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Excluir
+                      {t('credit_cards.delete')}
                     </button>
                   )}
                 </div>
@@ -714,11 +726,11 @@ export default function CreditCards() {
               {/* Bill Items */}
               <div>
                 <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-                  Lançamentos recentes
+                  {t('credit_cards.recent_items')}
                 </p>
                 {selected.items.length === 0 ? (
                   <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                    Nenhum lançamento
+                    {t('credit_cards.no_items')}
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -737,7 +749,7 @@ export default function CreditCards() {
                           </span>
                         </div>
                         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                          {formatCurrency(item.amount)}
+                          {formatCurrency(item.amount, currency, language)}
                         </span>
                       </div>
                     ))}
@@ -750,7 +762,7 @@ export default function CreditCards() {
             <Card className="mb-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-                  Assinaturas
+                  {t('credit_cards.subscriptions')}
                 </p>
                 <button
                   onClick={() => { setShowSubForm((v) => !v) }}
@@ -762,7 +774,7 @@ export default function CreditCards() {
                     border: 'none',
                   }}
                 >
-                  {showSubForm ? 'Cancelar' : '+ Adicionar'}
+                  {showSubForm ? t('credit_cards.cancel_btn') : t('credit_cards.add_subscription')}
                 </button>
               </div>
 
@@ -803,14 +815,14 @@ export default function CreditCards() {
                     size="sm"
                     onClick={() => { void handleAddSubscription(selected.id) }}
                   >
-                    Salvar
+                    {t('common.save')}
                   </Button>
                 </div>
               )}
 
               {selected.subscriptions.length === 0 && !showSubForm ? (
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  Nenhuma assinatura
+                  {t('credit_cards.no_subscriptions')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -847,14 +859,14 @@ export default function CreditCards() {
                         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
                           {sub.currency === 'USD'
                             ? <>
-                                US$ {sub.amount.toFixed(2)}
+                                {formatCurrency(sub.amount, 'USD', 'en-US')}
                                 {usdRate !== null && (
                                   <span className="text-xs ml-1" style={{ color: 'var(--color-muted)', fontWeight: 400 }}>
-                                    (~{formatCurrency(sub.amount * usdRate)})
+                                    (~{formatCurrency(sub.amount * usdRate, currency, language)})
                                   </span>
                                 )}
                               </>
-                            : formatCurrency(sub.amount)
+                            : formatCurrency(sub.amount, currency, language)
                           }
                         </span>
                         <button
@@ -873,7 +885,7 @@ export default function CreditCards() {
                   {selected.subscriptions.filter((s) => s.active).length > 0 && (
                     <div className="flex justify-between items-center px-2 pt-2 mt-1" style={{ borderTop: '1px solid var(--color-border)' }}>
                       <span className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-                        Total mensal ({selected.subscriptions.filter((s) => s.active).length} ativas)
+                        {t('credit_cards.monthly_total', { count: selected.subscriptions.filter((s) => s.active).length })}
                       </span>
                       <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
                         <AnimatedNumber
@@ -884,11 +896,11 @@ export default function CreditCards() {
                               return sum
                             }, 0)
                           }
-                          formatter={formatCurrency}
+                          formatter={currencyFormatter}
                         />
                         {selected.subscriptions.some((s) => s.active && s.currency === 'USD') && usdRate !== null && (
                           <span className="text-xs ml-2" style={{ color: 'var(--color-muted)', fontWeight: 400 }}>
-                            (cotação: R$ {usdRate.toFixed(2)})
+                            ({t('credit_cards.exchange_rate', { rate: usdRate.toFixed(2) })})
                           </span>
                         )}
                       </span>
@@ -901,11 +913,11 @@ export default function CreditCards() {
             {/* History */}
             <Card>
               <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-                Histórico de Faturas
+                {t('credit_cards.bill_history')}
               </p>
               {selected.history.length === 0 ? (
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  Sem histórico
+                  {t('credit_cards.no_history')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -920,9 +932,9 @@ export default function CreditCards() {
                       </span>
                       <div className="flex items-center gap-3">
                         <span className="font-bold" style={{ color: 'var(--color-text)' }}>
-                          {formatCurrency(h.amount)}
+                          {formatCurrency(h.amount, currency, language)}
                         </span>
-                        {statusBadge(h.status)}
+                        {statusBadge(h.status, t)}
                       </div>
                     </div>
                   ))}
@@ -946,9 +958,12 @@ interface CardFormProps {
   isEditing: boolean
   saving: boolean
   formError: string | null
+  statusLabels: Record<CardStatus, string>
 }
 
-function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: CardFormProps) {
+function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formError, statusLabels }: CardFormProps) {
+  const { t } = useTranslation()
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -1022,7 +1037,7 @@ function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
         >
           {CARD_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABELS[s]}
+              {statusLabels[s]}
             </option>
           ))}
         </select>
@@ -1088,7 +1103,7 @@ function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
 
       <div className="flex gap-3 justify-end mt-4">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancelar
+          {t('credit_cards.cancel_btn')}
         </Button>
         <Button
           onClick={() => {
@@ -1096,7 +1111,7 @@ function CardForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
           }}
           disabled={saving}
         >
-          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? t('credit_cards.saving') : isEditing ? t('credit_cards.save_changes') : t('common.add')}
         </Button>
       </div>
     </div>

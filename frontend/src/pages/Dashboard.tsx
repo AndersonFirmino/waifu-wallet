@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -23,11 +24,7 @@ import { formatMonth } from '../utils/date'
 import { type MonthlyData, type CategoryData, type SalaryPlan, type GachaBanner } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeSummary, decodeTransactionList, decodeNoteList, decodeSalaryPlanList, decodeGachaBannerList } from '../lib/decode'
-
-const MONTH_LABELS: readonly string[] = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-]
+import { useLocale } from '../hooks/useLocale'
 
 const CATEGORY_COLORS: readonly string[] = [
   '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
@@ -55,7 +52,7 @@ function isSplitActiveForDate(plan: SalaryPlan, d: Date): boolean {
   return dYear > splitYear || (dYear === splitYear && dMonth >= splitMonth)
 }
 
-function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
+function computeNextPayday(plan: SalaryPlan, today: Date, locale: string): NextPayday {
   const todayDay = today.getDate()
   const todayMonth = today.getMonth()
   const todayYear = today.getFullYear()
@@ -89,7 +86,7 @@ function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
       date: targetDate,
       daysUntil,
       amount,
-      label: targetDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }),
+      label: targetDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' }),
     }
   }
 
@@ -111,7 +108,7 @@ function computeNextPayday(plan: SalaryPlan, today: Date): NextPayday {
     date: targetDate,
     daysUntil,
     amount: fullAmount,
-    label: targetDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }),
+    label: targetDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' }),
   }
 }
 
@@ -127,9 +124,11 @@ interface BarTooltipProps {
   active?: boolean
   payload?: BarPayloadItem[]
   label?: string
+  currency: string
+  locale: string
 }
 
-function BarTooltip({ active, payload, label }: BarTooltipProps) {
+function BarTooltip({ active, payload, label, currency, locale }: BarTooltipProps) {
   if (!active || !payload?.length) return null
   return (
     <div
@@ -144,16 +143,21 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
       <p style={{ color: 'var(--color-muted)', margin: '0 0 8px', fontWeight: 600 }}>{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color, margin: '2px 0' }}>
-          {p.name}: {formatCurrency(p.value)}
+          {p.name}: {formatCurrency(p.value, currency, locale)}
         </p>
       ))}
     </div>
   )
 }
 
-type PieTooltipProps = TooltipProps<number, string>
+interface PieTooltipInnerProps {
+  active?: boolean
+  payload?: TooltipProps<number, string>['payload']
+  currency: string
+  locale: string
+}
 
-function PieTooltip({ active, payload }: PieTooltipProps) {
+function PieTooltip({ active, payload, currency, locale }: PieTooltipInnerProps) {
   if (!active || !payload?.length) return null
   const item = payload[0]
   if (!item) return null
@@ -169,7 +173,7 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
       }}
     >
       <p style={{ color, margin: 0, fontWeight: 600 }}>
-        {item.name}: {formatCurrency(item.value ?? 0)}
+        {item.name}: {formatCurrency(item.value ?? 0, currency, locale)}
       </p>
     </div>
   )
@@ -180,12 +184,16 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
 function buildTimelineEvents(
   activePlan: SalaryPlan | null,
   gachaBanners: GachaBanner[] | null,
+  todayLabel: string,
+  salaryLabel: string,
+  currency: string,
+  locale: string,
 ): TimelineEvent[] {
   const now = new Date()
   const threeMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
   const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
-  const collected: TimelineEvent[] = [{ date: now, label: 'Hoje', type: 'today' }]
+  const collected: TimelineEvent[] = [{ date: now, label: todayLabel, type: 'today' }]
 
   if (activePlan) {
     const salaryEvents: TimelineEvent[] = []
@@ -206,16 +214,16 @@ function buildTimelineEvents(
         const d2 = new Date(checkYear, checkMonth, secondDay)
 
         if (d1.getTime() > todayMs && d1 <= threeMonthsLater) {
-          salaryEvents.push({ date: d1, label: 'Salário', sublabel: formatCurrency(firstAmount), type: 'salary' })
+          salaryEvents.push({ date: d1, label: salaryLabel, sublabel: formatCurrency(firstAmount, currency, locale), type: 'salary' })
         }
         if (d2.getTime() > todayMs && d2 <= threeMonthsLater) {
-          salaryEvents.push({ date: d2, label: 'Salário', sublabel: formatCurrency(secondAmount), type: 'salary' })
+          salaryEvents.push({ date: d2, label: salaryLabel, sublabel: formatCurrency(secondAmount, currency, locale), type: 'salary' })
         }
       } else {
         const payday = activePlan.split_first_day
         const d = new Date(checkYear, checkMonth, payday)
         if (d.getTime() > todayMs && d <= threeMonthsLater) {
-          salaryEvents.push({ date: d, label: 'Salário', sublabel: formatCurrency(activePlan.current_salary), type: 'salary' })
+          salaryEvents.push({ date: d, label: salaryLabel, sublabel: formatCurrency(activePlan.current_salary, currency, locale), type: 'salary' })
         }
       }
     }
@@ -239,7 +247,7 @@ function buildTimelineEvents(
         collected.push({
           date: startDate,
           label: truncatedLabel,
-          sublabel: formatCurrency(banner.cost),
+          sublabel: formatCurrency(banner.cost, currency, locale),
           type: 'gacha',
           imageUrl: bannerImage,
         })
@@ -253,6 +261,9 @@ function buildTimelineEvents(
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t } = useTranslation()
+  const { language, currency } = useLocale()
+
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
@@ -273,7 +284,7 @@ export default function Dashboard() {
 
   const activePlan = salaryPlans?.find((p) => p.active) ?? null
 
-  const nextPayday: NextPayday | null = activePlan ? computeNextPayday(activePlan, today) : null
+  const nextPayday: NextPayday | null = activePlan ? computeNextPayday(activePlan, today, language) : null
 
   const recentTransactions = (transactions ?? []).slice(0, 5)
   const recentNotes = [...(allNotes ?? [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 3)
@@ -287,14 +298,15 @@ export default function Dashboard() {
       const y = d.getFullYear()
       const prefix = `${String(y).padStart(4, '0')}-${String(m + 1).padStart(2, '0')}`
       const monthTxs = allTransactions.filter((tx) => tx.date.startsWith(prefix))
+      const shortLabel = new Intl.DateTimeFormat(language, { month: 'short' }).format(d)
       result.push({
-        month: MONTH_LABELS[m] ?? '',
+        month: shortLabel,
         income: monthTxs.filter((tx) => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0),
         expenses: monthTxs.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0),
       })
     }
     return result
-  }, [allTransactions, month, year])
+  }, [allTransactions, month, year, language])
 
   const categories: CategoryData[] = useMemo(() => {
     if (!transactions) return []
@@ -313,7 +325,14 @@ export default function Dashboard() {
       }))
   }, [transactions])
 
-  const timelineEvents: TimelineEvent[] = buildTimelineEvents(activePlan, gachaBanners)
+  const timelineEvents: TimelineEvent[] = buildTimelineEvents(
+    activePlan,
+    gachaBanners,
+    t('dashboard.today'),
+    t('dashboard.salary'),
+    currency,
+    language,
+  )
 
   const prevMonth = () => {
     if (month === 0) {
@@ -343,7 +362,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
             Dashboard
           </h1>
-          <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>Visão geral das suas finanças</p>
+          <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>{t('dashboard.title')}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -362,7 +381,7 @@ export default function Dashboard() {
             className="font-semibold text-base px-2"
             style={{ color: 'var(--color-text)', minWidth: 180, textAlign: 'center' }}
           >
-            {formatMonth(year, month)}
+            {formatMonth(year, month, language)}
           </span>
           <button
             onClick={nextMonth}
@@ -381,15 +400,15 @@ export default function Dashboard() {
 
       {/* Loading / Empty / Content */}
       {isLoading ? (
-        <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>Carregando dados...</p>
+        <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>{t('dashboard.loading')}</p>
       ) : summary === null && (transactions === null || transactions.length === 0) ? (
         <div className="text-center py-16">
           <p style={{ fontSize: 48, marginBottom: 12 }}>💵</p>
           <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-            Bem-vindo ao Waifu Wallet!
+            {t('dashboard.welcome_title')}
           </h2>
           <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>
-            Comece adicionando suas transações, cartões e dívidas para ver seu panorama financeiro.
+            {t('dashboard.welcome_text')}
           </p>
         </div>
       ) : (
@@ -399,38 +418,38 @@ export default function Dashboard() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard
           icon="💰"
-          label="Saldo do Mês"
-          value={formatCurrency(balance)}
+          label={t('dashboard.month_balance')}
+          value={formatCurrency(balance, currency, language)}
           numericValue={balance}
-          numericFormatter={formatCurrency}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
           sub="receitas − despesas"
           color="blue"
         />
         <StatCard
           icon="📈"
-          label="Receitas"
-          value={formatCurrency(income)}
+          label={t('dashboard.income')}
+          value={formatCurrency(income, currency, language)}
           numericValue={income}
-          numericFormatter={formatCurrency}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
           sub="mês atual"
           color="green"
         />
         <StatCard
           icon="📉"
-          label="Despesas"
-          value={formatCurrency(expenses)}
+          label={t('dashboard.expenses')}
+          value={formatCurrency(expenses, currency, language)}
           numericValue={expenses}
-          numericFormatter={formatCurrency}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
           sub="mês atual"
           color="red"
         />
         <StatCard
           icon="⏳"
-          label="Próximo Salário"
+          label={t('dashboard.next_salary')}
           value={nextPayday ? `${String(nextPayday.daysUntil)} dias` : '—'}
           numericValue={nextPayday ? nextPayday.daysUntil : undefined}
           numericFormatter={(n: number) => `${String(Math.round(n))} dias`}
-          sub={nextPayday ? `${formatCurrency(nextPayday.amount)} — ${nextPayday.label}` : 'sem plano ativo'}
+          sub={nextPayday ? `${formatCurrency(nextPayday.amount, currency, language)} — ${nextPayday.label}` : t('dashboard.no_data')}
           color="purple"
         />
       </div>
@@ -443,7 +462,7 @@ export default function Dashboard() {
         {/* Bar Chart */}
         <Card>
           <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            Receitas vs Despesas — 6 meses
+            {t('dashboard.income_vs_expenses')}
           </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyData} barCategoryGap="30%">
@@ -468,12 +487,12 @@ export default function Dashboard() {
                 tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v: number) => formatCurrencyShort(v)}
+                tickFormatter={(v: number) => formatCurrencyShort(v, currency, language)}
               />
-              <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<BarTooltip currency={currency} locale={language} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
               <Legend wrapperStyle={{ fontSize: 12, color: 'var(--color-muted)' }} />
-              <Bar dataKey="income" name="Receitas" fill="url(#gradIncome)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expenses" name="Despesas" fill="url(#gradExpenses)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="income" name={t('dashboard.income')} fill="url(#gradIncome)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="expenses" name={t('dashboard.expenses')} fill="url(#gradExpenses)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -481,7 +500,7 @@ export default function Dashboard() {
         {/* Pie Chart */}
         <Card>
           <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            Despesas por Categoria
+            {t('dashboard.expenses_by_category')}
           </h3>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="55%" height={200}>
@@ -500,7 +519,7 @@ export default function Dashboard() {
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<PieTooltip />} />
+                <Tooltip content={<PieTooltip currency={currency} locale={language} />} />
               </PieChart>
             </ResponsiveContainer>
             <div style={{ flex: 1 }}>
@@ -513,7 +532,7 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                    {formatCurrencyShort(cat.value)}
+                    {formatCurrencyShort(cat.value, currency, language)}
                   </span>
                 </div>
               ))}
@@ -526,7 +545,7 @@ export default function Dashboard() {
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-            Últimas Transações
+            {t('dashboard.recent_transactions')}
           </h3>
           <a
             href="/transactions"
@@ -577,7 +596,7 @@ export default function Dashboard() {
                     }}
                   >
                     {tx.type === 'income' ? '+' : '-'}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(tx.amount, currency, language)}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--color-muted)', margin: 0 }}>
                     {tx.date.slice(8)}/{tx.date.slice(5, 7)}
@@ -597,7 +616,7 @@ export default function Dashboard() {
       <Card style={{ maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-            📋 Notas do Conselheiro
+            📋 {t('dashboard.advisor_notes')}
           </h3>
           <a
             href="/notes"

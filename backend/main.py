@@ -22,7 +22,7 @@ from routers import (
 
 app = FastAPI(
     title="MeuCaixa API",
-    description="API pessoal de controle financeiro. Use /api/v1/summary para uma visão geral completa.",
+    description="Personal finance control API. Use /api/v1/summary for a complete overview.",
     version="1.0.0",
 )
 
@@ -88,6 +88,26 @@ def _run_migrations() -> None:
                         },
                     )
                     conn.commit()
+
+        # Add language / currency to app_settings (i18n support)
+        # Column names and types are static constants (not user input),
+        # so f-string is safe here. SQLite ALTER TABLE does not support
+        # bind parameters for DEFAULT values.
+        _I18N_COLUMNS: tuple[tuple[str, str, str], ...] = (
+            ("language", "VARCHAR(10)", "'pt-BR'"),
+            ("currency", "VARCHAR(3)", "'BRL'"),
+        )
+        existing_columns = {
+            c["name"] for c in inspect(conn).get_columns("app_settings")
+        }
+        for col, col_type, default in _I18N_COLUMNS:
+            if col not in existing_columns:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE app_settings ADD COLUMN {col} {col_type} DEFAULT {default}"
+                    )
+                )
+                conn.commit()
 
 
 _run_migrations()
