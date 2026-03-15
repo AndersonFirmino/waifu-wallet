@@ -27,9 +27,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrency] = useState('BRL')
 
   useEffect(() => {
+    const controller = new AbortController()
     const fetchSettings = async (): Promise<void> => {
       try {
-        const res = await fetch('/api/v1/settings/')
+        const res = await fetch('/api/v1/settings/', { signal: controller.signal })
         if (!res.ok) return
         const data: unknown = await res.json()
         if (isRecord(data)) {
@@ -42,10 +43,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         console.error('Failed to fetch locale settings:', err)
       }
     }
     void fetchSettings()
+    return () => { controller.abort() }
   }, [i18n])
 
   const changeLanguage = useCallback(
@@ -57,6 +60,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: lang }),
+      }).then((res) => {
+        if (!res.ok) {
+          console.error('Failed to persist language: HTTP', res.status)
+          setLanguage(prev)
+          void i18n.changeLanguage(prev)
+        }
       }).catch((err: unknown) => {
         console.error('Failed to persist language:', err)
         setLanguage(prev)
@@ -74,6 +83,11 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currency: cur }),
+      }).then((res) => {
+        if (!res.ok) {
+          console.error('Failed to persist currency: HTTP', res.status)
+          setCurrency(prev)
+        }
       }).catch((err: unknown) => {
         console.error('Failed to persist currency:', err)
         setCurrency(prev)
