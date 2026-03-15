@@ -205,7 +205,7 @@ export default function FixedExpenses() {
           value={formatCurrency(totalMonth, currency, language)}
           numericValue={totalMonth}
           numericFormatter={(v: number) => formatCurrency(v, currency, language)}
-          sub={`${String(expenses.length)} itens`}
+          sub={t('fixed_expenses.items_count', { count: expenses.length })}
           color="blue"
         />
         <StatCard
@@ -214,7 +214,7 @@ export default function FixedExpenses() {
           value={formatCurrency(totalForecast, currency, language)}
           numericValue={totalForecast}
           numericFormatter={(v: number) => formatCurrency(v, currency, language)}
-          sub="baseado em EMA"
+          sub={t('fixed_expenses.based_on_ema')}
           color="purple"
         />
         <StatCard
@@ -296,7 +296,7 @@ export default function FixedExpenses() {
       {/* Empty state — no expenses at all */}
       {expenses.length === 0 && (
         <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
-          Nenhum gasto recorrente cadastrado. Preencha o formulário acima para começar.
+          {t('fixed_expenses.empty_state')}
         </p>
       )}
 
@@ -314,7 +314,7 @@ export default function FixedExpenses() {
           </div>
           {group.data.length === 0 ? (
             <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Nenhum item
+              {t('fixed_expenses.no_items')}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

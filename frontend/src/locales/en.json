@@ -88,7 +88,11 @@
     "add_recurring": "Add Recurring Expense",
     "current_month": "Current month",
     "next_month_short": "Next forecast",
-    "confidence": "Confidence"
+    "confidence": "Confidence",
+    "items_count": "{{count}} items",
+    "based_on_ema": "based on EMA",
+    "no_items": "No items",
+    "empty_state": "No recurring expenses registered. Fill in the form above to get started."
   },
   "debts": {
     "title": "Debts & Loans",
@@ -121,7 +125,9 @@
     "remaining_of": "of",
     "remaining_of_loan": "remaining of",
     "urgent_label": "⚠ Urgent",
-    "not_urgent_label": "Urgent"
+    "not_urgent_label": "Not Urgent",
+    "subtitle": "Manage and track all your financial obligations",
+    "days_remaining": "{{count}} days"
   },
   "credit_cards": {
     "title": "Credit Cards",
@@ -201,7 +207,25 @@
     "pessimistic": "Pessimistic Scenario",
     "base": "Base Scenario",
     "factors": "Considered Factors",
-    "period_summary": "Period Summary"
+    "period_summary": "Period Summary",
+    "projected_balance": "Projected Balance (base)",
+    "top_risk": "Top Risk",
+    "per_month": "{{value}}/month",
+    "no_data_risk": "No data",
+    "empty_state": "Not enough data to generate forecast. Add transactions to get started.",
+    "chart_title": "Balance Evolution — {{period}}",
+    "accumulated_optimistic": "Accumulated Optimistic",
+    "accumulated_pessimistic": "Accumulated Pessimistic",
+    "accumulated_base": "Accumulated Base",
+    "consideration_income": "Monthly income",
+    "consideration_fixed": "Confirmed fixed expenses",
+    "consideration_variable": "Estimated variable expenses",
+    "consideration_installments": "Installments (debts + loans)",
+    "impact_high": "High",
+    "impact_medium": "Medium",
+    "risk_installments": "Installments",
+    "risk_fixed": "Fixed Expenses",
+    "risk_variable": "Variable"
   },
   "gacha": {
     "title": "Gacha Tracker",
@@ -304,7 +328,18 @@
     "current_vs_target": "current vs target",
     "no_raises_pending": "No pending raises",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "increment_description": "+{{amount}} every {{months}} months",
+    "progression_toggle": "Salary with progression (periodic increments)",
+    "interval_months_label": "Interval (months)",
+    "split_valid_from": "Split valid from (month/year)",
+    "split_valid_from_hint": "Before this date the payment is full on the 1st day. Leave empty to always apply.",
+    "split_valid_from_placeholder": "Leave empty for always",
+    "active_plans_count_one": "{{count}} active plan",
+    "active_plans_count_other": "{{count}} active plans",
+    "split_label_double": "{{pct1}}% on day {{day1}} / {{pct2}}% on day {{day2}}",
+    "split_label_single": "100% on day {{day1}}",
+    "split_from_date": "Split from {{date}}"
   },
   "savings": {
     "title": "Savings",

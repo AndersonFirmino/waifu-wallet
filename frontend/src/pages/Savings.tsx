@@ -245,8 +245,6 @@ export default function Savings() {
             isEditing={editingId !== null}
             saving={saving}
             formError={formError}
-            currency={currency}
-            language={language}
             t={t}
           />
         </Card>
@@ -385,8 +383,6 @@ interface AccountFormProps {
   isEditing: boolean
   saving: boolean
   formError: string | null
-  currency: string
-  language: string
   t: (key: string) => string
 }
 

@@ -39,6 +39,7 @@ interface ConsiderationItem {
   amount: number
   type: 'income' | 'expense'
   impact: string
+  impactLevel: 'high' | 'medium'
 }
 
 
@@ -102,22 +103,22 @@ export default function Forecast() {
 
   const considerations: ConsiderationItem[] = []
   if (monthlyIncome > 0) {
-    considerations.push({ description: 'Receita mensal', amount: monthlyIncome, type: 'income', impact: 'Alto' })
+    considerations.push({ description: t('forecast.consideration_income'), amount: monthlyIncome, type: 'income', impact: t('forecast.impact_high'), impactLevel: 'high' })
   }
   if (confirmedFixed > 0) {
-    considerations.push({ description: 'Gastos fixos confirmados', amount: -confirmedFixed, type: 'expense', impact: 'Alto' })
+    considerations.push({ description: t('forecast.consideration_fixed'), amount: -confirmedFixed, type: 'expense', impact: t('forecast.impact_high'), impactLevel: 'high' })
   }
   if (variableEstimate > 0) {
-    considerations.push({ description: 'Variáveis estimadas', amount: -variableEstimate, type: 'expense', impact: 'Médio' })
+    considerations.push({ description: t('forecast.consideration_variable'), amount: -variableEstimate, type: 'expense', impact: t('forecast.impact_medium'), impactLevel: 'medium' })
   }
   if (totalInstallments > 0) {
-    considerations.push({ description: 'Parcelas (dívidas + empréstimos)', amount: -totalInstallments, type: 'expense', impact: 'Alto' })
+    considerations.push({ description: t('forecast.consideration_installments'), amount: -totalInstallments, type: 'expense', impact: t('forecast.impact_high'), impactLevel: 'high' })
   }
 
   const riskCategories = [
-    { label: 'Parcelas', monthly: totalInstallments },
-    { label: 'Gastos Fixos', monthly: confirmedFixed },
-    { label: 'Variáveis', monthly: variableEstimate },
+    { label: t('forecast.risk_installments'), monthly: totalInstallments },
+    { label: t('forecast.risk_fixed'), monthly: confirmedFixed },
+    { label: t('forecast.risk_variable'), monthly: variableEstimate },
   ]
   const sortedRisks = [...riskCategories].sort((a, b) => b.monthly - a.monthly)
   const topRisk = sortedRisks[0] ?? { label: '\u2014', monthly: 0 }
@@ -168,14 +169,14 @@ export default function Forecast() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected, currency, language)} numericValue={projected} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="blue" />
+        <StatCard icon="💰" label={t('forecast.projected_balance')} value={formatCurrency(projected, currency, language)} numericValue={projected} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="blue" />
         <StatCard icon="🎯" label={t('forecast.optimistic')} value={formatCurrency(optimistic, currency, language)} numericValue={optimistic} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="green" />
         <StatCard icon="⚠️" label={t('forecast.pessimistic')} value={formatCurrency(pessimistic, currency, language)} numericValue={pessimistic} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="red" />
         <StatCard
           icon="📊"
-          label="Maior Risco"
+          label={t('forecast.top_risk')}
           value={topRisk.monthly > 0 ? topRisk.label : '\u2014'}
-          sub={topRisk.monthly > 0 ? `${formatCurrency(topRisk.monthly, currency, language)}/mês` : 'Sem dados'}
+          sub={topRisk.monthly > 0 ? t('forecast.per_month', { value: formatCurrency(topRisk.monthly, currency, language) }) : t('forecast.no_data_risk')}
           color="orange"
         />
       </div>
@@ -190,7 +191,7 @@ export default function Forecast() {
       {/* Empty state */}
       {!forecastLoading && forecastData !== null && forecastData.length === 0 && (
         <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
-          Sem dados suficientes para gerar previsão. Adicione transações para começar.
+          {t('forecast.empty_state')}
         </p>
       )}
 
@@ -198,7 +199,7 @@ export default function Forecast() {
       <Card className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-            Evolução do Saldo — {periodLabel}
+            {t('forecast.chart_title', { period: periodLabel })}
           </h3>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-muted)' }}>
             <span>● {t('forecast.base')}</span>
@@ -286,7 +287,7 @@ export default function Forecast() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge color={c.impact === 'Alto' ? 'red' : 'yellow'} size="xs">
+                  <Badge color={c.impactLevel === 'high' ? 'red' : 'yellow'} size="xs">
                     {c.impact}
                   </Badge>
                   <span
@@ -312,7 +313,7 @@ export default function Forecast() {
               style={{ background: 'rgba(16,185,129,0.08)' }}
             >
               <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                Acumulado Otimista
+                {t('forecast.accumulated_optimistic')}
               </span>
               <span className="font-bold" style={{ color: 'var(--color-green)' }}>
                 +<AnimatedNumber value={totalOptimistic} formatter={(v: number) => formatCurrency(v, currency, language)} />
@@ -323,7 +324,7 @@ export default function Forecast() {
               style={{ background: 'rgba(239,68,68,0.08)' }}
             >
               <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                Acumulado Pessimista
+                {t('forecast.accumulated_pessimistic')}
               </span>
               <span className="font-bold" style={{ color: 'var(--color-red)' }}>
                 <AnimatedNumber value={totalPessimistic} formatter={(v: number) => formatCurrency(v, currency, language)} />
@@ -334,7 +335,7 @@ export default function Forecast() {
               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
             >
               <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
-                Acumulado Base
+                {t('forecast.accumulated_base')}
               </span>
               <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>
                 <AnimatedNumber value={totalBase} formatter={(v: number) => formatCurrency(v, currency, language)} />

@@ -218,11 +218,11 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
 
   const atCeiling = plan.current_salary >= plan.target_salary
   const splitLabel = plan.split_enabled
-    ? `${String(plan.split_first_pct)}% dia ${String(plan.split_first_day)} / ${String(plan.split_second_pct)}% dia ${String(plan.split_second_day)}`
-    : `100% dia ${String(plan.split_first_day)}`
+    ? t('salary.split_label_double', { pct1: plan.split_first_pct, day1: plan.split_first_day, pct2: plan.split_second_pct, day2: plan.split_second_day })
+    : t('salary.split_label_single', { day1: plan.split_first_day })
   const splitStartLabel =
     plan.split_enabled && plan.split_start_date !== null
-      ? `Split a partir de ${plan.split_start_date}`
+      ? t('salary.split_from_date', { date: plan.split_start_date })
       : null
 
   return (
@@ -358,7 +358,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
               {t('salary.increment')}
             </p>
             <p className="text-sm font-semibold" style={{ color: 'var(--color-blue)' }}>
-              +{formatCurrency(plan.increment, currency, language)} a cada {String(plan.increment_interval_months)} meses
+              {t('salary.increment_description', { amount: formatCurrency(plan.increment, currency, language), months: plan.increment_interval_months })}
             </p>
           </div>
           <div>
@@ -509,7 +509,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
               />
             </button>
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Salário com progressão (incrementos periódicos)
+              {t('salary.progression_toggle')}
             </span>
           </div>
         </div>
@@ -533,7 +533,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
             {/* Interval */}
             <div>
               <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                Intervalo (meses) *
+                {t('salary.interval_months_label')} *
               </label>
               <input
                 placeholder="Ex: 12"
@@ -622,7 +622,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
           {form.split_enabled && (
             <div className="mb-3">
               <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                Split válido a partir de (mês/ano)
+                {t('salary.split_valid_from')}
               </label>
               <input
                 type="date"
@@ -630,10 +630,10 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
                 onChange={(e) => {
                   onChange({ split_start_date: e.target.value })
                 }}
-                placeholder="Deixe vazio para sempre"
+                placeholder={t('salary.split_valid_from_placeholder')}
               />
               <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
-                Antes dessa data o pagamento é integral no 1º dia. Deixe vazio para aplicar desde sempre.
+                {t('salary.split_valid_from_hint')}
               </p>
             </div>
           )}
@@ -889,7 +889,7 @@ export default function SalaryPlans() {
           value={formatCurrency(totalCurrentIncome, currency, language)}
           numericValue={totalCurrentIncome}
           numericFormatter={currencyFormatter}
-          sub={`${String(activePlans.length)} plano${activePlans.length !== 1 ? 's' : ''} ativo${activePlans.length !== 1 ? 's' : ''}`}
+          sub={t(activePlans.length === 1 ? 'salary.active_plans_count_one' : 'salary.active_plans_count_other', { count: activePlans.length })}
           color="green"
         />
         <StatCard

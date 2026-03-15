@@ -88,7 +88,11 @@
     "add_recurring": "Adicionar Gasto Recorrente",
     "current_month": "Mês atual",
     "next_month_short": "Previsão próx.",
-    "confidence": "Confiança"
+    "confidence": "Confiança",
+    "items_count": "{{count}} itens",
+    "based_on_ema": "baseado em EMA",
+    "no_items": "Nenhum item",
+    "empty_state": "Nenhum gasto recorrente cadastrado. Preencha o formulário acima para começar."
   },
   "debts": {
     "title": "Dívidas & Empréstimos",
@@ -121,7 +125,9 @@
     "remaining_of": "de",
     "remaining_of_loan": "restante de",
     "urgent_label": "⚠ Urgente",
-    "not_urgent_label": "Urgente"
+    "not_urgent_label": "Urgente",
+    "subtitle": "Gerencie e acompanhe todas as suas obrigações financeiras",
+    "days_remaining": "{{count}} dias"
   },
   "credit_cards": {
     "title": "Cartões de Crédito",
@@ -161,7 +167,7 @@
     "total_tied": "Total amarrado em {{count}} cartão",
     "total_tied_plural": "Total amarrado em {{count}} cartões",
     "monthly_total": "Total mensal ({{count}} ativas)",
-    "exchange_rate": "cotação: R$ {{rate}}",
+    "exchange_rate": "cotação: {{rate}}",
     "no_history": "Sem histórico",
     "save_changes": "Salvar alterações",
     "saving": "Salvando...",
@@ -201,7 +207,25 @@
     "pessimistic": "Cenário Pessimista",
     "base": "Cenário Base",
     "factors": "Fatores Considerados",
-    "period_summary": "Resumo do Período"
+    "period_summary": "Resumo do Período",
+    "projected_balance": "Saldo Projetado (base)",
+    "top_risk": "Maior Risco",
+    "per_month": "{{value}}/mês",
+    "no_data_risk": "Sem dados",
+    "empty_state": "Sem dados suficientes para gerar previsão. Adicione transações para começar.",
+    "chart_title": "Evolução do Saldo — {{period}}",
+    "accumulated_optimistic": "Acumulado Otimista",
+    "accumulated_pessimistic": "Acumulado Pessimista",
+    "accumulated_base": "Acumulado Base",
+    "consideration_income": "Receita mensal",
+    "consideration_fixed": "Gastos fixos confirmados",
+    "consideration_variable": "Variáveis estimadas",
+    "consideration_installments": "Parcelas (dívidas + empréstimos)",
+    "impact_high": "Alto",
+    "impact_medium": "Médio",
+    "risk_installments": "Parcelas",
+    "risk_fixed": "Gastos Fixos",
+    "risk_variable": "Variáveis"
   },
   "gacha": {
     "title": "Gacha Tracker",
@@ -251,8 +275,8 @@
     "game_label": "Jogo",
     "banner_label": "Personagem / Banner",
     "main_image": "Imagem principal",
-    "cost_label": "Custo (R$)",
-    "estimated_cost": "Custo Estimado (R$)",
+    "cost_label": "Custo",
+    "estimated_cost": "Custo Estimado",
     "start_end": "Início — Fim",
     "priority_label": "Prioridade",
     "carousel_images": "Imagens do carrossel",
@@ -304,7 +328,18 @@
     "current_vs_target": "atual vs meta",
     "no_raises_pending": "Sem aumentos pendentes",
     "confirm": "Confirmar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "increment_description": "+{{amount}} a cada {{months}} meses",
+    "progression_toggle": "Salário com progressão (incrementos periódicos)",
+    "interval_months_label": "Intervalo (meses)",
+    "split_valid_from": "Split válido a partir de (mês/ano)",
+    "split_valid_from_hint": "Antes dessa data o pagamento é integral no 1º dia. Deixe vazio para aplicar desde sempre.",
+    "split_valid_from_placeholder": "Deixe vazio para sempre",
+    "active_plans_count_one": "{{count}} plano ativo",
+    "active_plans_count_other": "{{count}} planos ativos",
+    "split_label_double": "{{pct1}}% dia {{day1}} / {{pct2}}% dia {{day2}}",
+    "split_label_single": "100% dia {{day1}}",
+    "split_from_date": "Split a partir de {{date}}"
   },
   "savings": {
     "title": "Cofrinhos",

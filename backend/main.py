@@ -97,16 +97,17 @@ def _run_migrations() -> None:
             ("language", "VARCHAR(10)", "'pt-BR'"),
             ("currency", "VARCHAR(3)", "'BRL'"),
         )
+        existing_columns = {
+            c["name"] for c in inspect(conn).get_columns("app_settings")
+        }
         for col, col_type, default in _I18N_COLUMNS:
-            try:
+            if col not in existing_columns:
                 conn.execute(
                     text(
                         f"ALTER TABLE app_settings ADD COLUMN {col} {col_type} DEFAULT {default}"
                     )
                 )
                 conn.commit()
-            except OperationalError:
-                conn.rollback()
 
 
 _run_migrations()

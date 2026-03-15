@@ -11,12 +11,22 @@ interface CurrencyInputProps {
   locale?: string
 }
 
-function formatDisplayValue(value: number, locale: string): string {
+function getCurrencyFractionDigits(currency: string): number {
+  const parts = new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'code',
+  }).formatToParts(1)
+  const fractionPart = parts.find((p) => p.type === 'fraction')
+  return fractionPart ? fractionPart.value.length : 0
+}
+
+function formatDisplayValue(value: number, locale: string, fractionDigits: number): string {
   // Format without symbol for input display
   const parts = new Intl.NumberFormat(locale, {
     style: 'decimal',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).formatToParts(value)
 
   return parts.map((p) => p.value).join('')
@@ -31,7 +41,9 @@ export default function CurrencyInput({
   currency = 'BRL',
   locale = 'pt-BR',
 }: CurrencyInputProps) {
-  const displayValue = value > 0 ? formatDisplayValue(value, locale) : ''
+  const fractionDigits = getCurrencyFractionDigits(currency)
+  const divisor = 10 ** fractionDigits
+  const displayValue = value > 0 ? formatDisplayValue(value, locale, fractionDigits) : ''
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const raw = e.target.value.replace(/\D/g, '')
@@ -40,11 +52,14 @@ export default function CurrencyInput({
       return
     }
     const cents = parseInt(raw, 10)
-    onChange(cents / 100)
+    onChange(cents / divisor)
   }
 
   const symbol = getCurrencySymbol(currency, locale)
-  const defaultPlaceholder = `${symbol} 0${new Intl.NumberFormat(locale).format(0.0).includes(',') ? ',00' : '.00'}`
+  const decimalSeparator =
+    new Intl.NumberFormat(locale).formatToParts(1.1).find((p) => p.type === 'decimal')?.value ?? '.'
+  const placeholderZeros = fractionDigits > 0 ? `${decimalSeparator}${'0'.repeat(fractionDigits)}` : ''
+  const defaultPlaceholder = `${symbol} 0${placeholderZeros}`
 
   return (
     <input

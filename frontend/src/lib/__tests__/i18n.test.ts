@@ -10,10 +10,10 @@ describe('i18n', () => {
     expect(i18n.exists('sidebar.dashboard')).toBe(true)
   })
 
-  it('has en translations loaded', () => {
-    void i18n.changeLanguage('en')
+  it('has en translations loaded', async () => {
+    await i18n.changeLanguage('en')
     expect(i18n.t('sidebar.dashboard')).toBe('Dashboard')
-    void i18n.changeLanguage('pt-BR')
+    await i18n.changeLanguage('pt-BR')
   })
 
   it('falls back to pt-BR for unknown keys', () => {

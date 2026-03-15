@@ -83,10 +83,10 @@ function loanToForm(loan: Loan): LoanFormState {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-function urgencyLabel(days: number): { label: string; color: 'red' | 'yellow' | 'green'; isUrgent: boolean } {
+function urgencyLabel(days: number, t: (key: string, opts?: Record<string, unknown>) => string): { label: string; color: 'red' | 'yellow' | 'green'; isUrgent: boolean } {
   if (days <= 2) return { label: '', color: 'red', isUrgent: true }
-  if (days <= 7) return { label: `${String(days)} dias`, color: 'yellow', isUrgent: false }
-  return { label: `${String(days)} dias`, color: 'green', isUrgent: false }
+  if (days <= 7) return { label: t('debts.days_remaining', { count: days }), color: 'yellow', isUrgent: false }
+  return { label: t('debts.days_remaining', { count: days }), color: 'green', isUrgent: false }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ export default function Debts() {
               💳 {t('debts.title')}
             </h1>
             <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>
-              Gerencie e acompanhe todas as suas obrigações financeiras
+              {t('debts.subtitle')}
             </p>
           </div>
           <Badge color="red" size="md">
@@ -487,7 +487,7 @@ export default function Debts() {
             )}
             {debts.map((debt) => {
               const days = daysUntil(debt.due_date)
-              const urgency = urgencyLabel(days)
+              const urgency = urgencyLabel(days, t)
               const paidPct = Math.round(((debt.total - debt.remaining) / debt.total) * 100)
 
               return (
@@ -643,7 +643,7 @@ export default function Debts() {
             )}
             {loans.map((loan) => {
               const days = daysUntil(loan.next_payment)
-              const urgency = urgencyLabel(days)
+              const urgency = urgencyLabel(days, t)
               const paidPct = Math.round(((loan.total - loan.remaining) / loan.total) * 100)
 
               return (
