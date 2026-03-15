@@ -85,6 +85,8 @@ def get_calendar_events(
                     type="holiday",
                     description=h.get("name", "Feriado"),
                     amount=0,
+                    description_key="calendar_event.holiday",
+                    description_params={"name": h.get("name", "Feriado")},
                 )
             )
 
@@ -96,7 +98,11 @@ def get_calendar_events(
         day = int(tx.date.split("-")[2])
         events.append(
             CalendarEventOut(
-                day=day, type=tx.type, description=tx.description, amount=tx.amount
+                day=day,
+                type=tx.type,
+                description=tx.description,
+                amount=tx.amount,
+                # No description_key — transactions have user-entered descriptions
             )
         )
 
@@ -107,17 +113,28 @@ def get_calendar_events(
         shifted_day = _next_business_day(year, month, original_day, holiday_dates)
         if shifted_day == -1:
             continue  # shifted into next month
-        description = debt.name
         if shifted_day != original_day:
-            description = f"{debt.name} (adiado de {original_day})"
-        events.append(
-            CalendarEventOut(
-                day=shifted_day,
-                type="installment",
-                description=description,
-                amount=debt.remaining,
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="installment",
+                    description=f"{debt.name} (adiado de {original_day})",
+                    amount=debt.remaining,
+                    description_key="calendar_event.debt_postponed",
+                    description_params={"name": debt.name, "original_day": str(original_day)},
+                )
             )
-        )
+        else:
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="installment",
+                    description=debt.name,
+                    amount=debt.remaining,
+                    description_key="calendar_event.debt",
+                    description_params={"name": debt.name},
+                )
+            )
 
     # Loan next payments in the month — shift if holiday/weekend
     loans = db.scalars(select(Loan).where(Loan.next_payment.like(f"{prefix}%"))).all()
@@ -126,17 +143,28 @@ def get_calendar_events(
         shifted_day = _next_business_day(year, month, original_day, holiday_dates)
         if shifted_day == -1:
             continue
-        description = loan.name
         if shifted_day != original_day:
-            description = f"{loan.name} (adiado de {original_day})"
-        events.append(
-            CalendarEventOut(
-                day=shifted_day,
-                type="installment",
-                description=description,
-                amount=loan.installment,
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="installment",
+                    description=f"{loan.name} (adiado de {original_day})",
+                    amount=loan.installment,
+                    description_key="calendar_event.loan_postponed",
+                    description_params={"name": loan.name, "original_day": str(original_day)},
+                )
             )
-        )
+        else:
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="installment",
+                    description=loan.name,
+                    amount=loan.installment,
+                    description_key="calendar_event.loan",
+                    description_params={"name": loan.name},
+                )
+            )
 
     # Credit card bill due dates (recurring monthly) — shift if holiday/weekend
     cards = db.scalars(select(CreditCard)).all()
@@ -146,17 +174,28 @@ def get_calendar_events(
             shifted_day = _next_business_day(year, month, original_day, holiday_dates)
             if shifted_day == -1:
                 continue
-            description = f"Fatura {card.name}"
             if shifted_day != original_day:
-                description = f"Fatura {card.name} (adiado de {original_day})"
-            events.append(
-                CalendarEventOut(
-                    day=shifted_day,
-                    type="expense",
-                    description=description,
-                    amount=card.bill,
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_day,
+                        type="expense",
+                        description=f"Fatura {card.name} (adiado de {original_day})",
+                        amount=card.bill,
+                        description_key="calendar_event.card_bill_postponed",
+                        description_params={"name": card.name, "original_day": str(original_day)},
+                    )
                 )
-            )
+            else:
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_day,
+                        type="expense",
+                        description=f"Fatura {card.name}",
+                        amount=card.bill,
+                        description_key="calendar_event.card_bill",
+                        description_params={"name": card.name},
+                    )
+                )
 
     # Active subscription billing dates (recurring monthly) — shift if holiday/weekend
     subscriptions = db.scalars(
@@ -168,17 +207,28 @@ def get_calendar_events(
         shifted_day = _next_business_day(year, month, original_day, holiday_dates)
         if shifted_day == -1:
             continue
-        description = f"{sub.name} ({card_name})"
         if shifted_day != original_day:
-            description = f"{sub.name} ({card_name}) (adiado de {original_day})"
-        events.append(
-            CalendarEventOut(
-                day=shifted_day,
-                type="expense",
-                description=description,
-                amount=sub.amount,
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="expense",
+                    description=f"{sub.name} ({card_name}) (adiado de {original_day})",
+                    amount=sub.amount,
+                    description_key="calendar_event.subscription_postponed",
+                    description_params={"name": sub.name, "card": card_name, "original_day": str(original_day)},
+                )
             )
-        )
+        else:
+            events.append(
+                CalendarEventOut(
+                    day=shifted_day,
+                    type="expense",
+                    description=f"{sub.name} ({card_name})",
+                    amount=sub.amount,
+                    description_key="calendar_event.subscription",
+                    description_params={"name": sub.name, "card": card_name},
+                )
+            )
 
     # Active salary plan payment dates (recurring monthly) — shift if holiday/weekend
     salary_plans = db.scalars(
@@ -190,17 +240,28 @@ def get_calendar_events(
             shifted_day = _next_business_day(year, month, original_day, holiday_dates)
             if shifted_day == -1:
                 continue
-            description = f"Salário — {plan.employer}"
             if shifted_day != original_day:
-                description = f"Salário — {plan.employer} (adiado de {original_day})"
-            events.append(
-                CalendarEventOut(
-                    day=shifted_day,
-                    type="salary",
-                    description=description,
-                    amount=plan.current_salary,
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_day,
+                        type="salary",
+                        description=f"Salário — {plan.employer} (adiado de {original_day})",
+                        amount=plan.current_salary,
+                        description_key="calendar_event.salary_postponed",
+                        description_params={"employer": plan.employer, "original_day": str(original_day)},
+                    )
                 )
-            )
+            else:
+                events.append(
+                    CalendarEventOut(
+                        day=shifted_day,
+                        type="salary",
+                        description=f"Salário — {plan.employer}",
+                        amount=plan.current_salary,
+                        description_key="calendar_event.salary",
+                        description_params={"employer": plan.employer},
+                    )
+                )
         else:
             # First portion
             original_first = plan.split_first_day
@@ -208,33 +269,55 @@ def get_calendar_events(
                 year, month, original_first, holiday_dates
             )
             if shifted_first != -1:
-                description_first = f"Salário 1ª parte — {plan.employer}"
                 if shifted_first != original_first:
-                    description_first = f"Salário 1ª parte — {plan.employer} (adiado de {original_first})"
-                events.append(
-                    CalendarEventOut(
-                        day=shifted_first,
-                        type="salary",
-                        description=description_first,
-                        amount=plan.current_salary * plan.split_first_pct / 100,
+                    events.append(
+                        CalendarEventOut(
+                            day=shifted_first,
+                            type="salary",
+                            description=f"Salário 1ª parte — {plan.employer} (adiado de {original_first})",
+                            amount=plan.current_salary * plan.split_first_pct / 100,
+                            description_key="calendar_event.salary_first_postponed",
+                            description_params={"employer": plan.employer, "original_day": str(original_first)},
+                        )
                     )
-                )
+                else:
+                    events.append(
+                        CalendarEventOut(
+                            day=shifted_first,
+                            type="salary",
+                            description=f"Salário 1ª parte — {plan.employer}",
+                            amount=plan.current_salary * plan.split_first_pct / 100,
+                            description_key="calendar_event.salary_first",
+                            description_params={"employer": plan.employer},
+                        )
+                    )
             # Second portion
             original_second = plan.split_second_day
             shifted_second = _next_business_day(
                 year, month, original_second, holiday_dates
             )
             if shifted_second != -1:
-                description_second = f"Salário 2ª parte — {plan.employer}"
                 if shifted_second != original_second:
-                    description_second = f"Salário 2ª parte — {plan.employer} (adiado de {original_second})"
-                events.append(
-                    CalendarEventOut(
-                        day=shifted_second,
-                        type="salary",
-                        description=description_second,
-                        amount=plan.current_salary * plan.split_second_pct / 100,
+                    events.append(
+                        CalendarEventOut(
+                            day=shifted_second,
+                            type="salary",
+                            description=f"Salário 2ª parte — {plan.employer} (adiado de {original_second})",
+                            amount=plan.current_salary * plan.split_second_pct / 100,
+                            description_key="calendar_event.salary_second_postponed",
+                            description_params={"employer": plan.employer, "original_day": str(original_second)},
+                        )
                     )
-                )
+                else:
+                    events.append(
+                        CalendarEventOut(
+                            day=shifted_second,
+                            type="salary",
+                            description=f"Salário 2ª parte — {plan.employer}",
+                            amount=plan.current_salary * plan.split_second_pct / 100,
+                            description_key="calendar_event.salary_second",
+                            description_params={"employer": plan.employer},
+                        )
+                    )
 
     return sorted(events, key=lambda e: e.day)

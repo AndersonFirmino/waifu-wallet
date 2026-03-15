@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -9,6 +10,7 @@ import { formatCurrency } from '../utils/currency'
 import { formatDate } from '../utils/date'
 import { type SalaryPlan, type SalaryScheduleMonth } from '../types'
 import { useFetch } from '../hooks/useApi'
+import { useLocale } from '../hooks/useLocale'
 import {
   decodeSalaryPlan,
   decodeSalaryPlanList,
@@ -119,6 +121,8 @@ interface ScheduleTableProps {
 }
 
 function ScheduleTable({ planId }: ScheduleTableProps) {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const url = `/salary-plans/${String(planId)}/schedule?months=12`
   const decode = useCallback((raw: unknown) => decodeSalaryScheduleList(raw), [])
   const { data, loading, error } = useFetch(url, decode)
@@ -126,24 +130,31 @@ function ScheduleTable({ planId }: ScheduleTableProps) {
   if (loading) {
     return (
       <p className="text-xs py-3 text-center" style={{ color: 'var(--color-muted)' }}>
-        Carregando projeção...
+        {t('salary.loading_projection')}
       </p>
     )
   }
   if (error !== null || data === null) {
     return (
       <p className="text-xs py-3 text-center" style={{ color: 'var(--color-red)' }}>
-        Erro ao carregar projeção
+        {t('salary.error_projection')}
       </p>
     )
   }
+
+  const headers = [
+    t('salary.table_month'),
+    t('salary.table_salary'),
+    t('salary.table_payment1'),
+    t('salary.table_payment2'),
+  ]
 
   return (
     <div style={{ overflowX: 'auto', marginTop: 12 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-            {['Mês', 'Salário', 'Pagamento 1', 'Pagamento 2'].map((h) => (
+            {headers.map((h) => (
               <th
                 key={h}
                 style={{
@@ -171,16 +182,16 @@ function ScheduleTable({ planId }: ScheduleTableProps) {
                 {row.month}
               </td>
               <td style={{ padding: '7px 10px', color: 'var(--color-green)', fontWeight: 600 }}>
-                {formatCurrency(row.salary)}
+                {formatCurrency(row.salary, currency, language)}
               </td>
               <td style={{ padding: '7px 10px', color: 'var(--color-text)' }}>
                 {row.payments[0] !== undefined
-                  ? `${formatCurrency(row.payments[0].amount)} (dia ${String(row.payments[0].day)})`
+                  ? `${formatCurrency(row.payments[0].amount, currency, language)} (dia ${String(row.payments[0].day)})`
                   : '—'}
               </td>
               <td style={{ padding: '7px 10px', color: 'var(--color-muted)' }}>
                 {row.payments[1] !== undefined
-                  ? `${formatCurrency(row.payments[1].amount)} (dia ${String(row.payments[1].day)})`
+                  ? `${formatCurrency(row.payments[1].amount, currency, language)} (dia ${String(row.payments[1].day)})`
                   : '—'}
               </td>
             </tr>
@@ -200,6 +211,8 @@ interface PlanCardProps {
 }
 
 function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const [showSchedule, setShowSchedule] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -229,7 +242,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
                 {plan.employer}
               </h3>
               <Badge color={plan.active ? 'green' : 'gray'} size="xs">
-                {plan.active ? 'Ativo' : 'Inativo'}
+                {plan.active ? t('salary.active') : t('salary.inactive')}
               </Badge>
             </div>
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
@@ -257,7 +270,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
               cursor: 'pointer',
               flexShrink: 0,
             }}
-            title="Editar"
+            title={t('common.edit')}
           >
             ✏
           </button>
@@ -275,7 +288,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
                   cursor: 'pointer',
                 }}
               >
-                Confirmar
+                {t('salary.confirm')}
               </button>
               <button
                 onClick={() => {
@@ -289,7 +302,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
                   cursor: 'pointer',
                 }}
               >
-                Cancelar
+                {t('salary.cancel')}
               </button>
             </div>
           ) : (
@@ -305,7 +318,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
                 cursor: 'pointer',
                 flexShrink: 0,
               }}
-              title="Excluir"
+              title={t('common.delete')}
             >
               ✕
             </button>
@@ -317,12 +330,12 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            Progresso salarial
+            {t('salary.salary_progress')}
           </span>
           <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
-            {formatCurrency(plan.current_salary)}
+            {formatCurrency(plan.current_salary, currency, language)}
             <span style={{ color: 'var(--color-muted)' }}> → </span>
-            {formatCurrency(plan.target_salary)}
+            {formatCurrency(plan.target_salary, currency, language)}
           </span>
         </div>
         <ProgressBar
@@ -342,23 +355,23 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
         >
           <div>
             <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
-              Incremento
+              {t('salary.increment')}
             </p>
             <p className="text-sm font-semibold" style={{ color: 'var(--color-blue)' }}>
-              +{formatCurrency(plan.increment)} a cada {String(plan.increment_interval_months)} meses
+              +{formatCurrency(plan.increment, currency, language)} a cada {String(plan.increment_interval_months)} meses
             </p>
           </div>
           <div>
             <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>
-              {atCeiling ? 'Status' : 'Próximo incremento'}
+              {atCeiling ? t('salary.status_label') : t('salary.next_increment')}
             </p>
             {atCeiling ? (
               <Badge color="yellow" size="xs">
-                Teto atingido
+                {t('salary.ceiling_reached')}
               </Badge>
             ) : (
               <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                {formatDate(plan.next_increment_date)}
+                {formatDate(plan.next_increment_date, language)}
               </p>
             )}
           </div>
@@ -382,7 +395,7 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
             }}
           >
             <span style={{ fontSize: 12 }}>{showSchedule ? '▲' : '▼'}</span>
-            {showSchedule ? 'Ocultar projeção 12 meses' : 'Ver projeção 12 meses'}
+            {showSchedule ? t('salary.hide_projection') : t('salary.show_projection')}
           </button>
           {showSchedule && <ScheduleTable planId={plan.id} />}
         </div>
@@ -405,22 +418,23 @@ interface PlanFormProps {
 }
 
 function PlanForm({ form, editingId, formError, saving, initialShowProgression, onChange, onSubmit, onCancel }: PlanFormProps) {
+  const { t } = useTranslation()
   const [showProgression, setShowProgression] = useState(initialShowProgression)
 
   return (
     <Card className="mb-6">
       <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-        {editingId !== null ? 'Editar Plano Salarial' : 'Novo Plano Salarial'}
+        {editingId !== null ? t('salary.edit_plan') : t('salary.new_plan')}
       </h3>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Employer */}
         <div style={{ gridColumn: '1 / -1' }}>
           <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Empresa *
+            {t('salary.employer')} *
           </label>
           <input
-            placeholder="Nome da empresa"
+            placeholder={t('salary.employer')}
             value={form.employer}
             onChange={(e) => {
               onChange({ employer: e.target.value })
@@ -432,7 +446,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
         {/* Current salary */}
         <div>
           <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            Salário atual (R$) *
+            {t('salary.current_salary')} *
           </label>
           <CurrencyInput
             value={form.current_salary}
@@ -447,7 +461,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
         {showProgression && (
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-              Salário alvo (R$) *
+              {t('salary.target_salary')} *
             </label>
             <CurrencyInput
               value={form.target_salary}
@@ -505,7 +519,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
             {/* Increment */}
             <div>
               <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                Incremento (R$) *
+                {t('salary.increment')} *
               </label>
               <CurrencyInput
                 value={form.increment}
@@ -533,7 +547,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
             {/* Next increment date */}
             <div>
               <label className="block text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                Data do próximo incremento *
+                {t('salary.next_increment')} *
               </label>
               <input
                 type="date"
@@ -549,7 +563,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
         {/* Active toggle */}
         <div className="flex items-center gap-3">
           <label className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            Status
+            {t('salary.status_label')}
           </label>
           <button
             type="button"
@@ -564,7 +578,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
               cursor: 'pointer',
             }}
           >
-            {form.active ? '✓ Ativo' : '— Inativo'}
+            {form.active ? `✓ ${t('salary.active')}` : `— ${t('salary.inactive')}`}
           </button>
         </div>
 
@@ -572,7 +586,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
         <div style={{ gridColumn: '1 / -1' }}>
           <div className="flex items-center gap-3 mb-3">
             <label className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
-              Pagamento parcelado
+              {t('salary.split_payment')}
             </label>
             <button
               type="button"
@@ -600,7 +614,7 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
               />
             </button>
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              {form.split_enabled ? 'Dois pagamentos' : 'Pagamento único'}
+              {form.split_enabled ? t('salary.two_payments') : t('salary.single_payment')}
             </span>
           </div>
 
@@ -699,14 +713,14 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
 
       <div className="flex gap-3 mt-4 justify-end">
         <Button variant="outline" size="sm" onClick={onCancel}>
-          Cancelar
+          {t('salary.cancel_form')}
         </Button>
         <Button
           size="sm"
           disabled={saving}
           onClick={onSubmit}
         >
-          {saving ? 'Salvando...' : editingId !== null ? 'Salvar alterações' : 'Criar plano'}
+          {saving ? t('salary.saving') : editingId !== null ? t('salary.save_changes') : t('salary.create_plan')}
         </Button>
       </div>
     </Card>
@@ -716,6 +730,8 @@ function PlanForm({ form, editingId, formError, saving, initialShowProgression, 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SalaryPlans() {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const { data: serverPlans } = useFetch('/salary-plans/', decodeSalaryPlanList)
 
   const [additions, setAdditions] = useState<SalaryPlan[]>([])
@@ -751,6 +767,8 @@ export default function SalaryPlans() {
   const nextRaisePlan = activePlans
     .filter((p) => p.current_salary < p.target_salary)
     .sort((a, b) => a.next_increment_date.localeCompare(b.next_increment_date))[0]
+
+  const currencyFormatter = (v: number) => formatCurrency(v, currency, language)
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -848,17 +866,17 @@ export default function SalaryPlans() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-              💼 Plano Salarial
+              💼 {t('salary.title')}
             </h1>
             <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>
-              Acompanhe a evolução do seu salário em cada empregador
+              {t('salary.subtitle')}
             </p>
           </div>
           <Button
             onClick={showForm ? closeForm : openCreate}
             variant={showForm ? 'outline' : 'primary'}
           >
-            {showForm ? 'Cancelar' : '+ Novo Plano'}
+            {showForm ? t('salary.cancel_form') : t('salary.add_plan')}
           </Button>
         </div>
       </div>
@@ -867,34 +885,34 @@ export default function SalaryPlans() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard
           icon="💰"
-          label="Renda Mensal Total"
-          value={formatCurrency(totalCurrentIncome)}
+          label={t('salary.monthly_total')}
+          value={formatCurrency(totalCurrentIncome, currency, language)}
           numericValue={totalCurrentIncome}
-          numericFormatter={formatCurrency}
+          numericFormatter={currencyFormatter}
           sub={`${String(activePlans.length)} plano${activePlans.length !== 1 ? 's' : ''} ativo${activePlans.length !== 1 ? 's' : ''}`}
           color="green"
         />
         <StatCard
           icon="🎯"
-          label="Meta Total"
-          value={formatCurrency(totalTargetIncome)}
+          label={t('salary.total_target')}
+          value={formatCurrency(totalTargetIncome, currency, language)}
           numericValue={totalTargetIncome}
-          numericFormatter={formatCurrency}
-          sub="soma dos salários-alvo"
+          numericFormatter={currencyFormatter}
+          sub={t('salary.sum_target_salaries')}
           color="blue"
         />
         <StatCard
           icon="📈"
-          label="Progresso Geral"
+          label={t('salary.overall_progress')}
           value={`${String(overallProgressPct)}%`}
-          sub="atual vs meta"
+          sub={t('salary.current_vs_target')}
           color="purple"
         />
         <StatCard
           icon="📅"
-          label="Próximo Aumento"
-          value={nextRaisePlan !== undefined ? formatDate(nextRaisePlan.next_increment_date) : '—'}
-          sub={nextRaisePlan !== undefined ? nextRaisePlan.employer : 'Sem aumentos pendentes'}
+          label={t('salary.next_raise')}
+          value={nextRaisePlan !== undefined ? formatDate(nextRaisePlan.next_increment_date, language) : '—'}
+          sub={nextRaisePlan !== undefined ? nextRaisePlan.employer : t('salary.no_raises_pending')}
           color="yellow"
         />
       </div>
@@ -918,7 +936,7 @@ export default function SalaryPlans() {
       {/* Plans list */}
       {plans.length === 0 ? (
         <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
-          Nenhum plano salarial cadastrado. Clique em "+ Novo Plano" para começar.
+          {t('salary.no_plans')}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

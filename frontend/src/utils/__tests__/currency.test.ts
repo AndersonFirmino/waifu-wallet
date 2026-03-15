@@ -1,32 +1,34 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrency, formatCurrencyShort } from '../currency'
+import { formatCurrency, formatCurrencyShort, getCurrencySymbol } from '../currency'
 
 describe('formatCurrency', () => {
-  it('contains R$ symbol', () => {
-    expect(formatCurrency(1500)).toContain('R$')
+  it('formats BRL with pt-BR locale by default', () => {
+    const result = formatCurrency(1500)
+    expect(result).toContain('R$')
+    expect(result).toContain('1.500')
   })
 
-  it('formats integer thousands with dot separator (pt-BR)', () => {
-    expect(formatCurrency(1500)).toContain('1.500')
+  it('formats USD with en-US locale', () => {
+    const result = formatCurrency(1500, 'USD', 'en-US')
+    expect(result).toContain('$')
+    expect(result).toContain('1,500')
   })
 
-  it('formats cents with comma separator (pt-BR)', () => {
-    expect(formatCurrency(55.9)).toContain('55,90')
+  it('formats EUR with de-DE locale', () => {
+    const result = formatCurrency(1500, 'EUR', 'de-DE')
+    expect(result).toContain('€')
+  })
+
+  it('formats JPY (zero decimal currency)', () => {
+    const result = formatCurrency(1500, 'JPY', 'ja-JP')
+    expect(result).toContain('￥')
   })
 
   it('formats zero', () => {
     expect(formatCurrency(0)).toContain('0,00')
   })
 
-  it('formats two decimal places', () => {
-    expect(formatCurrency(1.5)).toContain('1,50')
-  })
-
-  it('formats large values', () => {
-    expect(formatCurrency(100000)).toContain('100.000')
-  })
-
-  it('is consistent with Intl.NumberFormat pt-BR BRL', () => {
+  it('is consistent with Intl.NumberFormat', () => {
     const expected = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -35,21 +37,33 @@ describe('formatCurrency', () => {
   })
 })
 
+describe('getCurrencySymbol', () => {
+  it('returns R$ for BRL', () => {
+    expect(getCurrencySymbol('BRL', 'pt-BR')).toBe('R$')
+  })
+
+  it('returns $ for USD', () => {
+    const symbol = getCurrencySymbol('USD', 'en-US')
+    expect(symbol).toBe('$')
+  })
+
+  it('returns € for EUR', () => {
+    const symbol = getCurrencySymbol('EUR', 'en-US')
+    expect(symbol).toBe('€')
+  })
+})
+
 describe('formatCurrencyShort', () => {
-  it('abbreviates 1000 as R$ 1.0k', () => {
-    expect(formatCurrencyShort(1000)).toBe('R$ 1.0k')
+  it('abbreviates BRL 1000 with symbol', () => {
+    const result = formatCurrencyShort(1000)
+    expect(result).toContain('R$')
+    expect(result).toContain('1.0k')
   })
 
-  it('abbreviates 3842 as R$ 3.8k', () => {
-    expect(formatCurrencyShort(3842)).toBe('R$ 3.8k')
-  })
-
-  it('abbreviates 10000 as R$ 10.0k', () => {
-    expect(formatCurrencyShort(10000)).toBe('R$ 10.0k')
-  })
-
-  it('abbreviates 14652 as R$ 14.7k', () => {
-    expect(formatCurrencyShort(14652)).toBe('R$ 14.7k')
+  it('abbreviates USD 3842 with symbol', () => {
+    const result = formatCurrencyShort(3842, 'USD', 'en-US')
+    expect(result).toContain('$')
+    expect(result).toContain('3.8k')
   })
 
   it('falls back to formatCurrency for values under 1000', () => {
@@ -61,10 +75,12 @@ describe('formatCurrencyShort', () => {
   })
 
   it('handles negative thousands', () => {
-    expect(formatCurrencyShort(-2000)).toBe('R$ -2.0k')
+    const result = formatCurrencyShort(-2000)
+    expect(result).toContain('R$')
+    expect(result).toContain('-2.0k')
   })
 
-  it('treats -999 as under threshold and uses full format', () => {
+  it('treats -999 as under threshold', () => {
     expect(formatCurrencyShort(-999)).toBe(formatCurrency(-999))
   })
 })

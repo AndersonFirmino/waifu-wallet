@@ -22,7 +22,7 @@ from routers import (
 
 app = FastAPI(
     title="MeuCaixa API",
-    description="API pessoal de controle financeiro. Use /api/v1/summary para uma visão geral completa.",
+    description="Personal finance control API. Use /api/v1/summary for a complete overview.",
     version="1.0.0",
 )
 
@@ -88,6 +88,21 @@ def _run_migrations() -> None:
                         },
                     )
                     conn.commit()
+
+        # Add language / currency to app_settings (i18n support)
+        for col, col_type, default in (
+            ("language", "VARCHAR(10)", "'pt-BR'"),
+            ("currency", "VARCHAR(3)", "'BRL'"),
+        ):
+            try:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE app_settings ADD COLUMN {col} {col_type} DEFAULT {default}"
+                    )
+                )
+                conn.commit()
+            except OperationalError:
+                conn.rollback()
 
 
 _run_migrations()

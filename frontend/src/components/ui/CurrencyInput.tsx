@@ -1,4 +1,5 @@
 import { type CSSProperties } from 'react'
+import { getCurrencySymbol } from '../../utils/currency'
 
 interface CurrencyInputProps {
   value: number
@@ -6,18 +7,33 @@ interface CurrencyInputProps {
   placeholder?: string
   style?: CSSProperties
   className?: string
+  currency?: string
+  locale?: string
 }
 
-function formatBRL(value: number): string {
-  const [intPart = '0', decPart = '00'] = value.toFixed(2).split('.')
-  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-  return `${formattedInt},${decPart}`
+function formatDisplayValue(value: number, locale: string): string {
+  // Format without symbol for input display
+  const parts = new Intl.NumberFormat(locale, {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).formatToParts(value)
+
+  return parts.map((p) => p.value).join('')
 }
 
-export default function CurrencyInput({ value, onChange, placeholder, style, className }: CurrencyInputProps) {
-  const displayValue = value > 0 ? formatBRL(value) : ''
+export default function CurrencyInput({
+  value,
+  onChange,
+  placeholder,
+  style,
+  className,
+  currency = 'BRL',
+  locale = 'pt-BR',
+}: CurrencyInputProps) {
+  const displayValue = value > 0 ? formatDisplayValue(value, locale) : ''
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const raw = e.target.value.replace(/\D/g, '')
     if (raw === '') {
       onChange(0)
@@ -27,12 +43,15 @@ export default function CurrencyInput({ value, onChange, placeholder, style, cla
     onChange(cents / 100)
   }
 
+  const symbol = getCurrencySymbol(currency, locale)
+  const defaultPlaceholder = `${symbol} 0${new Intl.NumberFormat(locale).format(0.0).includes(',') ? ',00' : '.00'}`
+
   return (
     <input
       inputMode="numeric"
       value={displayValue}
       onChange={handleChange}
-      placeholder={placeholder ?? 'R$ 0,00'}
+      placeholder={placeholder ?? defaultPlaceholder}
       style={style}
       className={className}
     />

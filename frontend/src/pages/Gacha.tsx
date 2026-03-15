@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -9,6 +10,7 @@ import { formatCurrency } from '../utils/currency'
 import { daysUntil } from '../utils/date'
 import { type GachaBanner, type GachaPriority, type CharTarget, type WeaponTarget, type GachaStashMulti } from '../types'
 import { useFetch } from '../hooks/useApi'
+import { useLocale } from '../hooks/useLocale'
 import { decodeGachaBanner, decodeBannerList, decodeSummary, decodeGachaStashMultiList, decodeAppSettings } from '../lib/decode'
 import { calculateEstimatedPulls, getCurrencyLabels } from '../utils/gachaCalc'
 
@@ -156,7 +158,7 @@ function getTargetSummary(game: string, charTarget: CharTarget | null, weaponTar
   const parts: string[] = []
   if (charTarget !== null) parts.push(getCharLabel(game, charTarget))
   if (weaponTarget !== null) parts.push(getWeaponLabel(game, weaponTarget))
-  return parts.length > 0 ? parts.join(' + ') : 'Sem objetivo'
+  return parts.join(' + ')
 }
 
 // Game-specific group labels for dropdowns
@@ -354,6 +356,8 @@ interface BannerCardProps {
 }
 
 function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onImagesChanged, onSetCharTarget, onSetWeaponTarget, onSetCharCurrent, onSetWeaponCurrent, onSetEstimatedPulls, allocatedPulls, doubleGemsAvailable }: BannerCardProps) {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const phase = getBannerPhase(banner.start_date, banner.end_date)
   const emoji = GAME_EMOJIS.get(banner.game) ?? '🎮'
 
@@ -431,7 +435,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               animation: 'pulse 2s infinite',
             }}
           />
-          ATIVO
+          {t('gacha.phase_active')}
         </span>
       )
     }
@@ -450,7 +454,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             textTransform: 'uppercase',
           }}
         >
-          PRÓXIMO
+          {t('gacha.phase_upcoming')}
         </span>
       )
     }
@@ -468,7 +472,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
           textTransform: 'uppercase',
         }}
       >
-        ENCERRADO
+        {t('gacha.phase_ended')}
       </span>
     )
   })()
@@ -626,7 +630,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             {/* Name + stars row */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Jogo</label>
+                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>{t('gacha.game_label')}</label>
                 <select value={editGame} onChange={(e) => { setEditGame(e.target.value) }}>
                   <option value="">Selecionar jogo...</option>
                   {SUPPORTED_GAMES.map((g) => (
@@ -635,7 +639,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Personagem / Banner</label>
+                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>{t('gacha.banner_label')}</label>
                 <input
                   value={editBanner}
                   onChange={(e) => { setEditBanner(e.target.value) }}
@@ -645,7 +649,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             </div>
 
             <div className="flex flex-col gap-1 mb-3">
-              <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Imagem principal</label>
+              <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>{t('gacha.main_image')}</label>
               <div className="flex items-center gap-3">
                 <ImageCropUpload
                   aspectRatio={1}
@@ -669,7 +673,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Custo (R$)</label>
+                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>{t('gacha.cost_label')}</label>
                 <CurrencyInput
                   value={parseFloat(editCost) || 0}
                   onChange={(v) => { setEditCost(String(v)) }}
@@ -677,7 +681,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Início — Fim</label>
+                <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>{t('gacha.start_end')}</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
@@ -696,7 +700,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
             </div>
 
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>Prioridade:</span>
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>{t('gacha.priority_label')}:</span>
               <div className="flex gap-1">
                 {PRIORITY_LEVELS.map((p) => (
                   <button
@@ -728,7 +732,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     cursor: 'pointer',
                   }}
                 >
-                  Cancelar
+                  {t('gacha.cancel_form')}
                 </button>
                 <button
                   onClick={handleSaveEdit}
@@ -743,7 +747,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     cursor: 'pointer',
                   }}
                 >
-                  Salvar
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -757,7 +761,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--color-muted)' }}>
-                Imagens do carrossel
+                {t('gacha.carousel_images')}
               </p>
               {banner.images.length > 0 && (
                 <div className="flex flex-col gap-2 mb-3">
@@ -864,7 +868,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     cursor: 'pointer',
                     fontSize: 12,
                   }}
-                  title="Editar banner"
+                  title={t('common.edit')}
                 >
                   ✏️
                 </button>
@@ -884,7 +888,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     cursor: 'pointer',
                     fontSize: 12,
                   }}
-                  title="Remover banner"
+                  title={t('common.delete')}
                 >
                   🗑
                 </button>
@@ -909,13 +913,13 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
               {/* Clear date labels */}
               <div style={{ display: 'flex', gap: 8, fontSize: 12, marginBottom: 6 }}>
                 <span style={{ color: 'var(--color-muted)' }}>
-                  Início: <strong style={{ color: 'var(--color-text)' }}>
-                    {new Date(banner.start_date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {t('gacha.start_date')}: <strong style={{ color: 'var(--color-text)' }}>
+                    {new Date(banner.start_date + 'T00:00:00').toLocaleDateString(language, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </strong>
                 </span>
                 <span style={{ color: 'var(--color-muted)' }}>
-                  Fim: <strong style={{ color: phase === 'active' && daysToEnd <= 5 ? 'var(--color-red)' : 'var(--color-text)' }}>
-                    {new Date(banner.end_date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {t('gacha.end_date')}: <strong style={{ color: phase === 'active' && daysToEnd <= 5 ? 'var(--color-red)' : 'var(--color-text)' }}>
+                    {new Date(banner.end_date + 'T00:00:00').toLocaleDateString(language, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </strong>
                 </span>
               </div>
@@ -968,13 +972,13 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                     alignSelf: 'center',
                     marginLeft: 4,
                   }}>
-                    {phase === 'upcoming' ? 'para chegar' : (daysToEnd <= 3 ? 'restantes!' : 'restantes')}
+                    {phase === 'upcoming' ? t('gacha.to_arrive') : (daysToEnd <= 3 ? t('gacha.remaining_urgent') : t('gacha.remaining'))}
                   </span>
                 </div>
               )}
 
               {phase === 'ended' && (
-                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Encerrado</span>
+                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{t('gacha.ended')}</span>
               )}
 
               {/* Progress bar */}
@@ -1190,16 +1194,16 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                   const cashCost = calculateCashCost(currencyToCash, doubleGemsAvailable, banner.game)
 
                   if (pullsNeeded === 0) {
-                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓ Completo</span>
+                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>{t('gacha.complete')}</span>
                   }
                   if (cashCost === 0) {
-                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>✓ Coberto pelo estoque</span>
+                    return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>{t('gacha.covered_by_stash')}</span>
                   }
                   return (
                     <span style={{ fontSize: 11 }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Cashar: </span>
+                      <span style={{ color: 'var(--color-muted)' }}>{t('gacha.cash_label')}: </span>
                       <span style={{ color: 'var(--color-red)', fontWeight: 700 }}>
-                        {formatCurrency(cashCost)}
+                        {formatCurrency(cashCost, currency, language)}
                       </span>
                     </span>
                   )
@@ -1216,6 +1220,8 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Gacha() {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const [refreshKey, setRefreshKey] = useState(0)
   const { data: serverBanners } = useFetch(`/gacha/banners?_=${String(refreshKey)}`, decodeBannerList)
   const { data: summary } = useFetch('/summary/', decodeSummary)
@@ -1478,10 +1484,10 @@ export default function Gacha() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-            🎲 Gacha Tracker
+            🎲 {t('gacha.title')}
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Planeje seus pulls e controle o impacto financeiro
+            {t('gacha.subtitle')}
           </p>
         </div>
         <Button
@@ -1490,7 +1496,7 @@ export default function Gacha() {
           }}
           variant={showForm ? 'outline' : 'primary'}
         >
-          {showForm ? 'Cancelar' : '+ Adicionar Banner'}
+          {showForm ? t('gacha.cancel_form') : t('gacha.add_banner')}
         </Button>
       </div>
 
@@ -1505,7 +1511,7 @@ export default function Gacha() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>
-              Saldo disponível:{' '}
+              {t('gacha.available_balance')}:{' '}
               {editingManualBalance ? (
                 <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                   <CurrencyInput
@@ -1519,31 +1525,31 @@ export default function Gacha() {
               ) : (
                 <>
                   <strong style={{ color: 'var(--color-text)' }}>
-                    <AnimatedNumber value={availableBalance} formatter={formatCurrency} />
+                    <AnimatedNumber value={availableBalance} formatter={(v) => formatCurrency(v, currency, language)} />
                   </strong>
                   {transactionBalance === 0 && (
                     <button
                       onClick={() => { setManualBalanceInput(String(manualBalance)); setEditingManualBalance(true) }}
                       style={{ background: 'none', border: 'none', color: 'var(--color-purple)', cursor: 'pointer', fontSize: 10, marginLeft: 4 }}
                     >
-                      {manualBalance > 0 ? '(manual) ✏️' : '(definir saldo) ✏️'}
+                      {manualBalance > 0 ? t('gacha.manual_balance') : t('gacha.set_balance')}
                     </button>
                   )}
                 </>
               )}
               {'  ·  '}
-              Cash necessário (calculadora):{' '}
+              {t('gacha.cash_needed')}:{' '}
               <strong style={{ color: totalCashNeeded > 0 ? 'var(--color-yellow)' : 'var(--color-green)' }}>
-                <AnimatedNumber value={totalCashNeeded} formatter={formatCurrency} />
+                <AnimatedNumber value={totalCashNeeded} formatter={(v) => formatCurrency(v, currency, language)} />
               </strong>
             </p>
             <p className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
               {totalCashNeeded === 0 ? (
-                <>Estoque cobre todos os pulls — sem gasto necessário</>
+                <>{t('gacha.stash_covers_all')}</>
               ) : availableBalance >= totalCashNeeded ? (
-                <>Saldo cobre o cash · Sobraria <AnimatedNumber value={availableBalance - totalCashNeeded} formatter={formatCurrency} /></>
+                <>{t('gacha.balance_covers_cash')} <AnimatedNumber value={availableBalance - totalCashNeeded} formatter={(v) => formatCurrency(v, currency, language)} /></>
               ) : (
-                <>Faltariam <AnimatedNumber value={totalCashNeeded - availableBalance} formatter={formatCurrency} /> para cobrir todos os pulls</>
+                <>{t('gacha.short_by')} <AnimatedNumber value={totalCashNeeded - availableBalance} formatter={(v) => formatCurrency(v, currency, language)} /> {t('gacha.short_by_suffix')}</>
               )}
             </p>
           </div>
@@ -1557,12 +1563,12 @@ export default function Gacha() {
       <Card className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-            💎 Estoque de Recursos
+            {t('gacha.stash_resources')}
           </p>
         </div>
 
         {activeGames.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Adicione banners para ver o estoque por jogo</p>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>{t('gacha.add_banners_for_stash')}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {activeGames.map((game) => {
@@ -1600,7 +1606,7 @@ export default function Gacha() {
                           border: 'none',
                         }}
                       >
-                        Atualizar
+                        {t('gacha.update_stash')}
                       </button>
                     )}
                   </div>
@@ -1646,12 +1652,12 @@ export default function Gacha() {
                           onChange={(e) => { setStashDouble(e.target.value === 'yes') }}
                           style={{ width: 160 }}
                         >
-                          <option value="yes">Disponível</option>
-                          <option value="no">Não disponível</option>
+                          <option value="yes">{t('gacha.double_gems_available')}</option>
+                          <option value="no">{t('gacha.double_gems_unavailable')}</option>
                         </select>
                       </div>
                       <div className="flex items-end gap-2" style={{ marginLeft: 'auto' }}>
-                        <Button size="sm" onClick={() => { void handleSaveStash() }}>Salvar</Button>
+                        <Button size="sm" onClick={() => { void handleSaveStash() }}>{t('common.save')}</Button>
                         <Button size="sm" variant="outline" onClick={() => { setEditingStashGame(null) }}>×</Button>
                       </div>
                     </div>
@@ -1704,7 +1710,7 @@ export default function Gacha() {
         {banners.some(hasEstimate) && (
           <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 12, paddingTop: 12 }}>
             <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
-              Calculadora de Pulls
+              {t('gacha.pull_calculator')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {banners
@@ -1730,7 +1736,7 @@ export default function Gacha() {
                         <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
                           {b.banner}
                         </span>
-                        {targetLabel !== 'Sem objetivo' && (
+                        {targetLabel !== '' && (
                           <Badge color="purple" size="xs">{targetLabel}</Badge>
                         )}
                       </div>
@@ -1742,20 +1748,20 @@ export default function Gacha() {
                         </div>
                         <div className="text-right" style={{ minWidth: 80 }}>
                           {pullsNeeded === 0 ? (
-                            <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>✓ Completo</span>
+                            <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>{t('gacha.complete')}</span>
                           ) : allocated >= pullsNeeded ? (
                             <span className="text-xs font-bold" style={{ color: 'var(--color-green)' }}>
-                              ✓ Coberto ({allocated} pulls)
+                              {t('gacha.covered')} ({allocated} pulls)
                             </span>
                           ) : (
                             <div>
                               {allocated > 0 && (
                                 <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                                  {allocated} do estoque +{' '}
+                                  {allocated} {t('gacha.from_stash')} +{' '}
                                 </span>
                               )}
                               <span className="text-xs font-bold" style={{ color: 'var(--color-red)' }}>
-                                {pullsToCash} a cashar
+                                {pullsToCash} {t('gacha.to_cash')}
                               </span>
                             </div>
                           )}
@@ -1765,7 +1771,7 @@ export default function Gacha() {
                             className="text-sm font-bold"
                             style={{ color: cashCost === 0 ? 'var(--color-green)' : 'var(--color-yellow)' }}
                           >
-                            {cashCost === 0 ? 'R$ 0' : formatCurrency(cashCost)}
+                            {cashCost === 0 ? formatCurrency(0, currency, language) : formatCurrency(cashCost, currency, language)}
                           </span>
                         </div>
                         </div>
@@ -1781,12 +1787,12 @@ export default function Gacha() {
       {showForm && (
         <Card className="mb-6 animate-fade-in">
           <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            Novo Banner
+            {t('gacha.new_banner')}
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-                Jogo
+                {t('gacha.game_label')}
               </label>
               <select value={formGame} onChange={(e) => { setFormGame(e.target.value) }}>
                 <option value="">Selecionar jogo...</option>
@@ -1797,7 +1803,7 @@ export default function Gacha() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-                Personagem / Banner
+                {t('gacha.banner_label')}
               </label>
               <input
                 placeholder="ex: Silver Wolf Lv.999"
@@ -1810,7 +1816,7 @@ export default function Gacha() {
           </div>
           <div className="flex flex-col gap-1 mt-4">
             <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-              Imagem principal
+              {t('gacha.main_image')}
             </label>
             <div className="flex items-center gap-3">
               <ImageCropUpload
@@ -1835,7 +1841,7 @@ export default function Gacha() {
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-                Custo Estimado (R$)
+                {t('gacha.estimated_cost')}
               </label>
               <CurrencyInput
                 value={parseFloat(formCost) || 0}
@@ -1845,7 +1851,7 @@ export default function Gacha() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
-                Início — Fim
+                {t('gacha.start_end')}
               </label>
               <div className="flex gap-3">
                 <input
@@ -1869,7 +1875,7 @@ export default function Gacha() {
           </div>
           <div className="flex items-center gap-4 mt-4">
             <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Prioridade:
+              {t('gacha.priority_label')}:
             </span>
             <div className="flex gap-1">
               {PRIORITY_LEVELS.map((p) => (
@@ -1897,7 +1903,7 @@ export default function Gacha() {
               }}
               className="ml-auto"
             >
-              Salvar
+              {t('common.save')}
             </Button>
           </div>
         </Card>
@@ -1906,7 +1912,7 @@ export default function Gacha() {
       {/* Banner List */}
       {banners.length === 0 ? (
         <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-          Nenhum banner cadastrado
+          {t('gacha.no_banners')}
         </p>
       ) : (
         <div className="flex flex-col gap-4">

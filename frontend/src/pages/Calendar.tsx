@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { formatCurrency } from '../utils/currency'
@@ -6,8 +7,7 @@ import { formatMonth, getDaysInMonth, getFirstDayOfMonth } from '../utils/date'
 import { type CalendarEvent, type CalendarEventType } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeCalendarEventList } from '../lib/decode'
-
-const DAYS_OF_WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+import { useLocale } from '../hooks/useLocale'
 
 const EVENT_COLORS: Record<CalendarEventType, string> = {
   income: 'var(--color-green)',
@@ -17,19 +17,14 @@ const EVENT_COLORS: Record<CalendarEventType, string> = {
   salary: 'var(--color-blue)',
 }
 
-const EVENT_LABELS: Record<CalendarEventType, string> = {
-  income: 'Receita',
-  expense: 'Despesa',
-  installment: 'Parcela',
-  holiday: 'Feriado',
-  salary: 'Salário',
-}
-
 const LEGEND_TYPES: CalendarEventType[] = ['salary', 'income', 'expense', 'installment', 'holiday']
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Calendar() {
+  const { t } = useTranslation()
+  const { language, currency } = useLocale()
+
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
@@ -78,13 +73,31 @@ export default function Calendar() {
     .sort((a, b) => a.day - b.day)
     .slice(0, 8)
 
+  const daysOfWeek = [
+    t('calendar.days_of_week.sun'),
+    t('calendar.days_of_week.mon'),
+    t('calendar.days_of_week.tue'),
+    t('calendar.days_of_week.wed'),
+    t('calendar.days_of_week.thu'),
+    t('calendar.days_of_week.fri'),
+    t('calendar.days_of_week.sat'),
+  ] as const
+
+  const eventLabels: Record<CalendarEventType, string> = {
+    income: t('calendar.event_types.income'),
+    expense: t('calendar.event_types.expense'),
+    installment: t('calendar.event_types.installment'),
+    holiday: t('calendar.event_types.holiday'),
+    salary: t('calendar.event_types.salary'),
+  }
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-            Calendário Financeiro
+            {t('calendar.title')}
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Visualize vencimentos e recebimentos por dia
@@ -107,7 +120,7 @@ export default function Calendar() {
             className="font-semibold text-sm"
             style={{ color: 'var(--color-text)', minWidth: 160, textAlign: 'center' }}
           >
-            {formatMonth(year, month)}
+            {formatMonth(year, month, language)}
           </span>
           <button
             onClick={nextMonth}
@@ -129,7 +142,7 @@ export default function Calendar() {
         <Card style={{ padding: 20 }}>
           {/* Day labels */}
           <div className="grid grid-cols-7 mb-2">
-            {DAYS_OF_WEEK.map((d) => (
+            {daysOfWeek.map((d) => (
               <div key={d} className="text-center text-xs font-semibold py-2" style={{ color: 'var(--color-muted)' }}>
                 {d}
               </div>
@@ -221,11 +234,11 @@ export default function Calendar() {
 
           {/* Legend */}
           <div className="flex items-center gap-5 mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-            {LEGEND_TYPES.map((t) => (
-              <div key={t} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EVENT_COLORS[t] }} />
+            {LEGEND_TYPES.map((type) => (
+              <div key={type} className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EVENT_COLORS[type] }} />
                 <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {EVENT_LABELS[t]}
+                  {eventLabels[type]}
                 </span>
               </div>
             ))}
@@ -234,12 +247,12 @@ export default function Calendar() {
           {/* Loading / Empty month states */}
           {eventsLoading && (
             <p className="text-center py-4" style={{ color: 'var(--color-muted)', fontSize: 13 }}>
-              Carregando eventos...
+              {t('common.loading')}
             </p>
           )}
           {!eventsLoading && eventList.length === 0 && (
             <p className="text-center py-6" style={{ color: 'var(--color-muted)', fontSize: 13 }}>
-              Nenhum evento neste mês.
+              {t('calendar.no_events')}
             </p>
           )}
         </Card>
@@ -250,11 +263,11 @@ export default function Calendar() {
           {selectedDay !== null && (
             <Card>
               <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
-                Dia {selectedDay} de {formatMonth(year, month).split(' ')[0]}
+                Dia {selectedDay} de {formatMonth(year, month, language).split(' ')[0]}
               </h4>
               {selectedEvents.length === 0 ? (
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  Sem eventos neste dia
+                  {t('calendar.no_events')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -271,7 +284,7 @@ export default function Calendar() {
                       </div>
                       {ev.type === 'holiday' ? (
                         <span className="text-xs font-medium" style={{ color: 'var(--color-purple)' }}>
-                          🎌 Feriado
+                          🎌 {eventLabels.holiday}
                         </span>
                       ) : (
                         <span
@@ -284,7 +297,7 @@ export default function Calendar() {
                           }}
                         >
                           {ev.type === 'salary' || ev.type === 'income' ? '+' : '−'}
-                          {formatCurrency(ev.amount)}
+                          {formatCurrency(ev.amount, currency, language)}
                         </span>
                       )}
                     </div>
@@ -297,7 +310,7 @@ export default function Calendar() {
           {/* Upcoming */}
           <Card style={{ flex: 1 }}>
             <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>
-              Próximos eventos
+              {t('calendar.upcoming_events')}
             </h4>
             {upcomingEvents.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
@@ -339,7 +352,7 @@ export default function Calendar() {
                       size="xs"
                     >
                       {ev.type === 'salary' || ev.type === 'income' ? '+' : '−'}
-                      {formatCurrency(ev.amount)}
+                      {formatCurrency(ev.amount, currency, language)}
                     </Badge>
                   </div>
                 ))}

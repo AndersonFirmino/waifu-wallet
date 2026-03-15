@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -8,6 +9,7 @@ import { formatCurrency } from '../utils/currency'
 import { type Transaction, type TransactionType } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeTransaction, decodeTransactionList } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 interface EditFormState {
   type: TransactionType
@@ -17,8 +19,8 @@ interface EditFormState {
   date: string
 }
 
-const CATEGORIES = [
-  'Todas',
+// Category keys map to PT-BR values stored in the database
+const CATEGORY_DB_VALUES = [
   'Trabalho',
   'Renda Extra',
   'Moradia',
@@ -27,7 +29,18 @@ const CATEGORIES = [
   'Saúde',
   'Lazer',
   'Contas',
-]
+] as const
+
+const CATEGORY_KEYS = [
+  'work',
+  'extra_income',
+  'housing',
+  'food',
+  'transport',
+  'health',
+  'leisure',
+  'bills',
+] as const
 
 type FilterType = 'all' | TransactionType
 
@@ -45,6 +58,8 @@ interface FormState {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Transactions() {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
   const today = new Date().toISOString().slice(0, 10)
 
   const { data: serverData } = useFetch('/transactions/', decodeTransactionList)
@@ -60,7 +75,7 @@ export default function Transactions() {
     date: today,
   })
   const [filter, setFilter] = useState<FilterType>('all')
-  const [catFilter, setCatFilter] = useState('Todas')
+  const [catFilter, setCatFilter] = useState<string>('all')
   const [form, setForm] = useState<FormState>({
     type: 'expense',
     amount: 0,
@@ -97,7 +112,7 @@ export default function Transactions() {
 
   const filtered = transactions.filter((t) => {
     const typeOk = filter === 'all' || t.type === filter
-    const catOk = catFilter === 'Todas' || t.category === catFilter
+    const catOk = catFilter === 'all' || t.category === catFilter
     return typeOk && catOk
   })
 
@@ -108,7 +123,7 @@ export default function Transactions() {
   const handleAdd = async () => {
     setAddError(null)
     if (!form.description) {
-      setAddError('Preencha a descrição.')
+      setAddError(t('transactions.fill_description'))
       return
     }
     if (form.amount <= 0) {
@@ -165,7 +180,7 @@ export default function Transactions() {
   const handleSave = async (id: number) => {
     setEditError(null)
     if (!editForm.description) {
-      setEditError('Preencha a descrição.')
+      setEditError(t('transactions.fill_description'))
       return
     }
     if (editForm.amount <= 0) {
@@ -205,26 +220,28 @@ export default function Transactions() {
     setEditError(null)
   }
 
+  const currencyFormatter = (v: number) => formatCurrency(v, currency, language)
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
       <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-        Transações
+        {t('transactions.title')}
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
-        Todas as transações
+        {t('transactions.subtitle')}
       </p>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <StatCard icon="📈" label="Receitas" value={formatCurrency(totalIncome)} numericValue={totalIncome} numericFormatter={formatCurrency} color="green" />
-        <StatCard icon="📉" label="Despesas" value={formatCurrency(totalExpenses)} numericValue={totalExpenses} numericFormatter={formatCurrency} color="red" />
-        <StatCard icon="💰" label="Saldo" value={formatCurrency(balance)} numericValue={balance} numericFormatter={formatCurrency} color={balance >= 0 ? 'blue' : 'red'} />
+        <StatCard icon="📈" label={t('transactions.income_label')} value={formatCurrency(totalIncome, currency, language)} numericValue={totalIncome} numericFormatter={currencyFormatter} color="green" />
+        <StatCard icon="📉" label={t('transactions.expense_label')} value={formatCurrency(totalExpenses, currency, language)} numericValue={totalExpenses} numericFormatter={currencyFormatter} color="red" />
+        <StatCard icon="💰" label={t('transactions.balance')} value={formatCurrency(balance, currency, language)} numericValue={balance} numericFormatter={currencyFormatter} color={balance >= 0 ? 'blue' : 'red'} />
       </div>
 
       {/* Add Form */}
       <Card className="mb-6">
         <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-          Nova Transação
+          {t('transactions.new_transaction')}
         </h3>
         <div className="flex gap-3 flex-wrap">
           {/* Toggle Type */}
@@ -232,22 +249,22 @@ export default function Transactions() {
             className="flex rounded-lg overflow-hidden border"
             style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
           >
-            {TRANSACTION_TYPES.map((t) => (
+            {TRANSACTION_TYPES.map((type) => (
               <button
-                key={t}
+                key={type}
                 onClick={() => {
-                  setForm((f) => ({ ...f, type: t }))
+                  setForm((f) => ({ ...f, type }))
                 }}
                 className="px-4 py-2 text-sm font-medium transition-colors"
                 style={{
                   background:
-                    form.type === t ? (t === 'income' ? 'var(--color-green)' : 'var(--color-red)') : 'transparent',
-                  color: form.type === t ? '#fff' : 'var(--color-muted)',
+                    form.type === type ? (type === 'income' ? 'var(--color-green)' : 'var(--color-red)') : 'transparent',
+                  color: form.type === type ? '#fff' : 'var(--color-muted)',
                   border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                {t === 'income' ? '+ Receita' : '− Despesa'}
+                {type === 'income' ? t('transactions.income_btn') : t('transactions.expense_btn')}
               </button>
             ))}
           </div>
@@ -275,9 +292,9 @@ export default function Transactions() {
             }}
             style={{ width: 170 }}
           >
-            {CATEGORIES.filter((c) => c !== 'Todas').map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {CATEGORY_KEYS.map((key, i) => (
+              <option key={key} value={CATEGORY_DB_VALUES[i]}>
+                {t(`categories.${key}`)}
               </option>
             ))}
           </select>
@@ -296,7 +313,7 @@ export default function Transactions() {
             variant="primary"
             disabled={addSaving}
           >
-            {addSaving ? 'Salvando...' : 'Adicionar'}
+            {addSaving ? t('transactions.saving') : t('transactions.add')}
           </Button>
         </div>
         {addError !== null && (
@@ -330,7 +347,7 @@ export default function Transactions() {
                 cursor: 'pointer',
               }}
             >
-              {f === 'all' ? 'Todas' : f === 'income' ? 'Receitas' : 'Despesas'}
+              {f === 'all' ? t('transactions.filter_all') : f === 'income' ? t('transactions.filter_income') : t('transactions.filter_expenses')}
             </button>
           ))}
         </div>
@@ -342,9 +359,10 @@ export default function Transactions() {
           }}
           style={{ width: 180 }}
         >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          <option value="all">{t('categories.all')}</option>
+          {CATEGORY_KEYS.map((key, i) => (
+            <option key={key} value={CATEGORY_DB_VALUES[i]}>
+              {t(`categories.${key}`)}
             </option>
           ))}
         </select>
@@ -357,11 +375,11 @@ export default function Transactions() {
       <Card>
         {transactions.length === 0 ? (
           <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
-            Nenhuma transação cadastrada. Preencha o formulário acima para começar.
+            {t('transactions.no_transactions_registered')}
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-            Nenhuma transação encontrada para este filtro.
+            {t('transactions.no_transactions_filter')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -377,26 +395,26 @@ export default function Transactions() {
                     className="flex rounded-lg overflow-hidden border"
                     style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
                   >
-                    {TRANSACTION_TYPES.map((t) => (
+                    {TRANSACTION_TYPES.map((type) => (
                       <button
-                        key={t}
+                        key={type}
                         onClick={() => {
-                          setEditForm((f) => ({ ...f, type: t }))
+                          setEditForm((f) => ({ ...f, type }))
                         }}
                         className="px-3 py-1.5 text-sm font-medium transition-colors"
                         style={{
                           background:
-                            editForm.type === t
-                              ? t === 'income'
+                            editForm.type === type
+                              ? type === 'income'
                                 ? 'var(--color-green)'
                                 : 'var(--color-red)'
                               : 'transparent',
-                          color: editForm.type === t ? '#fff' : 'var(--color-muted)',
+                          color: editForm.type === type ? '#fff' : 'var(--color-muted)',
                           border: 'none',
                           cursor: 'pointer',
                         }}
                       >
-                        {t === 'income' ? '+ Receita' : '− Despesa'}
+                        {type === 'income' ? t('transactions.income_btn') : t('transactions.expense_btn')}
                       </button>
                     ))}
                   </div>
@@ -424,9 +442,9 @@ export default function Transactions() {
                     }}
                     style={{ width: 150 }}
                   >
-                    {CATEGORIES.filter((c) => c !== 'Todas').map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    {CATEGORY_KEYS.map((key, i) => (
+                      <option key={key} value={CATEGORY_DB_VALUES[i]}>
+                        {t(`categories.${key}`)}
                       </option>
                     ))}
                   </select>
@@ -447,10 +465,10 @@ export default function Transactions() {
                         variant="primary"
                         disabled={editSaving}
                       >
-                        {editSaving ? 'Salvando...' : 'Salvar'}
+                        {editSaving ? t('transactions.saving') : t('transactions.save')}
                       </Button>
                       <Button onClick={handleCancelEdit} variant="ghost">
-                        Cancelar
+                        {t('transactions.cancel')}
                       </Button>
                     </div>
                     {editError !== null && (
@@ -505,7 +523,7 @@ export default function Transactions() {
                         }}
                       >
                         {tx.type === 'income' ? '+' : '−'}
-                        {formatCurrency(tx.amount)}
+                        {formatCurrency(tx.amount, currency, language)}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--color-muted)', margin: 0 }}>
                         {tx.date.slice(8)}/{tx.date.slice(5, 7)}
@@ -538,7 +556,7 @@ export default function Transactions() {
                               cursor: 'pointer',
                             }}
                           >
-                            Confirmar
+                            {t('transactions.confirm')}
                           </button>
                           <button
                             onClick={() => { setConfirmDeleteId(null) }}
@@ -550,13 +568,13 @@ export default function Transactions() {
                               cursor: 'pointer',
                             }}
                           >
-                            Cancelar
+                            {t('transactions.cancel')}
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => { setConfirmDeleteId(tx.id) }}
-                          title="Excluir"
+                          title={t('transactions.delete')}
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
                           style={{
                             background: 'rgba(239,68,68,0.12)',

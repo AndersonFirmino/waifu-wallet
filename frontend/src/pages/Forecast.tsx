@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AreaChart,
   Area,
@@ -18,16 +19,17 @@ import { formatCurrency, formatCurrencyShort } from '../utils/currency'
 import { type ForecastPoint, type ForecastPeriod } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeForecastList, decodeSummary, decodeDebtList, decodeLoanList } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 interface ForecastPeriodConfig {
-  label: string
+  labelKey: string
   months: number
 }
 
 const PERIODS: Record<ForecastPeriod, ForecastPeriodConfig> = {
-  '1m': { label: '1 mês', months: 1 },
-  '3m': { label: '3 meses', months: 3 },
-  '6m': { label: '6 meses', months: 6 },
+  '1m': { labelKey: 'forecast.period_1m', months: 1 },
+  '3m': { labelKey: 'forecast.period_3m', months: 3 },
+  '6m': { labelKey: 'forecast.period_6m', months: 6 },
 }
 
 const FORECAST_PERIODS: ForecastPeriod[] = ['1m', '3m', '6m']
@@ -42,9 +44,15 @@ interface ConsiderationItem {
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
-type ForecastTooltipProps = TooltipProps<number, string>
+interface ForecastTooltipInnerProps {
+  active?: boolean
+  payload?: TooltipProps<number, string>['payload']
+  label?: string
+  currency: string
+  locale: string
+}
 
-function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
+function ForecastTooltip({ active, payload, label, currency, locale }: ForecastTooltipInnerProps) {
   if (!active || !payload?.length) return null
   return (
     <div
@@ -59,7 +67,7 @@ function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
       <p style={{ color: 'var(--color-muted)', margin: '0 0 10px', fontWeight: 600 }}>{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey} style={{ color: p.color, margin: '3px 0' }}>
-          {p.name}: {formatCurrency(p.value ?? 0)}
+          {p.name}: {formatCurrency(p.value ?? 0, currency, locale)}
         </p>
       ))}
     </div>
@@ -69,6 +77,9 @@ function ForecastTooltip({ active, payload, label }: ForecastTooltipProps) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Forecast() {
+  const { t } = useTranslation()
+  const { language, currency } = useLocale()
+
   const [period, setPeriod] = useState<ForecastPeriod>('6m')
 
   const { data: forecastData, loading: forecastLoading } = useFetch(`/forecast/?period=${period}`, decodeForecastList)
@@ -111,7 +122,7 @@ export default function Forecast() {
   const sortedRisks = [...riskCategories].sort((a, b) => b.monthly - a.monthly)
   const topRisk = sortedRisks[0] ?? { label: '\u2014', monthly: 0 }
 
-  const periodConfig = PERIODS[period]
+  const periodLabel = t(PERIODS[period].labelKey)
   const lastPoint = data[data.length - 1]
   const projected = lastPoint?.base ?? 0
   const optimistic = lastPoint?.optimistic ?? 0
@@ -124,10 +135,10 @@ export default function Forecast() {
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
       <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-        🔮 Previsão de Saldo
+        🔮 {t('forecast.title')}
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
-        Projeção baseada em histórico e comprometimentos futuros
+        {t('forecast.subtitle')}
       </p>
 
       {/* Period Selector */}
@@ -150,21 +161,21 @@ export default function Forecast() {
               cursor: 'pointer',
             }}
           >
-            {PERIODS[p].label}
+            {t(PERIODS[p].labelKey)}
           </button>
         ))}
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected)} numericValue={projected} numericFormatter={formatCurrency} color="blue" />
-        <StatCard icon="🎯" label="Cenário Otimista" value={formatCurrency(optimistic)} numericValue={optimistic} numericFormatter={formatCurrency} color="green" />
-        <StatCard icon="⚠️" label="Cenário Pessimista" value={formatCurrency(pessimistic)} numericValue={pessimistic} numericFormatter={formatCurrency} color="red" />
+        <StatCard icon="💰" label="Saldo Projetado (base)" value={formatCurrency(projected, currency, language)} numericValue={projected} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="blue" />
+        <StatCard icon="🎯" label={t('forecast.optimistic')} value={formatCurrency(optimistic, currency, language)} numericValue={optimistic} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="green" />
+        <StatCard icon="⚠️" label={t('forecast.pessimistic')} value={formatCurrency(pessimistic, currency, language)} numericValue={pessimistic} numericFormatter={(v: number) => formatCurrency(v, currency, language)} color="red" />
         <StatCard
           icon="📊"
           label="Maior Risco"
           value={topRisk.monthly > 0 ? topRisk.label : '\u2014'}
-          sub={topRisk.monthly > 0 ? `${formatCurrency(topRisk.monthly)}/mês` : 'Sem dados'}
+          sub={topRisk.monthly > 0 ? `${formatCurrency(topRisk.monthly, currency, language)}/mês` : 'Sem dados'}
           color="orange"
         />
       </div>
@@ -172,7 +183,7 @@ export default function Forecast() {
       {/* Loading state */}
       {forecastLoading && (
         <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-          Calculando previsão...
+          {t('common.loading')}
         </p>
       )}
 
@@ -187,12 +198,12 @@ export default function Forecast() {
       <Card className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-            Evolução do Saldo — {periodConfig.label}
+            Evolução do Saldo — {periodLabel}
           </h3>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-muted)' }}>
-            <span>● Base</span>
-            <span style={{ color: 'var(--color-green)' }}>● Otimista</span>
-            <span style={{ color: 'var(--color-red)' }}>● Pessimista</span>
+            <span>● {t('forecast.base')}</span>
+            <span style={{ color: 'var(--color-green)' }}>● {t('forecast.optimistic')}</span>
+            <span style={{ color: 'var(--color-red)' }}>● {t('forecast.pessimistic')}</span>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={280}>
@@ -222,14 +233,14 @@ export default function Forecast() {
               tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v: number) => formatCurrencyShort(v)}
+              tickFormatter={(v: number) => formatCurrencyShort(v, currency, language)}
             />
-            <Tooltip content={<ForecastTooltip />} />
+            <Tooltip content={<ForecastTooltip currency={currency} locale={language} />} />
             <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="4 4" />
             <Area
               type="monotone"
               dataKey="optimistic"
-              name="Otimista"
+              name={t('forecast.optimistic')}
               stroke="#10b981"
               strokeWidth={2}
               fill="url(#gradOptimistic)"
@@ -238,7 +249,7 @@ export default function Forecast() {
             <Area
               type="monotone"
               dataKey="base"
-              name="Base"
+              name={t('forecast.base')}
               stroke="#3b82f6"
               strokeWidth={2.5}
               fill="url(#gradBase)"
@@ -246,7 +257,7 @@ export default function Forecast() {
             <Area
               type="monotone"
               dataKey="pessimistic"
-              name="Pessimista"
+              name={t('forecast.pessimistic')}
               stroke="#ef4444"
               strokeWidth={2}
               fill="url(#gradPessimistic)"
@@ -260,7 +271,7 @@ export default function Forecast() {
       <div className="grid grid-cols-2 gap-5">
         <Card>
           <h4 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            Fatores Considerados
+            {t('forecast.factors')}
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {considerations.map((c, i) => (
@@ -283,7 +294,7 @@ export default function Forecast() {
                     style={{ color: c.type === 'income' ? 'var(--color-green)' : 'var(--color-red)' }}
                   >
                     {c.type === 'income' ? '+' : ''}
-                    {formatCurrency(c.amount)}
+                    {formatCurrency(c.amount, currency, language)}
                   </span>
                 </div>
               </div>
@@ -293,7 +304,7 @@ export default function Forecast() {
 
         <Card>
           <h4 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            Resumo do Período ({periodConfig.label})
+            {t('forecast.period_summary')} ({periodLabel})
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div
@@ -304,7 +315,7 @@ export default function Forecast() {
                 Acumulado Otimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-green)' }}>
-                +<AnimatedNumber value={totalOptimistic} formatter={formatCurrency} />
+                +<AnimatedNumber value={totalOptimistic} formatter={(v: number) => formatCurrency(v, currency, language)} />
               </span>
             </div>
             <div
@@ -315,7 +326,7 @@ export default function Forecast() {
                 Acumulado Pessimista
               </span>
               <span className="font-bold" style={{ color: 'var(--color-red)' }}>
-                <AnimatedNumber value={totalPessimistic} formatter={formatCurrency} />
+                <AnimatedNumber value={totalPessimistic} formatter={(v: number) => formatCurrency(v, currency, language)} />
               </span>
             </div>
             <div
@@ -326,7 +337,7 @@ export default function Forecast() {
                 Acumulado Base
               </span>
               <span className="font-bold text-lg" style={{ color: 'var(--color-blue)' }}>
-                <AnimatedNumber value={totalBase} formatter={formatCurrency} />
+                <AnimatedNumber value={totalBase} formatter={(v: number) => formatCurrency(v, currency, language)} />
               </span>
             </div>
           </div>

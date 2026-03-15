@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -9,6 +10,7 @@ import { formatCurrency } from '../utils/currency'
 import { type SavingsAccount } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeSavingsAccount, decodeSavingsAccountList } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
@@ -44,6 +46,9 @@ function accountToForm(account: SavingsAccount): AccountFormState {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Savings() {
+  const { t } = useTranslation()
+  const { language, currency } = useLocale()
+
   const { data: serverData } = useFetch('/savings/', decodeSavingsAccountList)
 
   const [additions, setAdditions] = useState<SavingsAccount[]>([])
@@ -169,7 +174,7 @@ export default function Savings() {
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
       <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-        🐷 Cofrinhos
+        🐷 {t('savings.title')}
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
         Reservas, fundos de emergência e metas de poupança
@@ -179,34 +184,34 @@ export default function Savings() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard
           icon="💰"
-          label="Total Guardado"
-          value={formatCurrency(totalSaved)}
+          label={t('savings.total_saved')}
+          value={formatCurrency(totalSaved, currency, language)}
           numericValue={totalSaved}
-          numericFormatter={formatCurrency}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
           sub={`${String(activeAccounts.length)} conta${activeAccounts.length !== 1 ? 's' : ''} ativa${activeAccounts.length !== 1 ? 's' : ''}`}
           color="green"
         />
         <StatCard
           icon="🏦"
-          label="Contas Ativas"
+          label={t('savings.active_accounts')}
           value={String(activeAccounts.length)}
           sub={`${String(accounts.length)} no total`}
           color="blue"
         />
         <StatCard
           icon="🏆"
-          label="Maior Reserva"
-          value={biggestAccount !== null ? formatCurrency(biggestAccount.balance) : '—'}
+          label={t('savings.largest_reserve')}
+          value={biggestAccount !== null ? formatCurrency(biggestAccount.balance, currency, language) : '—'}
           numericValue={biggestAccount?.balance}
-          numericFormatter={formatCurrency}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
           sub={biggestAccount !== null ? biggestAccount.name : 'Nenhuma conta'}
           color="yellow"
         />
         <StatCard
           icon="🎯"
-          label="Progresso Geral"
+          label={t('savings.overall_progress')}
           value={overallProgress !== null ? `${String(overallProgress)}%` : '—'}
-          sub={totalGoal > 0 ? `meta: ${formatCurrency(totalGoal)}` : 'Sem metas definidas'}
+          sub={totalGoal > 0 ? `${t('savings.goal')}: ${formatCurrency(totalGoal, currency, language)}` : 'Sem metas definidas'}
           color="purple"
         />
       </div>
@@ -223,14 +228,14 @@ export default function Savings() {
           }}
           variant={showForm ? 'outline' : 'primary'}
         >
-          {showForm ? 'Cancelar' : '+ Novo Cofrinho'}
+          {showForm ? t('common.cancel') : `+ ${t('savings.new_savings')}`}
         </Button>
       </div>
 
       {showForm && (
         <Card className="mb-6">
           <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-            {editingId !== null ? 'Editar Cofrinho' : 'Novo Cofrinho'}
+            {editingId !== null ? t('common.edit') : t('savings.new_savings')}
           </h3>
           <AccountForm
             form={form}
@@ -240,6 +245,9 @@ export default function Savings() {
             isEditing={editingId !== null}
             saving={saving}
             formError={formError}
+            currency={currency}
+            language={language}
+            t={t}
           />
         </Card>
       )}
@@ -270,7 +278,7 @@ export default function Savings() {
                         </h4>
                         {!account.active && (
                           <Badge color="gray" size="xs">
-                            Inativa
+                            {t('common.inactive')}
                           </Badge>
                         )}
                       </div>
@@ -282,7 +290,7 @@ export default function Savings() {
 
                   {/* Balance */}
                   <p className="text-2xl font-bold mb-3" style={{ color: 'var(--color-green)' }}>
-                    {formatCurrency(account.balance)}
+                    {formatCurrency(account.balance, currency, language)}
                   </p>
 
                   {/* Goal progress */}
@@ -290,7 +298,7 @@ export default function Savings() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          Meta: {formatCurrency(account.goal)}
+                          {t('savings.goal')}: {formatCurrency(account.goal, currency, language)}
                         </span>
                         <span
                           className="text-xs font-medium"
@@ -323,7 +331,7 @@ export default function Savings() {
                       openEditForm(account)
                     }}
                   >
-                    Editar
+                    {t('common.edit')}
                   </Button>
                   {confirmDeleteId === account.id ? (
                     <div className="flex items-center gap-1">
@@ -332,14 +340,14 @@ export default function Savings() {
                         className="text-xs px-2 py-1 rounded-lg"
                         style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
                       >
-                        Confirmar
+                        {t('common.confirm')}
                       </button>
                       <button
                         onClick={() => { setConfirmDeleteId(null) }}
                         className="text-xs px-2 py-1 rounded-lg"
                         style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
                       >
-                        Cancelar
+                        {t('common.cancel')}
                       </button>
                     </div>
                   ) : (
@@ -354,7 +362,7 @@ export default function Savings() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Excluir
+                      {t('common.delete')}
                     </button>
                   )}
                 </div>
@@ -377,9 +385,12 @@ interface AccountFormProps {
   isEditing: boolean
   saving: boolean
   formError: string | null
+  currency: string
+  language: string
+  t: (key: string) => string
 }
 
-function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: AccountFormProps) {
+function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, formError, t }: AccountFormProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -409,14 +420,14 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, form
           onChange={(v) => {
             setField('balance', v)
           }}
-          placeholder="Saldo atual (R$)"
+          placeholder={`${t('savings.current_balance')} (R$)`}
         />
         <CurrencyInput
           value={form.goal}
           onChange={(v) => {
             setField('goal', v)
           }}
-          placeholder="Meta (R$)"
+          placeholder={`${t('savings.goal')} (R$)`}
         />
 
         {/* Active toggle */}
@@ -438,7 +449,7 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, form
               />
             </div>
             <span className="text-sm" style={{ color: form.active ? 'var(--color-green)' : 'var(--color-muted)' }}>
-              {form.active ? 'Ativa' : 'Inativa'}
+              {form.active ? t('common.active') : t('common.inactive')}
             </span>
           </label>
         </div>
@@ -453,7 +464,7 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, form
 
       <div className="flex gap-3 justify-end mt-4">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancelar
+          {t('common.cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -461,7 +472,7 @@ function AccountForm({ form, setField, onSave, onCancel, isEditing, saving, form
           }}
           disabled={saving}
         >
-          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? t('transactions.saving') : isEditing ? t('common.save') : t('common.add')}
         </Button>
       </div>
     </div>

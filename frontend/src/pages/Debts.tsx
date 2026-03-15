@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import CurrencyInput from '../components/ui/CurrencyInput'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -10,13 +11,9 @@ import { daysUntil, formatDateShort } from '../utils/date'
 import { type Debt, type Loan } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeDebt, decodeDebtList, decodeLoan, decodeLoanList } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 type ActiveTab = 'debts' | 'loans'
-
-const TABS: [ActiveTab, string][] = [
-  ['debts', '💳 Dívidas'],
-  ['loans', '🏦 Empréstimos'],
-]
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
@@ -86,15 +83,18 @@ function loanToForm(loan: Loan): LoanFormState {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-function urgencyLabel(days: number): { label: string; color: 'red' | 'yellow' | 'green' } {
-  if (days <= 2) return { label: 'URGENTE', color: 'red' }
-  if (days <= 7) return { label: `${String(days)} dias`, color: 'yellow' }
-  return { label: `${String(days)} dias`, color: 'green' }
+function urgencyLabel(days: number): { label: string; color: 'red' | 'yellow' | 'green'; isUrgent: boolean } {
+  if (days <= 2) return { label: '', color: 'red', isUrgent: true }
+  if (days <= 7) return { label: `${String(days)} dias`, color: 'yellow', isUrgent: false }
+  return { label: `${String(days)} dias`, color: 'green', isUrgent: false }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Debts() {
+  const { t } = useTranslation()
+  const { currency, language } = useLocale()
+
   const [tab, setTab] = useState<ActiveTab>('debts')
 
   const { data: fetchedDebts } = useFetch('/debts/', decodeDebtList)
@@ -157,6 +157,13 @@ export default function Debts() {
     debts.reduce((s, d) => s + d.remaining * (d.rate / 100), 0) +
     loans.reduce((s, l) => s + l.remaining * (l.rate / 100), 0)
   const totalActive = debts.length + loans.length
+
+  const currencyFormatter = (v: number) => formatCurrency(v, currency, language)
+
+  const tabs: [ActiveTab, string][] = [
+    ['debts', t('debts.tab_debts')],
+    ['loans', t('debts.tab_loans')],
+  ]
 
   // ── Debt form helpers ──────────────────────────────────────────────────────
 
@@ -364,14 +371,14 @@ export default function Debts() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-              💳 Dívidas & Empréstimos
+              💳 {t('debts.title')}
             </h1>
             <p style={{ color: 'var(--color-muted)', fontSize: 14 }}>
               Gerencie e acompanhe todas as suas obrigações financeiras
             </p>
           </div>
           <Badge color="red" size="md">
-            {totalActive} obrigações ativas
+            {totalActive} {t('debts.active_obligations').toLowerCase()}
           </Badge>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-5">
@@ -380,10 +387,10 @@ export default function Debts() {
             style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(239,68,68,0.15)' }}
           >
             <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-              Total Devendo
+              {t('debts.total_owed')}
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-red)' }}>
-              <AnimatedNumber value={totalOwed} formatter={formatCurrency} />
+              <AnimatedNumber value={totalOwed} formatter={currencyFormatter} />
             </p>
           </div>
           <div
@@ -391,10 +398,10 @@ export default function Debts() {
             style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(239,68,68,0.15)' }}
           >
             <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-              Juros / Mês (est.)
+              {t('debts.monthly_interest')}
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-orange)' }}>
-              <AnimatedNumber value={estimatedInterest} formatter={formatCurrency} />
+              <AnimatedNumber value={estimatedInterest} formatter={currencyFormatter} />
             </p>
           </div>
           <div
@@ -402,7 +409,7 @@ export default function Debts() {
             style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(239,68,68,0.15)' }}
           >
             <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-              Obrigações Ativas
+              {t('debts.active_obligations')}
             </p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-yellow)' }}>
               {totalActive}
@@ -416,7 +423,7 @@ export default function Debts() {
         className="flex gap-1 p-1 rounded-xl mb-5"
         style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', width: 'fit-content' }}
       >
-        {TABS.map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <button
             key={key}
             onClick={() => {
@@ -450,7 +457,7 @@ export default function Debts() {
               }}
               variant={showDebtForm ? 'outline' : 'primary'}
             >
-              {showDebtForm ? 'Cancelar' : '+ Adicionar Dívida'}
+              {showDebtForm ? t('debts.cancel') : t('debts.add_debt')}
             </Button>
           </div>
 
@@ -458,7 +465,7 @@ export default function Debts() {
           {showDebtForm && (
             <Card className="mb-4">
               <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-                {editingDebtId !== null ? 'Editar Dívida' : 'Nova Dívida'}
+                {editingDebtId !== null ? t('debts.edit_debt') : t('debts.new_debt')}
               </h3>
               <DebtForm
                 form={debtForm}
@@ -475,7 +482,7 @@ export default function Debts() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {debts.length === 0 && (
               <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-                Nenhuma dívida cadastrada
+                {t('debts.no_debts')}
               </p>
             )}
             {debts.map((debt) => {
@@ -493,13 +500,13 @@ export default function Debts() {
                         </h4>
                         {debt.urgent && (
                           <Badge color="red" pulse>
-                            ⚠ URGENTE
+                            ⚠ {t('debts.urgent')}
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          Parcela {debt.installments}
+                          {t('debts.installment')} {debt.installments}
                         </span>
                         {debt.rate > 0 && (
                           <Badge color="orange" size="xs">
@@ -511,10 +518,10 @@ export default function Debts() {
                     <div className="flex items-center gap-2">
                       <div className="text-right mr-2">
                         <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
-                          {formatCurrency(debt.remaining)}
+                          {formatCurrency(debt.remaining, currency, language)}
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          de {formatCurrency(debt.total)}
+                          {t('debts.remaining_of')} {formatCurrency(debt.total, currency, language)}
                         </p>
                       </div>
                       {/* Edit */}
@@ -525,7 +532,7 @@ export default function Debts() {
                           openEditDebtForm(debt)
                         }}
                       >
-                        Editar
+                        {t('debts.edit')}
                       </Button>
                       {/* Delete with confirmation */}
                       {confirmDeleteDebtId === debt.id ? (
@@ -535,14 +542,14 @@ export default function Debts() {
                             className="text-xs px-2 py-1 rounded-lg"
                             style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
                           >
-                            Confirmar
+                            {t('debts.confirm')}
                           </button>
                           <button
                             onClick={() => { setConfirmDeleteDebtId(null) }}
                             className="text-xs px-2 py-1 rounded-lg"
                             style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
                           >
-                            Cancelar
+                            {t('debts.cancel')}
                           </button>
                         </div>
                       ) : (
@@ -557,7 +564,7 @@ export default function Debts() {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Excluir
+                          {t('debts.delete')}
                         </button>
                       )}
                     </div>
@@ -568,20 +575,20 @@ export default function Debts() {
                     max={debt.total}
                     color="auto"
                     height={10}
-                    label={`Pago: ${formatCurrency(debt.total - debt.remaining)} (${String(paidPct)}%)`}
+                    label={`${t('debts.paid_label')}: ${formatCurrency(debt.total - debt.remaining, currency, language)} (${String(paidPct)}%)`}
                   />
 
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        Vencimento: {formatDateShort(debt.due_date)}
+                        {t('debts.due_date')}: {formatDateShort(debt.due_date, language)}
                       </span>
                       <Badge color={urgency.color} size="xs">
-                        {urgency.label}
+                        {urgency.isUrgent ? t('debts.urgent') : urgency.label}
                       </Badge>
                     </div>
                     <Button variant="outline" size="sm" disabled title="Em breve">
-                      Registrar Pagamento
+                      {t('debts.record_payment')}
                     </Button>
                   </div>
                 </Card>
@@ -606,7 +613,7 @@ export default function Debts() {
               }}
               variant={showLoanForm ? 'outline' : 'primary'}
             >
-              {showLoanForm ? 'Cancelar' : '+ Adicionar Empréstimo'}
+              {showLoanForm ? t('debts.cancel') : t('debts.add_loan')}
             </Button>
           </div>
 
@@ -614,7 +621,7 @@ export default function Debts() {
           {showLoanForm && (
             <Card className="mb-4">
               <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-                {editingLoanId !== null ? 'Editar Empréstimo' : 'Novo Empréstimo'}
+                {editingLoanId !== null ? t('debts.edit_loan') : t('debts.new_loan')}
               </h3>
               <LoanForm
                 form={loanForm}
@@ -631,7 +638,7 @@ export default function Debts() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loans.length === 0 && (
               <p className="text-center py-8" style={{ color: 'var(--color-muted)' }}>
-                Nenhum empréstimo cadastrado
+                {t('debts.no_loans')}
               </p>
             )}
             {loans.map((loan) => {
@@ -648,7 +655,7 @@ export default function Debts() {
                       </h4>
                       <div className="flex items-center gap-3">
                         <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          Parcela {loan.installments}
+                          {t('debts.installment')} {loan.installments}
                         </span>
                         <Badge color="orange" size="xs">
                           {loan.rate}% a.m.
@@ -658,10 +665,10 @@ export default function Debts() {
                     <div className="flex items-center gap-2">
                       <div className="text-right mr-2">
                         <p className="text-xl font-bold" style={{ color: 'var(--color-red)' }}>
-                          {formatCurrency(loan.remaining)}
+                          {formatCurrency(loan.remaining, currency, language)}
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          restante de {formatCurrency(loan.total)}
+                          {t('debts.remaining_of_loan')} {formatCurrency(loan.total, currency, language)}
                         </p>
                       </div>
                       {/* Edit */}
@@ -672,7 +679,7 @@ export default function Debts() {
                           openEditLoanForm(loan)
                         }}
                       >
-                        Editar
+                        {t('debts.edit')}
                       </Button>
                       {/* Delete with confirmation */}
                       {confirmDeleteLoanId === loan.id ? (
@@ -682,14 +689,14 @@ export default function Debts() {
                             className="text-xs px-2 py-1 rounded-lg"
                             style={{ background: 'var(--color-red)', color: '#fff', border: 'none', cursor: 'pointer' }}
                           >
-                            Confirmar
+                            {t('debts.confirm')}
                           </button>
                           <button
                             onClick={() => { setConfirmDeleteLoanId(null) }}
                             className="text-xs px-2 py-1 rounded-lg"
                             style={{ background: 'transparent', color: 'var(--color-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
                           >
-                            Cancelar
+                            {t('debts.cancel')}
                           </button>
                         </div>
                       ) : (
@@ -704,7 +711,7 @@ export default function Debts() {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Excluir
+                          {t('debts.delete')}
                         </button>
                       )}
                     </div>
@@ -715,23 +722,23 @@ export default function Debts() {
                     max={loan.total}
                     color="auto"
                     height={10}
-                    label={`Pago: ${String(paidPct)}%`}
+                    label={`${t('debts.paid_label')}: ${String(paidPct)}%`}
                   />
 
                   <div className="flex items-center justify-between mt-3">
                     <div>
                       <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        Próxima parcela:{' '}
-                        <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.installment)}</strong>
+                        {t('debts.next_installment')}:{' '}
+                        <strong style={{ color: 'var(--color-text)' }}>{formatCurrency(loan.installment, currency, language)}</strong>
                         {' — '}
-                        {formatDateShort(loan.next_payment)}{' '}
+                        {formatDateShort(loan.next_payment, language)}{' '}
                         <Badge color={urgency.color} size="xs">
-                          {urgency.label}
+                          {urgency.isUrgent ? t('debts.urgent') : urgency.label}
                         </Badge>
                       </p>
                     </div>
                     <Button variant="outline" size="sm" disabled title="Em breve">
-                      Registrar Parcela
+                      {t('debts.record_installment')}
                     </Button>
                   </div>
                 </Card>
@@ -757,6 +764,8 @@ interface DebtFormProps {
 }
 
 function DebtForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: DebtFormProps) {
+  const { t } = useTranslation()
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -823,7 +832,7 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
             />
           </div>
           <span className="text-sm" style={{ color: form.urgent ? 'var(--color-red)' : 'var(--color-muted)' }}>
-            {form.urgent ? '⚠ Urgente' : 'Urgente'}
+            {form.urgent ? t('debts.urgent_label') : t('debts.not_urgent_label')}
           </span>
         </label>
       </div>
@@ -837,7 +846,7 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
 
       <div className="flex gap-3 justify-end mt-4">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancelar
+          {t('debts.cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -845,7 +854,7 @@ function DebtForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
           }}
           disabled={saving}
         >
-          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? t('debts.saving') : isEditing ? t('debts.save_changes') : t('common.add')}
         </Button>
       </div>
     </div>
@@ -865,6 +874,8 @@ interface LoanFormProps {
 }
 
 function LoanForm({ form, setField, onSave, onCancel, isEditing, saving, formError }: LoanFormProps) {
+  const { t } = useTranslation()
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -928,7 +939,7 @@ function LoanForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
 
       <div className="flex gap-3 justify-end mt-4">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancelar
+          {t('debts.cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -936,7 +947,7 @@ function LoanForm({ form, setField, onSave, onCancel, isEditing, saving, formErr
           }}
           disabled={saving}
         >
-          {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Adicionar'}
+          {saving ? t('debts.saving') : isEditing ? t('debts.save_changes') : t('common.add')}
         </Button>
       </div>
     </div>
