@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
@@ -9,6 +10,7 @@ import { formatCurrency } from '../utils/currency'
 import { type FixedExpense, type FixedExpenseKind } from '../types'
 import { useFetch } from '../hooks/useApi'
 import { decodeFixedExpense, decodeFixedExpenseList } from '../lib/decode'
+import { useLocale } from '../hooks/useLocale'
 
 interface FormState {
   name: string
@@ -26,14 +28,12 @@ interface EditFormState {
 
 const EXPENSE_KINDS: FixedExpenseKind[] = ['fixed', 'variable']
 
-const KIND_LABELS: Record<FixedExpenseKind, string> = {
-  fixed: 'Fixo',
-  variable: 'Variável',
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FixedExpenses() {
+  const { t } = useTranslation()
+  const { language, currency } = useLocale()
+
   const { data: serverData } = useFetch('/fixed-expenses/', decodeFixedExpenseList)
   const [additions, setAdditions] = useState<FixedExpense[]>([])
   const [deletedIds, setDeletedIds] = useState<number[]>([])
@@ -74,6 +74,11 @@ export default function FixedExpenses() {
   const totalForecast = expenses.reduce((s, e) => s + e.estimate, 0)
   const fixedItems = expenses.filter((e) => e.type === 'fixed')
   const variableItems = expenses.filter((e) => e.type === 'variable')
+
+  const kindLabels: Record<FixedExpenseKind, string> = {
+    fixed: t('fixed_expenses.fixed'),
+    variable: t('fixed_expenses.variable'),
+  }
 
   const handleAdd = async () => {
     setAddError(null)
@@ -178,40 +183,45 @@ export default function FixedExpenses() {
     }
   }
 
+  const expenseGroups = [
+    { labelKey: 'fixed_expenses.fixed', data: fixedItems, color: 'var(--color-blue)' },
+    { labelKey: 'fixed_expenses.variable', data: variableItems, color: 'var(--color-purple)' },
+  ] as const
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
       <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-        Gastos Fixos
+        {t('fixed_expenses.title')}
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-muted)' }}>
-        Controle de despesas recorrentes
+        {t('fixed_expenses.subtitle')}
       </p>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <StatCard
           icon="📋"
-          label="Total Mês Atual"
-          value={formatCurrency(totalMonth)}
+          label={t('fixed_expenses.current_month_total')}
+          value={formatCurrency(totalMonth, currency, language)}
           numericValue={totalMonth}
-          numericFormatter={formatCurrency}
-          sub={`${String(expenses.length)} itens`}
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
+          sub={t('fixed_expenses.items_count', { count: expenses.length })}
           color="blue"
         />
         <StatCard
           icon="🔮"
-          label="Previsão Próximo Mês"
-          value={formatCurrency(totalForecast)}
+          label={t('fixed_expenses.next_month_forecast')}
+          value={formatCurrency(totalForecast, currency, language)}
           numericValue={totalForecast}
-          numericFormatter={formatCurrency}
-          sub="baseado em EMA"
+          numericFormatter={(v: number) => formatCurrency(v, currency, language)}
+          sub={t('fixed_expenses.based_on_ema')}
           color="purple"
         />
         <StatCard
           icon="📌"
-          label="Gastos Fixos"
+          label={t('fixed_expenses.fixed')}
           value={`${String(fixedItems.length)} de ${String(expenses.length)}`}
-          sub={formatCurrency(fixedItems.reduce((s, e) => s + e.amount, 0))}
+          sub={formatCurrency(fixedItems.reduce((s, e) => s + e.amount, 0), currency, language)}
           color="yellow"
         />
       </div>
@@ -219,7 +229,7 @@ export default function FixedExpenses() {
       {/* Add Form */}
       <Card className="mb-6">
         <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)' }}>
-          Adicionar Gasto Recorrente
+          {t('fixed_expenses.add_recurring')}
         </h3>
         <div className="flex gap-3 flex-wrap items-center">
           <input
@@ -242,21 +252,21 @@ export default function FixedExpenses() {
             className="flex rounded-lg overflow-hidden border"
             style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
           >
-            {EXPENSE_KINDS.map((t) => (
+            {EXPENSE_KINDS.map((kindKey) => (
               <button
-                key={t}
+                key={kindKey}
                 onClick={() => {
-                  setForm((f) => ({ ...f, type: t }))
+                  setForm((f) => ({ ...f, type: kindKey }))
                 }}
                 className="px-4 py-2 text-sm font-medium transition-colors"
                 style={{
-                  background: form.type === t ? 'var(--color-blue)' : 'transparent',
-                  color: form.type === t ? '#fff' : 'var(--color-muted)',
+                  background: form.type === kindKey ? 'var(--color-blue)' : 'transparent',
+                  color: form.type === kindKey ? '#fff' : 'var(--color-muted)',
                   border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                {KIND_LABELS[t]}
+                {kindLabels[kindKey]}
               </button>
             ))}
           </div>
@@ -266,7 +276,7 @@ export default function FixedExpenses() {
             }}
             disabled={addSaving}
           >
-            {addSaving ? 'Salvando...' : 'Adicionar'}
+            {addSaving ? t('transactions.saving') : t('common.add')}
           </Button>
         </div>
         {addError !== null && (
@@ -286,28 +296,25 @@ export default function FixedExpenses() {
       {/* Empty state — no expenses at all */}
       {expenses.length === 0 && (
         <p className="text-center py-12" style={{ color: 'var(--color-muted)' }}>
-          Nenhum gasto recorrente cadastrado. Preencha o formulário acima para começar.
+          {t('fixed_expenses.empty_state')}
         </p>
       )}
 
       {/* Expense Groups */}
-      {[
-        { label: 'Fixos', data: fixedItems, color: 'var(--color-blue)' },
-        { label: 'Variáveis', data: variableItems, color: 'var(--color-purple)' },
-      ].map((group) => (
-        <div key={group.label} className="mb-6">
+      {expenseGroups.map((group) => (
+        <div key={group.labelKey} className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              {group.label}
+              {t(group.labelKey)}
             </h3>
             <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
             <span className="text-xs font-medium" style={{ color: group.color }}>
-              {formatCurrency(group.data.reduce((s, e) => s + e.amount, 0))}
+              {formatCurrency(group.data.reduce((s, e) => s + e.amount, 0), currency, language)}
             </span>
           </div>
           {group.data.length === 0 ? (
             <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Nenhum item
+              {t('fixed_expenses.no_items')}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -346,28 +353,28 @@ export default function FixedExpenses() {
                             className="flex rounded-lg overflow-hidden border"
                             style={{ borderColor: 'var(--color-border)', flexShrink: 0 }}
                           >
-                            {EXPENSE_KINDS.map((t) => (
+                            {EXPENSE_KINDS.map((kindKey) => (
                               <button
-                                key={t}
+                                key={kindKey}
                                 onClick={() => {
-                                  setEditForm((f) => ({ ...f, type: t }))
+                                  setEditForm((f) => ({ ...f, type: kindKey }))
                                 }}
                                 className="px-4 py-2 text-sm font-medium transition-colors"
                                 style={{
-                                  background: editForm.type === t ? 'var(--color-blue)' : 'transparent',
-                                  color: editForm.type === t ? '#fff' : 'var(--color-muted)',
+                                  background: editForm.type === kindKey ? 'var(--color-blue)' : 'transparent',
+                                  color: editForm.type === kindKey ? '#fff' : 'var(--color-muted)',
                                   border: 'none',
                                   cursor: 'pointer',
                                 }}
                               >
-                                {KIND_LABELS[t]}
+                                {kindLabels[kindKey]}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap">
                           <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-muted)' }}>
-                            Confiança:
+                            {t('fixed_expenses.confidence')}:
                             <input
                               type="number"
                               min={0}
@@ -396,7 +403,7 @@ export default function FixedExpenses() {
                                   opacity: editSaving ? 0.6 : 1,
                                 }}
                               >
-                                {editSaving ? 'Salvando...' : 'Salvar'}
+                                {editSaving ? t('transactions.saving') : t('common.save')}
                               </button>
                               <button
                                 onClick={handleEditCancel}
@@ -408,7 +415,7 @@ export default function FixedExpenses() {
                                   cursor: 'pointer',
                                 }}
                               >
-                                Cancelar
+                                {t('common.cancel')}
                               </button>
                             </div>
                             {editError !== null && (
@@ -440,21 +447,21 @@ export default function FixedExpenses() {
                             {expense.name}
                           </span>
                           <Badge color={expense.type === 'fixed' ? 'blue' : 'purple'} size="xs">
-                            {KIND_LABELS[expense.type]}
+                            {kindLabels[expense.type]}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-6">
                           <div>
                             <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                              Mês atual
+                              {t('fixed_expenses.current_month')}
                             </p>
                             <p className="font-bold text-base" style={{ color: 'var(--color-text)' }}>
-                              {formatCurrency(expense.amount)}
+                              {formatCurrency(expense.amount, currency, language)}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-                              Previsão próx.
+                              {t('fixed_expenses.next_month_short')}
                             </p>
                             <p
                               className="font-semibold text-sm"
@@ -467,18 +474,18 @@ export default function FixedExpenses() {
                                       : 'var(--color-muted)',
                               }}
                             >
-                              {formatCurrency(expense.estimate)}
+                              {formatCurrency(expense.estimate, currency, language)}
                               {diff !== 0 && (
                                 <span className="text-xs ml-1.5">
                                   ({diff > 0 ? '+' : ''}
-                                  {formatCurrency(diff)})
+                                  {formatCurrency(diff, currency, language)})
                                 </span>
                               )}
                             </p>
                           </div>
                           <div style={{ flex: 1 }}>
                             <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                              Confiança: {expense.confidence}%
+                              {t('fixed_expenses.confidence')}: {expense.confidence}%
                             </p>
                             <ProgressBar
                               value={expense.confidence}
@@ -519,7 +526,7 @@ export default function FixedExpenses() {
                                 cursor: 'pointer',
                               }}
                             >
-                              Confirmar
+                              {t('common.confirm')}
                             </button>
                             <button
                               onClick={() => { setConfirmDeleteId(null) }}
@@ -531,13 +538,13 @@ export default function FixedExpenses() {
                                 cursor: 'pointer',
                               }}
                             >
-                              Cancelar
+                              {t('common.cancel')}
                             </button>
                           </div>
                         ) : (
                           <button
                             onClick={() => { setConfirmDeleteId(expense.id) }}
-                            title="Excluir"
+                            title={t('common.delete')}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm opacity-40 hover:opacity-100 transition-opacity"
                             style={{
                               background: 'rgba(239,68,68,0.1)',

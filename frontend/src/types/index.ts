@@ -254,6 +254,8 @@ export interface GachaStashMulti {
 export interface AppSettings {
   id: number
   manual_balance: number
+  language: string
+  currency: string
 }
 
 // ─── Salary Plan ──────────────────────────────────────────────────────────────

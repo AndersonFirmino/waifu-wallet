@@ -1,14 +1,16 @@
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../hooks/useTheme'
+import { useLocale } from '../hooks/useLocale'
 
 interface NavItem {
   path: string
   icon: string
-  label: string
+  labelKey: string
 }
 
 interface NavGroup {
-  group: string
+  groupKey: string
   items: NavItem[]
 }
 
@@ -19,36 +21,41 @@ interface SidebarProps {
 
 const NAV: NavGroup[] = [
   {
-    group: 'Principal',
+    groupKey: 'sidebar.main',
     items: [
-      { path: '/', icon: '📊', label: 'Dashboard' },
-      { path: '/gacha', icon: '🎲', label: 'Gacha' },
-      { path: '/transactions', icon: '💰', label: 'Transações' },
+      { path: '/', icon: '📊', labelKey: 'sidebar.dashboard' },
+      { path: '/gacha', icon: '🎲', labelKey: 'sidebar.gacha' },
+      { path: '/transactions', icon: '💰', labelKey: 'sidebar.transactions' },
     ],
   },
   {
-    group: 'Financeiro',
+    groupKey: 'sidebar.financial',
     items: [
-      { path: '/salary', icon: '💼', label: 'Plano Salarial' },
-      { path: '/savings', icon: '🐷', label: 'Cofrinhos' },
-      { path: '/fixed-expenses', icon: '📋', label: 'Gastos Fixos' },
-      { path: '/debts', icon: '🔴', label: 'Dívidas' },
-      { path: '/credit-cards', icon: '🃏', label: 'Cartões' },
-      { path: '/calendar', icon: '📅', label: 'Calendário' },
+      { path: '/salary', icon: '💼', labelKey: 'sidebar.salary_plan' },
+      { path: '/savings', icon: '🐷', labelKey: 'sidebar.savings' },
+      { path: '/fixed-expenses', icon: '📋', labelKey: 'sidebar.fixed_expenses' },
+      { path: '/debts', icon: '🔴', labelKey: 'sidebar.debts' },
+      { path: '/credit-cards', icon: '🃏', labelKey: 'sidebar.credit_cards' },
+      { path: '/calendar', icon: '📅', labelKey: 'sidebar.calendar' },
     ],
   },
   {
-    group: 'Extras',
+    groupKey: 'sidebar.extras',
     items: [
-      { path: '/forecast', icon: '🔮', label: 'Previsão' },
-      { path: '/notes', icon: '📝', label: 'Notas' },
+      { path: '/forecast', icon: '🔮', labelKey: 'sidebar.forecast' },
+      { path: '/notes', icon: '📝', labelKey: 'sidebar.notes' },
+      { path: '/settings', icon: '⚙️', labelKey: 'sidebar.settings' },
     ],
   },
 ]
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { theme, toggleTheme } = useTheme()
+  const { t } = useTranslation()
+  const { language } = useLocale()
   const isDark = theme === 'dark'
+
+  const currentDate = new Intl.DateTimeFormat(language, { month: 'long', year: 'numeric' }).format(new Date())
 
   return (
     <aside
@@ -89,7 +96,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
         <button
           onClick={onToggle}
-          title={collapsed ? 'Expandir menu' : 'Colapsar menu'}
+          title={collapsed ? t('sidebar.expand_menu') : t('sidebar.collapse_menu')}
           style={{
             background: 'none',
             border: 'none',
@@ -112,7 +119,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
         {NAV.map((group) => (
-          <div key={group.group} style={{ marginBottom: 4 }}>
+          <div key={group.groupKey} style={{ marginBottom: 4 }}>
             {!collapsed && (
               <p
                 style={{
@@ -125,7 +132,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   margin: 0,
                 }}
               >
-                {group.group}
+                {t(group.groupKey)}
               </p>
             )}
             {group.items.map((item) => (
@@ -149,7 +156,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 })}
               >
                 <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
-                {!collapsed && <span style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>{item.label}</span>}
+                {!collapsed && <span style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>{t(item.labelKey)}</span>}
               </NavLink>
             ))}
           </div>
@@ -165,7 +172,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       >
         <button
           onClick={toggleTheme}
-          title={isDark ? 'Modo Claro' : 'Modo Escuro'}
+          title={isDark ? t('sidebar.light_mode') : t('sidebar.dark_mode')}
           style={{
             background: 'none',
             border: 'none',
@@ -181,7 +188,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           }}
         >
           <span style={{ fontSize: 18, flexShrink: 0 }}>{isDark ? '☀️' : '🌙'}</span>
-          {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{isDark ? 'Modo Claro' : 'Modo Escuro'}</span>}
+          {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{isDark ? t('sidebar.light_mode') : t('sidebar.dark_mode')}</span>}
         </button>
         {!collapsed && (
           <div
@@ -192,7 +199,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }}
           >
             <p style={{ margin: 0 }}>Waifu Wallet beta</p>
-            <p style={{ margin: 0, opacity: 0.6 }}>Março 2026</p>
+            <p style={{ margin: 0, opacity: 0.6 }}>{currentDate}</p>
           </div>
         )}
       </div>

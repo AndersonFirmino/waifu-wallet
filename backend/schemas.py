@@ -173,10 +173,14 @@ class AppSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     manual_balance: float
+    language: str
+    currency: str
 
 
 class AppSettingsUpdate(BaseModel):
     manual_balance: float | None = None
+    language: str | None = None
+    currency: str | None = None
 
 
 # ─── Gacha ────────────────────────────────────────────────────────────────────
@@ -319,6 +323,8 @@ class CalendarEventOut(BaseModel):
     type: str  # income | expense | installment | holiday
     description: str
     amount: float
+    description_key: str | None = None
+    description_params: dict[str, str] | None = None
 
 
 # ─── Forecast ─────────────────────────────────────────────────────────────────

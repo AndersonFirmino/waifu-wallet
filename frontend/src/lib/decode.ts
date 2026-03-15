@@ -344,6 +344,8 @@ export function decodeAppSettings(raw: unknown): AppSettings {
   return {
     id: num(raw.id, 'id'),
     manual_balance: num(raw.manual_balance, 'manual_balance'),
+    language: str(raw.language, 'language'),
+    currency: str(raw.currency, 'currency'),
   }
 }
 
