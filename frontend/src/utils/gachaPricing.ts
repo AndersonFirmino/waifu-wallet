@@ -22,17 +22,7 @@ const HOYOVERSE_PRICES: Record<string, readonly number[]> = {
   AUD: [1.99, 7.99, 22.99, 49.99, 79.99, 149.99],
 }
 
-const HI3_PRICES: Record<string, readonly number[]> = {
-  BRL: [4.90, 24.90, 79.90, 149.90, 249.90, 499.90],
-  USD: [0.99, 4.99, 14.99, 29.99, 49.99, 99.99],
-  EUR: [0.99, 5.99, 17.99, 34.99, 59.99, 99.99],
-  GBP: [0.99, 4.99, 14.99, 29.99, 49.99, 99.99],
-  JPY: [120, 610, 1840, 3680, 6100, 12000],
-  KRW: [1200, 5900, 19000, 37000, 65000, 119000],
-  MXN: [19, 99, 299, 599, 999, 1999],
-  CAD: [1.29, 6.99, 19.99, 39.99, 69.99, 129.99],
-  AUD: [1.99, 7.99, 22.99, 49.99, 79.99, 149.99],
-}
+// HI3 uses the same price points per currency — only shard amounts differ
 
 // Fallback currency when the selected one has no price data
 const FALLBACK_CURRENCY = 'USD'
@@ -72,11 +62,9 @@ function buildTiers(
 }
 
 export function getTiersForGame(game: string, currency: string): readonly TopUpTier[] {
-  if (isHi3(game)) {
-    return buildTiers(HI3_SHARDS, resolvePrices(HI3_PRICES, currency))
-  }
-
-  return buildTiers(HOYOVERSE_SHARDS, resolvePrices(HOYOVERSE_PRICES, currency))
+  const shards = isHi3(game) ? HI3_SHARDS : HOYOVERSE_SHARDS
+  const prices = resolvePrices(HOYOVERSE_PRICES, currency)
+  return buildTiers(shards, prices)
 }
 
 // Greedy algorithm: buy largest packs first for best value per shard.
