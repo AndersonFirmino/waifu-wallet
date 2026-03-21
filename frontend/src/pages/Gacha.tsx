@@ -13,87 +13,10 @@ import { useFetch } from '../hooks/useApi'
 import { useLocale } from '../hooks/useLocale'
 import { decodeGachaBanner, decodeBannerList, decodeSummary, decodeGachaStashMultiList, decodeAppSettings } from '../lib/decode'
 import { calculateEstimatedPulls, getCurrencyLabels } from '../utils/gachaCalc'
+import { calculateCashCost, getCurrencyPerPull } from '../utils/gachaPricing'
 
-// ─── Pull Calculator Constants ───────────────────────────────────────────────
-
-// Premium currency per pull by game
-const CURRENCY_PER_PULL: Record<string, number> = {
-  'Honkai: Star Rail': 160,      // Stellar Jade
-  'Genshin Impact': 160,          // Primogems
-  'Zenless Zone Zero': 160,       // Polychrome
-  'Honkai Impact 3rd': 280,       // Crystals
-}
-
-const DEFAULT_CURRENCY_PER_PULL = 160
-
-function getCurrencyPerPull(game: string): number {
-  return CURRENCY_PER_PULL[game] ?? DEFAULT_CURRENCY_PER_PULL
-}
-
-// Official BRL top-up tiers per game (all HoYoverse games share same tier structure except HI3)
-interface TopUpTier {
-  shards: number
-  price: number
-}
-
-const HOYOVERSE_STANDARD_TIERS: readonly TopUpTier[] = [
-  { shards: 60, price: 4.90 },
-  { shards: 300, price: 24.90 },
-  { shards: 980, price: 79.90 },
-  { shards: 1980, price: 149.90 },
-  { shards: 3280, price: 249.90 },
-  { shards: 6480, price: 499.90 },
-] as const
-
-const HI3_TIERS: readonly TopUpTier[] = [
-  { shards: 60, price: 4.90 },
-  { shards: 330, price: 24.90 },
-  { shards: 1090, price: 79.90 },
-  { shards: 2190, price: 149.90 },
-  { shards: 3640, price: 249.90 },
-  { shards: 7200, price: 499.90 },
-] as const
-
-const GAME_TOP_UP_TIERS: Record<string, readonly TopUpTier[]> = {
-  'Honkai: Star Rail': HOYOVERSE_STANDARD_TIERS,
-  'Genshin Impact': HOYOVERSE_STANDARD_TIERS,
-  'Zenless Zone Zero': HOYOVERSE_STANDARD_TIERS,
-  'Honkai Impact 3rd': HI3_TIERS,
-}
-
-function getTiersForGame(game: string): readonly TopUpTier[] {
-  return GAME_TOP_UP_TIERS[game] ?? HOYOVERSE_STANDARD_TIERS
-}
-
-// With first-time/anniversary double gems each tier gives 2x shards
-function calculateCashCost(currencyToBuy: number, doubleGems: boolean, game: string): number {
-  if (currencyToBuy <= 0) return 0
-  const tiers = getTiersForGame(game)
-  let remaining = currencyToBuy
-  let cost = 0
-  // Greedy: buy largest packs first for best $/currency ratio
-  const sortedTiers = [...tiers].sort((a, b) => b.shards - a.shards)
-  for (const tier of sortedTiers) {
-    const effective = doubleGems ? tier.shards * 2 : tier.shards
-    while (remaining > 0 && remaining >= effective / 2) {
-      cost += tier.price
-      remaining -= effective
-    }
-  }
-  // If still remaining, buy smallest pack
-  const smallest = tiers[0]
-  if (remaining > 0 && smallest) {
-    const effective = doubleGems ? smallest.shards * 2 : smallest.shards
-    while (remaining > 0) {
-      cost += smallest.price
-      remaining -= effective
-    }
-  }
-  return cost
-}
-
-function formatInteger(n: number): string {
-  return Math.round(n).toLocaleString('pt-BR')
+function formatInteger(n: number, language: string): string {
+  return Math.round(n).toLocaleString(language)
 }
 
 // A banner has a pull target when the user set an estimated_pulls value
@@ -1195,7 +1118,7 @@ function BannerCard({ banner, onRemove, editing, onEdit, onSave, onCancel, onIma
                   const pullsNeeded = Math.max(0, banner.estimated_pulls - banner.pulls)
                   const pullsToCash = Math.max(0, pullsNeeded - allocatedPulls)
                   const currencyToCash = pullsToCash * getCurrencyPerPull(banner.game)
-                  const cashCost = calculateCashCost(currencyToCash, doubleGemsAvailable, banner.game)
+                  const cashCost = calculateCashCost(currencyToCash, doubleGemsAvailable, banner.game, currency)
 
                   if (pullsNeeded === 0) {
                     return <span style={{ color: 'var(--color-green)', fontWeight: 600, fontSize: 11 }}>{t('gacha.complete')}</span>
@@ -1374,7 +1297,7 @@ export default function Gacha() {
         const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
         const gameStash = getGameStash(b.game)
         const gameDoubleGems = gameStash?.double_gems_available ?? true
-        const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game)
+        const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game, currency)
         totalCash += cashCost
       })
     return totalCash
@@ -1669,7 +1592,7 @@ export default function Gacha() {
                     <div className="flex gap-4 items-center">
                       <div>
                         <p className="text-base font-bold" style={{ color: 'var(--color-text)' }}>
-                          <AnimatedNumber value={gameCurrency} formatter={formatInteger} />
+                          <AnimatedNumber value={gameCurrency} formatter={(n) => formatInteger(n, language)} />
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{labels.premium}</p>
                       </div>
@@ -1726,7 +1649,7 @@ export default function Gacha() {
                   const pullsToCash = Math.max(0, pullsNeeded - allocated)
                   const currencyToCash = pullsToCash * getCurrencyPerPull(b.game)
                   const gameDoubleGems = getGameStash(b.game)?.double_gems_available ?? true
-                  const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game)
+                  const cashCost = calculateCashCost(currencyToCash, gameDoubleGems, b.game, currency)
                   const targetLabel = getTargetSummary(b.game, b.char_target, b.weapon_target)
                   const progress = Math.min(b.pulls + allocated, b.estimated_pulls)
 
