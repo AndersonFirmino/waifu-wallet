@@ -72,12 +72,40 @@ export function getTiersForGame(game: string, currency: string): readonly TopUpT
   return buildTiers(shards, prices)
 }
 
-// DP (unbounded knapsack) algorithm: finds the minimum-cost combination of packs
-// to reach at least `currencyToBuy` shards.
+// DP (unbounded knapsack): minimum cost in cents to buy at least `target` shards
+// using unlimited purchases of the given tiers.
+function normalCostCents(target: number, tiers: readonly TopUpTier[]): number {
+  if (target <= 0) return 0
+
+  const roundedTarget = Math.ceil(target)
+  const maxPack = Math.max(...tiers.map((t) => t.shards))
+  const limit = roundedTarget + maxPack
+  const dp = new Array<number>(limit + 1).fill(Number.POSITIVE_INFINITY)
+  dp[0] = 0
+
+  for (let amount = 1; amount <= limit; amount++) {
+    for (const tier of tiers) {
+      const pCents = Math.round(tier.price * 100)
+      const current = dp[amount] ?? Number.POSITIVE_INFINITY
+      if (amount <= tier.shards) {
+        dp[amount] = Math.min(current, pCents)
+      } else {
+        const prev = dp[amount - tier.shards]
+        if (prev !== undefined && prev !== Number.POSITIVE_INFINITY) {
+          dp[amount] = Math.min(current, prev + pCents)
+        }
+      }
+    }
+  }
+
+  return Math.min(...dp.slice(roundedTarget))
+}
+
+// Finds the cheapest way to obtain at least `currencyToBuy` shards.
 //
-// doubleGems models a first-purchase bonus: you get 2× shards on the FIRST
-// purchase of each tier only. Strategy: use all bonus purchases (largest first)
-// to reduce the remainder, then run DP on whatever is left.
+// When `doubleGems` is true, the first purchase of each tier gives 2× shards.
+// With only 6 tiers that's 64 possible bonus subsets — we enumerate all of them
+// and pick the cheapest (bonus cost + DP remainder at normal prices).
 export function calculateCashCost(
   currencyToBuy: number,
   doubleGems: boolean,
@@ -87,64 +115,31 @@ export function calculateCashCost(
   if (currencyToBuy <= 0) return 0
 
   const tiers = getTiersForGame(game, currency)
+  const priceCents = tiers.map((t) => Math.round(t.price * 100))
 
-  let remaining = currencyToBuy
-  let bonusCost = 0
+  // Base case: no bonuses, pure DP
+  let bestCents = normalCostCents(currencyToBuy, tiers)
 
   if (doubleGems) {
-    // Use each tier's first-purchase bonus once, largest first
-    const sortedByShards = [...tiers].sort((a, b) => b.shards - a.shards)
-    for (const tier of sortedByShards) {
-      if (remaining <= 0) break
-      const bonusShards = tier.shards * 2
-      remaining -= bonusShards
-      bonusCost += tier.price
-    }
-  }
+    // Enumerate every subset of first-purchase bonuses (2^N, N=6 → 64 iterations)
+    const n = tiers.length
+    for (let mask = 1; mask < 1 << n; mask++) {
+      let bonusShards = 0
+      let bonusCents = 0
 
-  // Bonus purchases already covered the full amount
-  if (remaining <= 0) return bonusCost
-
-  // DP for remaining shards at normal (non-bonus) prices.
-  // Unbounded knapsack: find minimum cost to get AT LEAST `remaining` shards.
-  // We extend the DP table by maxPack to accommodate overshoot.
-  const target = Math.ceil(remaining)
-  const maxPack = Math.max(...tiers.map((t) => t.shards))
-  const limit = target + maxPack
-
-  // Use integer cents to avoid floating-point accumulation errors
-  const priceCents = tiers.map((t) => Math.round(t.price * 100))
-  const shardAmounts = tiers.map((t) => t.shards)
-
-  const dp = new Array<number>(limit + 1).fill(Number.POSITIVE_INFINITY)
-  dp[0] = 0
-
-  for (let amount = 1; amount <= limit; amount++) {
-    for (let j = 0; j < tiers.length; j++) {
-      const s = shardAmounts[j]
-      const p = priceCents[j]
-      if (s === undefined || p === undefined) continue
-      const current = dp[amount] ?? Number.POSITIVE_INFINITY
-      if (amount <= s) {
-        // A single pack of this tier covers `amount` (with possible overshoot)
-        dp[amount] = Math.min(current, p)
-      } else {
-        const prev = dp[amount - s]
-        if (prev !== undefined && prev !== Number.POSITIVE_INFINITY) {
-          dp[amount] = Math.min(current, prev + p)
-        }
+      for (let i = 0; i < n; i++) {
+        if ((mask & (1 << i)) === 0) continue
+        const tier = tiers[i]
+        const pc = priceCents[i]
+        if (tier === undefined || pc === undefined) continue
+        bonusShards += tier.shards * 2
+        bonusCents += pc
       }
+
+      const remainderCents = normalCostCents(currencyToBuy - bonusShards, tiers)
+      bestCents = Math.min(bestCents, bonusCents + remainderCents)
     }
   }
 
-  // Find the minimum cost for any amount >= target (overshoot is acceptable)
-  let minCost = Number.POSITIVE_INFINITY
-  for (let i = target; i <= limit; i++) {
-    const val = dp[i]
-    if (val !== undefined && val < minCost) {
-      minCost = val
-    }
-  }
-
-  return bonusCost + (minCost === Number.POSITIVE_INFINITY ? 0 : minCost / 100)
+  return bestCents / 100
 }

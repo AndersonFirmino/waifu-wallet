@@ -142,14 +142,15 @@ describe('calculateCashCost', () => {
   //   6480×2=12960 → rem=12640, cost=$99.99
   //   3280×2=6560  → rem=6080,  cost+=$49.99
   //   1980×2=3960  → rem=2120,  cost+=$29.99
-  //   980×2=1960   → rem=160,   cost+=$14.99
-  //   300×2=600    → rem=160-600=-440 ≤ 0 → STOP
-  // Total bonus cost: $99.99+$49.99+$29.99+$14.99+$4.99 = $199.95.
-  // The 60-tier bonus was not needed (remaining already covered).
-  it('doubleGems=true: uses single first-purchase bonus per tier, covers 25600 jade USD for $199.95', () => {
+  // Subset enumeration finds the optimal bonus combination:
+  // The algorithm tries all 64 subsets of first-purchase bonuses and picks
+  // the cheapest total (bonus cost + DP remainder).
+  // Result: $196.94 — cheaper than the greedy $199.95 because it picks
+  // a smarter subset of bonus tiers.
+  it('doubleGems=true: subset enumeration finds optimal bonus combo for 25600 jade USD', () => {
     const jade = 160 * 160 // 25600
     const cost = calculateCashCost(jade, true, 'Honkai: Star Rail', 'USD')
-    expect(cost).toBeCloseTo(199.95, 2)
+    expect(cost).toBeCloseTo(196.94, 2)
   })
 
   it('doubleGems=true is cheaper than doubleGems=false for same amount', () => {
