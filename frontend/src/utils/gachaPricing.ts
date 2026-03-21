@@ -124,13 +124,14 @@ export function calculateCashCost(
       const s = shardAmounts[j]
       const p = priceCents[j]
       if (s === undefined || p === undefined) continue
+      const current = dp[amount] ?? Number.POSITIVE_INFINITY
       if (amount <= s) {
         // A single pack of this tier covers `amount` (with possible overshoot)
-        dp[amount] = Math.min(dp[amount], p)
+        dp[amount] = Math.min(current, p)
       } else {
         const prev = dp[amount - s]
         if (prev !== undefined && prev !== Number.POSITIVE_INFINITY) {
-          dp[amount] = Math.min(dp[amount], prev + p)
+          dp[amount] = Math.min(current, prev + p)
         }
       }
     }
