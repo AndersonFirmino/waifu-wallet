@@ -58,6 +58,11 @@ function buildTiers(
   shards: readonly number[],
   prices: readonly number[],
 ): readonly TopUpTier[] {
+  if (shards.length !== prices.length) {
+    throw new Error(
+      `Pricing misconfiguration: ${String(shards.length)} shards but ${String(prices.length)} prices`,
+    )
+  }
   return shards.map((s, i) => ({ shards: s, price: prices[i] ?? 0 }))
 }
 
@@ -67,8 +72,12 @@ export function getTiersForGame(game: string, currency: string): readonly TopUpT
   return buildTiers(shards, prices)
 }
 
-// Greedy algorithm: buy largest packs first for best value per shard.
-// With first-time/anniversary double gems each tier gives 2x shards.
+// DP (unbounded knapsack) algorithm: finds the minimum-cost combination of packs
+// to reach at least `currencyToBuy` shards.
+//
+// doubleGems models a first-purchase bonus: you get 2× shards on the FIRST
+// purchase of each tier only. Strategy: use all bonus purchases (largest first)
+// to reduce the remainder, then run DP on whatever is left.
 export function calculateCashCost(
   currencyToBuy: number,
   doubleGems: boolean,
@@ -78,28 +87,63 @@ export function calculateCashCost(
   if (currencyToBuy <= 0) return 0
 
   const tiers = getTiersForGame(game, currency)
+
   let remaining = currencyToBuy
-  let cost = 0
+  let bonusCost = 0
 
-  const sortedTiers = [...tiers].sort((a, b) => b.shards - a.shards)
-
-  for (const tier of sortedTiers) {
-    const effective = doubleGems ? tier.shards * 2 : tier.shards
-    while (remaining > 0 && remaining >= effective / 2) {
-      cost += tier.price
-      remaining -= effective
+  if (doubleGems) {
+    // Use each tier's first-purchase bonus once, largest first
+    const sortedByShards = [...tiers].sort((a, b) => b.shards - a.shards)
+    for (const tier of sortedByShards) {
+      if (remaining <= 0) break
+      const bonusShards = tier.shards * 2
+      remaining -= bonusShards
+      bonusCost += tier.price
     }
   }
 
-  // If still remaining, buy smallest pack
-  const smallest = tiers[0]
-  if (remaining > 0 && smallest !== undefined) {
-    const effective = doubleGems ? smallest.shards * 2 : smallest.shards
-    while (remaining > 0) {
-      cost += smallest.price
-      remaining -= effective
+  // Bonus purchases already covered the full amount
+  if (remaining <= 0) return bonusCost
+
+  // DP for remaining shards at normal (non-bonus) prices.
+  // Unbounded knapsack: find minimum cost to get AT LEAST `remaining` shards.
+  // We extend the DP table by maxPack to accommodate overshoot.
+  const target = Math.ceil(remaining)
+  const maxPack = Math.max(...tiers.map((t) => t.shards))
+  const limit = target + maxPack
+
+  // Use integer cents to avoid floating-point accumulation errors
+  const priceCents = tiers.map((t) => Math.round(t.price * 100))
+  const shardAmounts = tiers.map((t) => t.shards)
+
+  const dp = new Array<number>(limit + 1).fill(Number.POSITIVE_INFINITY)
+  dp[0] = 0
+
+  for (let amount = 1; amount <= limit; amount++) {
+    for (let j = 0; j < tiers.length; j++) {
+      const s = shardAmounts[j]
+      const p = priceCents[j]
+      if (s === undefined || p === undefined) continue
+      if (amount <= s) {
+        // A single pack of this tier covers `amount` (with possible overshoot)
+        dp[amount] = Math.min(dp[amount], p)
+      } else {
+        const prev = dp[amount - s]
+        if (prev !== undefined && prev !== Number.POSITIVE_INFINITY) {
+          dp[amount] = Math.min(dp[amount], prev + p)
+        }
+      }
     }
   }
 
-  return cost
+  // Find the minimum cost for any amount >= target (overshoot is acceptable)
+  let minCost = Number.POSITIVE_INFINITY
+  for (let i = target; i <= limit; i++) {
+    const val = dp[i]
+    if (val !== undefined && val < minCost) {
+      minCost = val
+    }
+  }
+
+  return bonusCost + (minCost === Number.POSITIVE_INFINITY ? 0 : minCost / 100)
 }
